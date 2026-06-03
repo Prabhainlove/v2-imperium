@@ -178,7 +178,7 @@ export async function runPipeline(input: PipelineInput) {
   const started = Date.now();
   const { task_id } = input;
 
-  await log(task_id, "search_started", "ok", `role=${input.role} location=${input.location} max_apps=${input.max_applications}`);
+  await log(user_id, task_id, "search_started", "ok", `role=${input.role} location=${input.location} max_apps=${input.max_applications}`);
 
   // --- Discovery (parallel, with availability gating) ---
   const raw: RawJob[] = [];
@@ -196,23 +196,23 @@ export async function runPipeline(input: PipelineInput) {
         );
         return;
       }
-      await log(task_id, `discover_${src.id}`, "running", `Querying ${src.label}…`);
+      await log(user_id, task_id, `discover_${src.id}`, "running", `Querying ${src.label}…`);
       try {
         const jobs = await src.fetch(input.role, input.location);
         per_source[src.id] = { count: jobs.length, status: "ok" };
         raw.push(...jobs);
-        await log(task_id, `discover_${src.id}`, "success", `${jobs.length} jobs from ${src.label}`);
+        await log(user_id, task_id, `discover_${src.id}`, "success", `${jobs.length} jobs from ${src.label}`);
       } catch (err) {
         per_source[src.id] = { count: 0, status: "failed" };
-        await log(task_id, `discover_${src.id}`, "failed", err instanceof Error ? err.message : String(err));
+        await log(user_id, task_id, `discover_${src.id}`, "failed", err instanceof Error ? err.message : String(err));
       }
     }),
   );
 
-  await log(task_id, "jobs_retrieved", "success", `${raw.length} raw jobs from ${Object.values(per_source).filter((p) => p.status === "ok").length} sources`);
+  await log(user_id, task_id, "jobs_retrieved", "success", `${raw.length} raw jobs from ${Object.values(per_source).filter((p) => p.status === "ok").length} sources`);
 
   // --- Dedupe ---
-  await log(task_id, "deduplicate", "running", `${raw.length} raw jobs`);
+  await log(user_id, task_id, "deduplicate", "running", `${raw.length} raw jobs`);
   const seen = new Set<string>();
   const unique: RawJob[] = [];
   for (const j of raw) {
@@ -221,16 +221,16 @@ export async function runPipeline(input: PipelineInput) {
     seen.add(key);
     unique.push(j);
   }
-  await log(task_id, "deduplicate", "success", `${unique.length} unique jobs after dedupe`);
+  await log(user_id, task_id, "deduplicate", "success", `${unique.length} unique jobs after dedupe`);
 
   // --- Score ---
-  await log(task_id, "jobs_ranked", "running", `Scoring ${unique.length} jobs`);
+  await log(user_id, task_id, "jobs_ranked", "running", `Scoring ${unique.length} jobs`);
   const scored = unique.map((j) => ({
     job: j,
     ...scoreJob(j, input.role, input.skills, input.experience, input.location, input.desired_salary_min),
   }));
   scored.sort((a, b) => b.overall - a.overall);
-  await log(task_id, "jobs_ranked", "success", `Top score ${scored[0]?.overall.toFixed(2) ?? "n/a"} across ${scored.length} jobs`);
+  await log(user_id, task_id, "jobs_ranked", "success", `Top score ${scored[0]?.overall.toFixed(2) ?? "n/a"} across ${scored.length} jobs`);
 
   // --- Persist all jobs ---
   if (scored.length) {
@@ -255,13 +255,13 @@ export async function runPipeline(input: PipelineInput) {
     const { error } = await supabaseAdmin
       .from("job_listings")
       .upsert(rows, { onConflict: "source,external_id" });
-    if (error) await log(task_id, "persist_jobs", "failed", error.message);
-    else await log(task_id, "persist_jobs", "success", `${rows.length} jobs saved`);
+    if (error) await log(user_id, task_id, "persist_jobs", "failed", error.message);
+    else await log(user_id, task_id, "persist_jobs", "success", `${rows.length} jobs saved`);
   }
 
   // --- Shortlist ---
   const shortlist = scored.filter((s) => s.overall >= 0.3).slice(0, input.max_applications);
-  await log(task_id, "shortlist", "success", `${shortlist.length} qualified (≥0.30) selected for application prep`);
+  await log(user_id, task_id, "shortlist", "success", `${shortlist.length} qualified (≥0.30) selected for application prep`);
 
   const matches: Array<{
     application_id?: string;
@@ -287,12 +287,12 @@ export async function runPipeline(input: PipelineInput) {
       .eq("external_id", s.job.external_id)
       .maybeSingle();
     if (lookupErr || !listingRow) {
-      await log(task_id, "lookup_listing", "failed", `${s.job.company} — ${s.job.title}`);
+      await log(user_id, task_id, "lookup_listing", "failed", `${s.job.company} — ${s.job.title}`);
       continue;
     }
     const listing_id = listingRow.id as string;
 
-    await log(task_id, "analyze_job", "running", `${s.job.company} — ${s.job.title}`);
+    await log(user_id, task_id, "analyze_job", "running", `${s.job.company} — ${s.job.title}`);
     await log(
       task_id,
       "analyze_job",
@@ -302,34 +302,34 @@ export async function runPipeline(input: PipelineInput) {
 
     // Resume
     let resume_md = "";
-    await log(task_id, "generate_resume", "running", `${s.job.company} — ${s.job.title}`);
+    await log(user_id, task_id, "generate_resume", "running", `${s.job.company} — ${s.job.title}`);
     try {
       resume_md = await lovableAI(
         `Tailor a 1-page resume in markdown for this job. Format: # Name on first line, contact on second line, then ## Sections.\n\nCandidate: ${input.candidate.name}\nEmail: ${input.candidate.email}\nPhone: ${input.candidate.phone}\nExperience: ${input.experience}\nSkills: ${input.skills.join(", ")}\nSummary: ${input.candidate.summary ?? ""}\n\nJob title: ${s.job.title}\nCompany: ${s.job.company}\nDescription (truncated): ${s.job.description.slice(0, 1200)}\nTech stack: ${s.job.tech_stack.join(", ")}\nMatched skills: ${s.matched.join(", ")}\n\nOutput ONLY the resume markdown. Sections: Summary, Core Skills, Experience, Education. Keep it ATS-friendly: clean headers, no tables, no emojis, plain '-' bullets.`,
         "You are an expert technical resume writer. Output concise, truthful, ATS-optimized resumes in markdown.",
       );
-      await log(task_id, "generate_resume", "success", `${resume_md.length} chars`);
+      await log(user_id, task_id, "generate_resume", "success", `${resume_md.length} chars`);
     } catch (err) {
       resume_md = fallbackResume(input, s.job, s.matched);
-      await log(task_id, "generate_resume", "failed", `${err instanceof Error ? err.message : err} — fallback used`);
+      await log(user_id, task_id, "generate_resume", "failed", `${err instanceof Error ? err.message : err} — fallback used`);
     }
 
     // Cover letter
     let cover_md = "";
-    await log(task_id, "generate_cover_letter", "running", `${s.job.company}`);
+    await log(user_id, task_id, "generate_cover_letter", "running", `${s.job.company}`);
     try {
       cover_md = await lovableAI(
         `Write a short (under 200 words) professional cover letter in markdown for this job.\n\nCandidate: ${input.candidate.name}\nExperience: ${input.experience}\nSkills: ${input.skills.join(", ")}\n\nJob title: ${s.job.title}\nCompany: ${s.job.company}\nDescription (truncated): ${s.job.description.slice(0, 800)}\n\nOutput ONLY the cover letter markdown.`,
         "You are a professional cover-letter writer. Be specific, concise, no clichés.",
       );
-      await log(task_id, "generate_cover_letter", "success", `${cover_md.length} chars`);
+      await log(user_id, task_id, "generate_cover_letter", "success", `${cover_md.length} chars`);
     } catch (err) {
       cover_md = fallbackCover(input, s.job);
-      await log(task_id, "generate_cover_letter", "failed", `${err instanceof Error ? err.message : err} — fallback used`);
+      await log(user_id, task_id, "generate_cover_letter", "failed", `${err instanceof Error ? err.message : err} — fallback used`);
     }
 
     // Application — staged as Pending Review (NEVER auto-submit)
-    await log(task_id, "prepare_application", "running", `${s.job.company} — ${s.job.title}`);
+    await log(user_id, task_id, "prepare_application", "running", `${s.job.company} — ${s.job.title}`);
     const meta = {
       matched: s.matched,
       missing: s.missing,
@@ -359,10 +359,10 @@ export async function runPipeline(input: PipelineInput) {
       .select("id")
       .single();
     if (appErr) {
-      await log(task_id, "prepare_application", "failed", appErr.message);
+      await log(user_id, task_id, "prepare_application", "failed", appErr.message);
       continue;
     }
-    await log(task_id, "prepare_application", "success", `Package ready for ${s.job.company} — awaiting user approval`);
+    await log(user_id, task_id, "prepare_application", "success", `Package ready for ${s.job.company} — awaiting user approval`);
 
     matches.push({
       application_id: inserted?.id as string,
@@ -446,9 +446,9 @@ export async function simulateSubmission(applicationId: string) {
   ];
 
   for (const [action, detail] of steps) {
-    await log(task_id, action, "running", detail);
+    await log(user_id, task_id, action, "running", detail);
     await sleep(450);
-    await log(task_id, action, "success", detail);
+    await log(user_id, task_id, action, "success", detail);
   }
 
   await supabaseAdmin
