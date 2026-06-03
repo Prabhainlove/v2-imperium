@@ -50,9 +50,11 @@ async function extractPdfText(file: File): Promise<string> {
 }
 
 async function extractDocxText(file: File): Promise<string> {
-  const mammoth = (await import("mammoth/mammoth.browser" as string)) as {
+  // @ts-expect-error - mammoth ships a browser bundle without a type declaration
+  const mammoth = (await import("mammoth/mammoth.browser.js")) as {
     extractRawText: (input: { arrayBuffer: ArrayBuffer }) => Promise<{ value: string }>;
   };
+
 
   const buf = await file.arrayBuffer();
   const result = await mammoth.extractRawText({ arrayBuffer: buf });
