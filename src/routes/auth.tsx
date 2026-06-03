@@ -139,51 +139,8 @@ function AuthPage() {
         </Link>
 
         <Card className="p-6">
-          {pendingEmail ? (
-            <div className="space-y-5">
-              <button
-                type="button"
-                onClick={() => { setPendingEmail(null); setOtp(""); }}
-                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
-              >
-                <ArrowLeft className="h-3 w-3" /> Back
-              </button>
-              <div className="space-y-1.5 text-center">
-                <h2 className="imp-display text-base text-foreground">Verify your email</h2>
-                <p className="text-xs text-muted-foreground">
-                  We sent a 6-digit code to <span className="font-medium text-foreground">{pendingEmail}</span>
-                </p>
-              </div>
-              <form onSubmit={verifyOtp} className="space-y-4">
-                <div className="flex justify-center">
-                  <InputOTP maxLength={6} value={otp} onChange={setOtp}>
-                    <InputOTPGroup>
-                      <InputOTPSlot index={0} />
-                      <InputOTPSlot index={1} />
-                      <InputOTPSlot index={2} />
-                      <InputOTPSlot index={3} />
-                      <InputOTPSlot index={4} />
-                      <InputOTPSlot index={5} />
-                    </InputOTPGroup>
-                  </InputOTP>
-                </div>
-                <Button type="submit" disabled={busy || otp.length !== 6} className="w-full">
-                  {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Verify & continue"}
-                </Button>
-              </form>
-              <div className="text-center text-xs text-muted-foreground">
-                Didn't get it?{" "}
-                <button
-                  type="button"
-                  onClick={resendOtp}
-                  disabled={resendCooldown > 0 || resending}
-                  className="font-medium text-foreground underline-offset-2 hover:underline disabled:opacity-50 disabled:no-underline"
-                >
-                  {resending ? "Sending…" : resendCooldown > 0 ? `Resend in ${resendCooldown}s` : "Resend code"}
-                </button>
-              </div>
-            </div>
-          ) : (
+          {(
+
             <Tabs defaultValue="signin">
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="signin">Sign in</TabsTrigger>
