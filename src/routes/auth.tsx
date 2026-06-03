@@ -26,6 +26,7 @@ function AuthPage() {
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
+  const [resetSending, setResetSending] = useState(false);
 
   // If already signed in, bounce to dashboard.
   useEffect(() => {
@@ -77,6 +78,17 @@ function AuthPage() {
     }
   };
 
+  const sendReset = async () => {
+    if (!email) return toast.error("Enter your email above first");
+    setResetSending(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    setResetSending(false);
+    if (error) return toast.error(error.message);
+    toast.success("Reset email sent", { description: "Check your inbox for a link to reset your password." });
+  };
+
   return (
     <div className="imp-surface flex items-center justify-center px-4 py-12">
       <span className="imp-tick imp-tick-tl" aria-hidden />
@@ -114,6 +126,14 @@ function AuthPage() {
                 <Button type="submit" disabled={busy} className="w-full">
                   {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Sign in"}
                 </Button>
+                <button
+                  type="button"
+                  onClick={sendReset}
+                  disabled={resetSending}
+                  className="block w-full text-center text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+                >
+                  {resetSending ? "Sending reset link…" : "Forgot password?"}
+                </button>
               </form>
             </TabsContent>
 
