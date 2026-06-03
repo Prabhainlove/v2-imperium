@@ -20,49 +20,31 @@ import { Route as ReviewIdRouteImport } from './routes/review.$id'
 import { Route as ApiPublicImperiumTestRouteImport } from './routes/api/public/imperium-test'
 
 const SettingsRoute = SettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => rootRouteImport,
+  id: '/settings', path: '/settings', getParentRoute: () => rootRouteImport,
 } as any)
 const SearchRoute = SearchRouteImport.update({
-  id: '/search',
-  path: '/search',
-  getParentRoute: () => rootRouteImport,
+  id: '/search', path: '/search', getParentRoute: () => rootRouteImport,
 } as any)
 const ResumeRoute = ResumeRouteImport.update({
-  id: '/resume',
-  path: '/resume',
-  getParentRoute: () => rootRouteImport,
+  id: '/resume', path: '/resume', getParentRoute: () => rootRouteImport,
 } as any)
 const JobsRoute = JobsRouteImport.update({
-  id: '/jobs',
-  path: '/jobs',
-  getParentRoute: () => rootRouteImport,
+  id: '/jobs', path: '/jobs', getParentRoute: () => rootRouteImport,
 } as any)
 const ApplicationsRoute = ApplicationsRouteImport.update({
-  id: '/applications',
-  path: '/applications',
-  getParentRoute: () => rootRouteImport,
+  id: '/applications', path: '/applications', getParentRoute: () => rootRouteImport,
 } as any)
 const ActivityRoute = ActivityRouteImport.update({
-  id: '/activity',
-  path: '/activity',
-  getParentRoute: () => rootRouteImport,
+  id: '/activity', path: '/activity', getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => rootRouteImport,
+  id: '/', path: '/', getParentRoute: () => rootRouteImport,
 } as any)
 const ReviewIdRoute = ReviewIdRouteImport.update({
-  id: '/review/$id',
-  path: '/review/$id',
-  getParentRoute: () => rootRouteImport,
+  id: '/review/$id', path: '/review/$id', getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicImperiumTestRoute = ApiPublicImperiumTestRouteImport.update({
-  id: '/api/public/imperium-test',
-  path: '/api/public/imperium-test',
-  getParentRoute: () => rootRouteImport,
+  id: '/api/public/imperium-test', path: '/api/public/imperium-test', getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -101,38 +83,10 @@ export interface FileRoutesById {
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths:
-    | '/'
-    | '/activity'
-    | '/applications'
-    | '/jobs'
-    | '/resume'
-    | '/search'
-    | '/settings'
-    | '/review/$id'
-    | '/api/public/imperium-test'
+  fullPaths: '/' | '/activity' | '/applications' | '/jobs' | '/resume' | '/search' | '/settings' | '/review/$id' | '/api/public/imperium-test'
   fileRoutesByTo: FileRoutesByTo
-  to:
-    | '/'
-    | '/activity'
-    | '/applications'
-    | '/jobs'
-    | '/resume'
-    | '/search'
-    | '/settings'
-    | '/review/$id'
-    | '/api/public/imperium-test'
-  id:
-    | '__root__'
-    | '/'
-    | '/activity'
-    | '/applications'
-    | '/jobs'
-    | '/resume'
-    | '/search'
-    | '/settings'
-    | '/review/$id'
-    | '/api/public/imperium-test'
+  to: '/' | '/activity' | '/applications' | '/jobs' | '/resume' | '/search' | '/settings' | '/review/$id' | '/api/public/imperium-test'
+  id: '__root__' | '/' | '/activity' | '/applications' | '/jobs' | '/resume' | '/search' | '/settings' | '/review/$id' | '/api/public/imperium-test'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -149,93 +103,19 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/settings': {
-      id: '/settings'
-      path: '/settings'
-      fullPath: '/settings'
-      preLoaderRoute: typeof SettingsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/search': {
-      id: '/search'
-      path: '/search'
-      fullPath: '/search'
-      preLoaderRoute: typeof SearchRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/resume': {
-      id: '/resume'
-      path: '/resume'
-      fullPath: '/resume'
-      preLoaderRoute: typeof ResumeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/jobs': {
-      id: '/jobs'
-      path: '/jobs'
-      fullPath: '/jobs'
-      preLoaderRoute: typeof JobsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/applications': {
-      id: '/applications'
-      path: '/applications'
-      fullPath: '/applications'
-      preLoaderRoute: typeof ApplicationsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/activity': {
-      id: '/activity'
-      path: '/activity'
-      fullPath: '/activity'
-      preLoaderRoute: typeof ActivityRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/review/$id': {
-      id: '/review/$id'
-      path: '/review/$id'
-      fullPath: '/review/$id'
-      preLoaderRoute: typeof ReviewIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/imperium-test': {
-      id: '/api/public/imperium-test'
-      path: '/api/public/imperium-test'
-      fullPath: '/api/public/imperium-test'
-      preLoaderRoute: typeof ApiPublicImperiumTestRouteImport
-      parentRoute: typeof rootRouteImport
-    }
+    '/settings': { id: '/settings'; path: '/settings'; fullPath: '/settings'; preLoaderRoute: typeof SettingsRouteImport; parentRoute: typeof rootRouteImport }
+    '/search': { id: '/search'; path: '/search'; fullPath: '/search'; preLoaderRoute: typeof SearchRouteImport; parentRoute: typeof rootRouteImport }
+    '/resume': { id: '/resume'; path: '/resume'; fullPath: '/resume'; preLoaderRoute: typeof ResumeRouteImport; parentRoute: typeof rootRouteImport }
+    '/jobs': { id: '/jobs'; path: '/jobs'; fullPath: '/jobs'; preLoaderRoute: typeof JobsRouteImport; parentRoute: typeof rootRouteImport }
+    '/applications': { id: '/applications'; path: '/applications'; fullPath: '/applications'; preLoaderRoute: typeof ApplicationsRouteImport; parentRoute: typeof rootRouteImport }
+    '/activity': { id: '/activity'; path: '/activity'; fullPath: '/activity'; preLoaderRoute: typeof ActivityRouteImport; parentRoute: typeof rootRouteImport }
+    '/': { id: '/'; path: '/'; fullPath: '/'; preLoaderRoute: typeof IndexRouteImport; parentRoute: typeof rootRouteImport }
+    '/review/$id': { id: '/review/$id'; path: '/review/$id'; fullPath: '/review/$id'; preLoaderRoute: typeof ReviewIdRouteImport; parentRoute: typeof rootRouteImport }
+    '/api/public/imperium-test': { id: '/api/public/imperium-test'; path: '/api/public/imperium-test'; fullPath: '/api/public/imperium-test'; preLoaderRoute: typeof ApiPublicImperiumTestRouteImport; parentRoute: typeof rootRouteImport }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
-  ActivityRoute: ActivityRoute,
-  ApplicationsRoute: ApplicationsRoute,
-  JobsRoute: JobsRoute,
-  ResumeRoute: ResumeRoute,
-  SearchRoute: SearchRoute,
-  SettingsRoute: SettingsRoute,
-  ReviewIdRoute: ReviewIdRoute,
-  ApiPublicImperiumTestRoute: ApiPublicImperiumTestRoute,
+  IndexRoute, ActivityRoute, ApplicationsRoute, JobsRoute, ResumeRoute, SearchRoute, SettingsRoute, ReviewIdRoute, ApiPublicImperiumTestRoute,
 }
-export const routeTree = rootRouteImport
-  ._addFileChildren(rootRouteChildren)
-  ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
+export const routeTree = rootRouteImport._addFileChildren(rootRouteChildren)._addFileTypes<FileRouteTypes>()
