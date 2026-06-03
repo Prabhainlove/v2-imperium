@@ -121,52 +121,36 @@ function ResumeStudioPage() {
       <MasterResumeStudio />
 
       <div className="grid gap-6 lg:grid-cols-[380px_1fr]">
-        {/* LEFT — profile */}
+        {/* LEFT — profile link (single source of truth is /settings) */}
         <Card className="h-fit">
           <CardHeader>
-            <CardTitle className="flex items-center justify-between text-base">
-              <span className="flex items-center gap-2">
-                <FileText className="h-4 w-4 text-primary" /> Candidate Profile
-              </span>
-              {health && <Badge variant="outline" className="text-[10px]">{healthPct}% complete</Badge>}
+            <CardTitle className="flex items-center gap-2 text-base">
+              <FileText className="h-4 w-4 text-primary" /> Profile
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            {health && (
-              <div>
-                <Progress value={healthPct} className="h-2" />
-                {health.missing.length > 0 && (
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    Missing: {health.missing.join(", ")}
-                  </p>
-                )}
-              </div>
-            )}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="col-span-2"><Label htmlFor="p-name">Name</Label>
-                <Input id="p-name" value={form.name ?? ""} onChange={(e) => setForm({ ...form, name: e.target.value })} className="mt-1" /></div>
-              <div><Label htmlFor="p-email">Email</Label>
-                <Input id="p-email" type="email" value={form.email ?? ""} onChange={(e) => setForm({ ...form, email: e.target.value })} className="mt-1" /></div>
-              <div><Label htmlFor="p-phone">Phone</Label>
-                <Input id="p-phone" value={form.phone ?? ""} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="mt-1" /></div>
-              <div className="col-span-2"><Label htmlFor="p-loc">Location</Label>
-                <Input id="p-loc" value={form.location ?? ""} onChange={(e) => setForm({ ...form, location: e.target.value })} className="mt-1" /></div>
-              <div className="col-span-2"><Label htmlFor="p-skills">Skills (comma-separated)</Label>
-                <Textarea id="p-skills" rows={3} value={skillsString}
-                  onChange={(e) => setForm({ ...form, skills: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) })}
-                  className="mt-1 resize-none" /></div>
-            </div>
-            <Separator />
-            <Button
-              onClick={() => save.mutate()}
-              disabled={save.isPending}
-              className="w-full bg-gradient-primary text-primary-foreground shadow-glow hover:opacity-95"
-            >
-              {save.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-              Save Profile
+          <CardContent className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Your profile is the single source of truth for every resume Imperium generates. Edit it once — every workflow benefits.
+            </p>
+            <p className="text-sm">
+              <span className="font-medium">{profile.data?.profile?.name || "—"}</span>
+              {profile.data?.profile?.headline && (
+                <span className="block text-xs text-muted-foreground">{profile.data.profile.headline}</span>
+              )}
+            </p>
+            <Button asChild variant="outline" className="w-full">
+              <Link to="/settings">
+                <Save className="mr-2 h-4 w-4" /> Edit profile in Settings
+              </Link>
             </Button>
+            {!profileLoaded && (
+              <p className="text-xs text-muted-foreground">
+                <Loader2 className="mr-1 inline h-3 w-3 animate-spin" /> Loading profile…
+              </p>
+            )}
           </CardContent>
         </Card>
+
 
         {/* RIGHT — RenderCV viewer */}
         <div className="space-y-4">
