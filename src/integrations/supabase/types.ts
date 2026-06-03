@@ -23,6 +23,7 @@ export type Database = {
           id: number
           status: string
           task_id: string
+          user_id: string
         }
         Insert: {
           action: string
@@ -32,6 +33,7 @@ export type Database = {
           id?: number
           status?: string
           task_id?: string
+          user_id: string
         }
         Update: {
           action?: string
@@ -41,6 +43,7 @@ export type Database = {
           id?: number
           status?: string
           task_id?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -59,6 +62,7 @@ export type Database = {
           status: string
           task_id: string
           updated_at: string
+          user_id: string
         }
         Insert: {
           applied_at?: string | null
@@ -74,6 +78,7 @@ export type Database = {
           status?: string
           task_id?: string
           updated_at?: string
+          user_id: string
         }
         Update: {
           applied_at?: string | null
@@ -89,6 +94,7 @@ export type Database = {
           status?: string
           task_id?: string
           updated_at?: string
+          user_id?: string
         }
         Relationships: [
           {
@@ -168,6 +174,7 @@ export type Database = {
           tech_stack: Json
           title: string
           url: string
+          user_id: string
         }
         Insert: {
           company: string
@@ -188,6 +195,7 @@ export type Database = {
           tech_stack?: Json
           title: string
           url?: string
+          user_id: string
         }
         Update: {
           company?: string
@@ -208,6 +216,67 @@ export type Database = {
           tech_stack?: Json
           title?: string
           url?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          certifications: Json
+          created_at: string
+          education: Json
+          email: string
+          experience: Json
+          github_url: string
+          headline: string
+          id: string
+          linkedin_url: string
+          location: string
+          name: string
+          onboarded: boolean
+          phone: string
+          portfolio_url: string
+          skills: Json
+          summary: string
+          updated_at: string
+        }
+        Insert: {
+          certifications?: Json
+          created_at?: string
+          education?: Json
+          email?: string
+          experience?: Json
+          github_url?: string
+          headline?: string
+          id: string
+          linkedin_url?: string
+          location?: string
+          name?: string
+          onboarded?: boolean
+          phone?: string
+          portfolio_url?: string
+          skills?: Json
+          summary?: string
+          updated_at?: string
+        }
+        Update: {
+          certifications?: Json
+          created_at?: string
+          education?: Json
+          email?: string
+          experience?: Json
+          github_url?: string
+          headline?: string
+          id?: string
+          linkedin_url?: string
+          location?: string
+          name?: string
+          onboarded?: boolean
+          phone?: string
+          portfolio_url?: string
+          skills?: Json
+          summary?: string
+          updated_at?: string
         }
         Relationships: []
       }

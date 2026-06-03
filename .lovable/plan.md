@@ -1,48 +1,68 @@
-## Imperium Production Upgrade Plan
 
-A large, multi-area upgrade. I'll work in clearly separated phases so each part is testable before moving on.
+# Imperium V3 — Production Transformation Plan
 
-### Phase 1 — Expanded job sources
-- Add three new adapters in `sources.server.ts`:
-  - **LinkedIn**: use the public JSON jobs guest endpoint (`linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/...`) since no public Jobs API key exists for individual devs. Mark availability as "scraping-fallback" and flag clearly if it fails.
-  - **Indeed**: no public API; use **Adzuna API** (legit aggregator that includes Indeed-class listings) when `ADZUNA_APP_ID` + `ADZUNA_APP_KEY` secrets are present, otherwise mark `unavailable` (no faking).
-  - **Naukri**: no public API; attempt their public `nlogin` JSON search endpoint, otherwise mark `unavailable`.
-- Update `REAL_SOURCES` config with `requiresKey` flag and per-source availability state.
-- Surface per-source counts + availability badges in `SourceMonitor`.
+You answered "everything" to all three questions. Honest scope check: this is realistically **5–7 follow-up messages of focused work**, not one. Trying to ship all 17 phases in a single turn produces shallow placeholders across the board and breaks the demo that already works. Below is the sequenced plan I'll execute. Approve and I start with Batch 1 immediately; each subsequent batch ships on your next "continue".
 
-### Phase 2 — RenderCV-style resume
-- New `src/lib/imperium/rendercv.ts`: markdown → structured resume JSON → HTML template (clean, ATS-friendly typography). Three template variants: `classic`, `modern`, `compact`.
-- New server fn `generateRenderCvResume` returns `{ original_md, optimized_md, rendered_html, ats: { score, added_keywords, missing_keywords, improvements } }`.
-- New route `/resume` upgrade: side-by-side panes (Original → Optimized → Rendered preview), template picker, ATS score card, Export PDF (browser `window.print` to PDF) + Export Markdown.
+---
 
-### Phase 3 — Auto workflow switching
-- New `useWorkflowAutopilot` hook subscribes to `activity_log` for the active `task_id` and `navigate()`s automatically on stage completion: search → resume → application-prep → review.
-- Each route opts in via the hook; user sees a small "Auto-advancing…" toast with cancel.
+## Batch 1 — Foundation (Auth + Schema + Cleanup)
+**Phases 1, 2, 5, 6, 15**
 
-### Phase 4 — Application review gate
-- Add `status='Pending Review'` and `requires_approval` flow.
-- New `/applications/$id/review` route shows Company, Job, Resume, Cover Letter, fields, big READY TO APPLY banner, **Approve** / **Skip** buttons.
-- Pipeline now stops at `Pending Review`; submission only happens after approval server fn.
+- Add Supabase Auth: email/password + Google (via Lovable broker), `_authenticated/route.tsx` gate, `/auth` page, logout, session listener at root.
+- Migration: `profiles` table (name, email, phone, location, LinkedIn, GitHub, portfolio, skills[], experience[], education[], certifications[]) with RLS scoped to `auth.uid()`. Trigger to auto-create profile on signup.
+- Re-scope existing tables (`applications`, `job_listings`, `candidate_profiles`) to per-user via `user_id` column; rewrite server functions to use `requireSupabaseAuth` instead of `supabaseAdmin`.
+- Delete dead/duplicate code: stale `review.$id.tsx` reference cleanup, unused IMPERIUM/ Python tree is left alone (it's reference material, not built), audit `src/lib/imperium/*` for dead exports.
+- Security: drop service-role-only access pattern in favor of RLS-scoped queries everywhere it's user data.
 
-### Phase 5 — Live application filling visibility
-- Simulated browser-fill animation panel showing steps: Opening → Reading Form → Filling Name → Email → Phone → Uploading Resume → Cover Letter → Review Complete.
-- Backed by activity_log entries written by `submitApplication` server fn (with realistic delays). Since we cannot actually post to LinkedIn/Indeed forms, this is a transparent "Application package prepared & marked submitted" — clearly labeled.
+## Batch 2 — Landing + Onboarding (Phases 3, 4, 12)
+- Premium landing page at `/` (Hero, Features, How It Works, Resume Engine, Job Engine, Tracking, FAQ, Pricing placeholder, CTA, Footer). Linear/Stripe-grade visual quality using existing design tokens.
+- Move current dashboard to `/_authenticated/dashboard`.
+- Onboarding wizard `/onboarding` after first signup → profile setup → resume upload → first search.
+- Auto-transitions between Search → Studio → Review → Tracking.
 
-### Phase 6 — Match improvements
-- Extend scorer to compute: `salary_match`, `experience_match`, `location_match`, persist to `job_listings` (new columns via migration).
-- Jobs table shows Match %, Missing Skills chips, Salary, Experience badge, Location badge. Default sort = overall score.
+## Batch 3 — RenderCV-grade Resume Studio (Phase 7)
+- Live MD editor (left) + live HTML preview (right) using existing `rendercv.server.ts`.
+- 3 templates already exist (classic/modern/compact); add 2 more (executive, technical) + template picker.
+- Version history table + diff view + clone.
+- ATS score panel (already exists, polish UI), keyword match %, missing/added skills, recruiter readability heuristic.
+- PDF export via browser print-to-PDF (server-side PDF is out of scope for Cloudflare Worker runtime — see server-runtime constraints).
+- Resume upload + parse (markdown only — DOCX parsing needs native libs, not available).
 
-### Phase 7 — Unified execution timeline
-- New `<ExecutionTimeline />` on dashboard: vertical stages with status icons + timestamps streamed from activity_log:
-  Search Started → Jobs Retrieved → Jobs Ranked → Resume Generated → Cover Letter Generated → Application Prepared → User Review → Submitted.
+## Batch 4 — Job Search Engine (Phase 8)
+- Keep RemoteOK + Remotive + Arbeitnow (working).
+- Add **Adzuna** (free API, covers Indeed-style global listings including India) and **Jooble** (free API, 70+ countries).
+- Add **LinkedIn connector** (account-owner profile read only — honest label "Your LinkedIn profile" not job search; LinkedIn's job-search API is partner-only).
+- Naukri / Foundit / Internshala: honest "Coming soon — requires partner API access" badge.
+- Filters (remote, salary, source), sorting, saved jobs, recent searches.
+- Requires user to add `ADZUNA_APP_ID`, `ADZUNA_APP_KEY`, `JOOBLE_API_KEY` secrets.
 
-### Technical notes
-- DB migration: add `salary_match`, `experience_match`, `location_match` numeric cols on `job_listings`; add `requires_approval` bool + `submitted_at` ts on `applications`.
-- Secrets: request `ADZUNA_APP_ID` / `ADZUNA_APP_KEY` only when user opts into Indeed/Adzuna. LinkedIn/Naukri attempts run keyless.
-- No fake data anywhere — sources that fail show clear "unavailable" state.
-- All new logs flow through existing `activity_log` so timeline, autopilot, and source monitor share one source of truth.
+## Batch 5 — Review + Tracking + Visibility (Phases 9, 10, 11)
+- Application Review Center: never auto-submit, [Apply] [Skip] [Save For Later] gates.
+- Workflow logs UI: streaming timeline of each step (Searching → Reading JD → Extracting → ... → Ready For Review). Already partially built in `execution-timeline.tsx`; wire to real pipeline events.
+- Tracking Dashboard: 8 statuses (Saved → Offer/Rejected), filters, search, sort, basic analytics charts.
 
-### Out of scope
-- Real LinkedIn/Indeed/Naukri OAuth submission (their ToS forbids automation without partner agreements). The review-gate + simulated-fill is explicitly framed as "package prepared, marked submitted" rather than faking actual posts.
+## Batch 6 — UI Polish + Performance + QA (Phases 13, 14, 16, 17)
+- Typography/spacing/hierarchy sweep across all routes using existing design tokens.
+- Skeleton loaders, empty states, error states on every list/detail view.
+- Code-split routes, lazy-load heavy components, query staleTime tuning.
+- Manual QA pass: every button, every route, every form — invoke server fns, check logs.
+- Final security re-scan, fix anything new.
 
-I'll wait for your approval before touching code.
+---
+
+## Technical decisions (locked unless you object)
+
+- **No Supabase Edge Functions** — all logic in `createServerFn`.
+- **PDF export** = browser print dialog (jsPDF/html2pdf bundle is heavy and the Worker runtime can't run headless Chrome).
+- **DOCX import/export** = out of scope (no native lib support in Worker).
+- **Real auth required** — demo mode is dropped. All data becomes per-user.
+- **Migration of existing data** — existing `applications`/`job_listings` rows have no `user_id`; I'll add the column nullable, then prompt you to either wipe or assign to your account.
+
+## What I will NOT do
+- Generate fake testimonials/reviews. Testimonials section uses placeholder cards labeled as such.
+- Fake Indeed/LinkedIn job search. Either real (Adzuna/Jooble) or labeled "Coming soon".
+- Touch the `IMPERIUM/` Python reference tree — it's not part of the build.
+
+---
+
+**Approve and I'll execute Batch 1 (auth + profiles + per-user data + cleanup) in the next message.** Each batch is one message. Total: ~6 messages to complete all 17 phases properly.
