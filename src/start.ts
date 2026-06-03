@@ -32,22 +32,26 @@ function applySecurityHeaders(res: Response): Response {
  *   - catches unhandled errors and returns a styled 500 page
  *   - applies baseline security headers to every response
  */
-const observabilityMiddleware = createMiddleware().server(async ({ next }) => {
+const observabilityMiddleware = createMiddleware({ type: "request" }).server(async ({ next }) => {
   const requestId = newRequestId();
   const startedAt = Date.now();
   try {
-    const res = await next();
+    const result = await next();
     const duration = Date.now() - startedAt;
-    const response = res instanceof Response ? res : new Response(null);
-    response.headers.set("x-request-id", requestId);
-    logger.info("request.complete", {
-      requestId,
-      status: response.status,
-      durationMs: duration,
-    });
-    return applySecurityHeaders(response);
+    // TanStack request middleware returns a ctx-like object; the SSR Response
+    // lives on `.response`. Mutate it in place so the body/stream is preserved.
+    const response: Response | undefined = (result as { response?: Response })?.response;
+    if (response) {
+      response.headers.set("x-request-id", requestId);
+      applySecurityHeaders(response);
+      logger.info("request.complete", {
+        requestId,
+        status: response.status,
+        durationMs: duration,
+      });
+    }
+    return result;
   } catch (error) {
-    // TanStack control-flow errors (redirect, notFound) carry statusCode — rethrow.
     if (error != null && typeof error === "object" && "statusCode" in error) {
       throw error;
     }
@@ -57,14 +61,7 @@ const observabilityMiddleware = createMiddleware().server(async ({ next }) => {
       durationMs: duration,
       error: error instanceof Error ? { message: error.message, stack: error.stack } : String(error),
     });
-    const response = new Response(renderErrorPage(), {
-      status: 500,
-      headers: {
-        "content-type": "text/html; charset=utf-8",
-        "x-request-id": requestId,
-      },
-    });
-    return applySecurityHeaders(response);
+    throw error;
   }
 });
 
