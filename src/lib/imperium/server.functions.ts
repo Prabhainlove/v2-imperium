@@ -1,67 +1,78 @@
 /**
  * Imperium server functions — TanStack Start RPCs called from the React UI.
+ * All data-touching functions are auth-protected and scoped per user.
  */
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
-/* ---------- Health ---------- */
+/* ---------- Health (public) ---------- */
 export const getHealth = createServerFn({ method: "GET" }).handler(async () => ({
   status: "healthy",
   kernel_running: true,
   agents_count: 1,
-  version: "imperium-cloud-2.0",
+  version: "imperium-cloud-3.0",
 }));
 
-/* ---------- Agents ---------- */
+/* ---------- Agents (public) ---------- */
 export const getAgents = createServerFn({ method: "GET" }).handler(async () => [
   {
     name: "JobAgent",
     capabilities: ["discover", "analyze", "resume", "cover_letter", "review", "track"],
-    skills: ["RemoteOK", "Remotive", "Arbeitnow", "LinkedIn", "Indeed/Adzuna", "Naukri", "Lovable AI"],
+    skills: ["RemoteOK", "Remotive", "Arbeitnow", "Adzuna", "Jooble", "LinkedIn", "Lovable AI"],
     status: "ready",
   },
 ]);
 
 /* ---------- Profile ---------- */
-export const getProfile = createServerFn({ method: "GET" }).handler(async () => {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data, error } = await supabaseAdmin
-    .from("candidate_profiles")
-    .select("*")
-    .eq("id", "default")
-    .maybeSingle();
-  if (error) throw new Error(error.message);
-  const skills = ((data?.skills as string[] | null) ?? []) as string[];
-  const profile = data
-    ? {
-        profile_id: "default",
-        name: data.name,
-        email: data.email,
-        phone: data.phone,
-        location: data.location,
-        skills,
-        target_roles: data.headline ? [data.headline] : [],
-        preferred_locations: data.location ? [data.location] : [],
-        remote_only: false,
-        work_experience: [] as string[],
-        education: [] as string[],
-      }
-    : null;
-  const checks = {
-    name: !!data?.name && data.name !== "Candidate",
-    email: !!data?.email,
-    skills: skills.length > 0,
-    summary: !!data?.summary,
-    location: !!data?.location,
-  };
-  const passed = Object.values(checks).filter(Boolean).length;
-  const missing = Object.entries(checks).filter(([, v]) => !v).map(([k]) => k);
-  return {
-    status: "ok",
-    profile,
-    profile_health: { score: passed / Object.keys(checks).length, checks, missing },
-  };
-});
+export const getProfile = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase, userId } = context;
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", userId)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    const skills = ((data?.skills as string[] | null) ?? []) as string[];
+    const profile = data
+      ? {
+          profile_id: userId,
+          name: data.name,
+          email: data.email,
+          phone: data.phone,
+          location: data.location,
+          headline: data.headline,
+          summary: data.summary,
+          linkedin_url: data.linkedin_url,
+          github_url: data.github_url,
+          portfolio_url: data.portfolio_url,
+          skills,
+          experience: (data.experience as unknown[]) ?? [],
+          education: (data.education as unknown[]) ?? [],
+          certifications: (data.certifications as unknown[]) ?? [],
+          target_roles: data.headline ? [data.headline] : [],
+          preferred_locations: data.location ? [data.location] : [],
+          remote_only: false,
+          onboarded: data.onboarded,
+        }
+      : null;
+    const checks = {
+      name: !!data?.name && data.name !== "",
+      email: !!data?.email,
+      skills: skills.length > 0,
+      summary: !!data?.summary,
+      location: !!data?.location,
+    };
+    const passed = Object.values(checks).filter(Boolean).length;
+    const missing = Object.entries(checks).filter(([, v]) => !v).map(([k]) => k);
+    return {
+      status: "ok",
+      profile,
+      profile_health: { score: passed / Object.keys(checks).length, checks, missing },
+    };
+  });
 
 const SaveProfileInput = z
   .object({
@@ -71,16 +82,24 @@ const SaveProfileInput = z
     location: z.string().optional(),
     headline: z.string().optional(),
     summary: z.string().optional(),
+    linkedin_url: z.string().optional(),
+    github_url: z.string().optional(),
+    portfolio_url: z.string().optional(),
     skills: z.array(z.string()).optional(),
+    experience: z.array(z.unknown()).optional(),
+    education: z.array(z.unknown()).optional(),
+    certifications: z.array(z.unknown()).optional(),
     target_roles: z.array(z.string()).optional(),
+    onboarded: z.boolean().optional(),
   })
   .passthrough();
 
 export const saveProfile = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => SaveProfileInput.parse(input))
-  .handler(async ({ data }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const update: Record<string, unknown> = { id: "default", updated_at: new Date().toISOString() };
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const update: Record<string, unknown> = { id: userId };
     if (data.name !== undefined) update.name = data.name;
     if (data.email !== undefined) update.email = data.email;
     if (data.phone !== undefined) update.phone = data.phone;
@@ -88,10 +107,15 @@ export const saveProfile = createServerFn({ method: "POST" })
     if (data.headline !== undefined) update.headline = data.headline;
     else if (data.target_roles?.[0]) update.headline = data.target_roles[0];
     if (data.summary !== undefined) update.summary = data.summary;
+    if (data.linkedin_url !== undefined) update.linkedin_url = data.linkedin_url;
+    if (data.github_url !== undefined) update.github_url = data.github_url;
+    if (data.portfolio_url !== undefined) update.portfolio_url = data.portfolio_url;
     if (data.skills !== undefined) update.skills = data.skills;
-    const { error } = await supabaseAdmin
-      .from("candidate_profiles")
-      .upsert(update, { onConflict: "id" });
+    if (data.experience !== undefined) update.experience = data.experience;
+    if (data.education !== undefined) update.education = data.education;
+    if (data.certifications !== undefined) update.certifications = data.certifications;
+    if (data.onboarded !== undefined) update.onboarded = data.onboarded;
+    const { error } = await supabase.from("profiles").upsert(update, { onConflict: "id" });
     if (error) throw new Error(error.message);
     return { status: "ok" };
   });
@@ -104,10 +128,11 @@ const ListInput = z.object({
 });
 
 export const getJobs = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => ListInput.parse(input ?? {}))
-  .handler(async ({ data }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: rows, error } = await supabaseAdmin
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+    const { data: rows, error } = await supabase
       .from("job_listings")
       .select("*")
       .order("match_score", { ascending: false })
@@ -178,10 +203,11 @@ function mapApp(r: Record<string, unknown>) {
 }
 
 export const getApplications = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => ListInput.parse(input ?? {}))
-  .handler(async ({ data }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    let q = supabaseAdmin
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+    let q = supabase
       .from("applications")
       .select("*")
       .order("created_at", { ascending: false })
@@ -195,10 +221,11 @@ export const getApplications = createServerFn({ method: "GET" })
 const IdInput = z.object({ id: z.string().min(1) });
 
 export const getApplication = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => IdInput.parse(input))
-  .handler(async ({ data }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: row, error } = await supabaseAdmin
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+    const { data: row, error } = await supabase
       .from("applications")
       .select("*")
       .eq("id", data.id)
@@ -213,25 +240,28 @@ export const getApplication = createServerFn({ method: "GET" })
   });
 
 export const approveApplication = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => IdInput.parse(input))
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     const { simulateSubmission } = await import("./pipeline.server");
-    return simulateSubmission(data.id);
+    return simulateSubmission(data.id, context.userId);
   });
 
 export const skipApplicationFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => IdInput.parse(input))
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     const { skipApplication } = await import("./pipeline.server");
-    return skipApplication(data.id);
+    return skipApplication(data.id, context.userId);
   });
 
 /* ---------- Activity ---------- */
 export const getActivity = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => ListInput.parse(input ?? {}))
-  .handler(async ({ data }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    let q = supabaseAdmin
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+    let q = supabase
       .from("activity_log")
       .select("*")
       .order("id", { ascending: false })
@@ -256,42 +286,45 @@ export const getNotifications = createServerFn({ method: "GET" }).handler(
 );
 
 /* ---------- Dashboard ---------- */
-export const getDashboard = createServerFn({ method: "GET" }).handler(async () => {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const [jobsCount, appsCount, interviews, pending, recent] = await Promise.all([
-    supabaseAdmin.from("job_listings").select("id", { count: "exact", head: true }),
-    supabaseAdmin.from("applications").select("id", { count: "exact", head: true }),
-    supabaseAdmin.from("applications").select("id", { count: "exact", head: true }).eq("status", "Interview Scheduled"),
-    supabaseAdmin.from("applications").select("id", { count: "exact", head: true }).eq("status", "Pending Review"),
-    supabaseAdmin.from("applications").select("*").order("created_at", { ascending: false }).limit(8),
-  ]);
-  return {
-    metrics: {
-      jobs_discovered: jobsCount.count ?? 0,
-      total_applications: appsCount.count ?? 0,
-      interviews_scheduled: interviews.count ?? 0,
-      pending_review: pending.count ?? 0,
-      offers: 0,
-    },
-    recent_applications: (recent.data ?? []).map(mapApp),
-    strategy: {},
-    notifications: [],
-    activity: [],
-    timestamp: new Date().toISOString(),
-  };
-});
+export const getDashboard = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase } = context;
+    const [jobsCount, appsCount, interviews, pending, recent] = await Promise.all([
+      supabase.from("job_listings").select("id", { count: "exact", head: true }),
+      supabase.from("applications").select("id", { count: "exact", head: true }),
+      supabase.from("applications").select("id", { count: "exact", head: true }).eq("status", "Interview Scheduled"),
+      supabase.from("applications").select("id", { count: "exact", head: true }).eq("status", "Pending Review"),
+      supabase.from("applications").select("*").order("created_at", { ascending: false }).limit(8),
+    ]);
+    return {
+      metrics: {
+        jobs_discovered: jobsCount.count ?? 0,
+        total_applications: appsCount.count ?? 0,
+        interviews_scheduled: interviews.count ?? 0,
+        pending_review: pending.count ?? 0,
+        offers: 0,
+      },
+      recent_applications: (recent.data ?? []).map(mapApp),
+      strategy: {},
+      notifications: [],
+      activity: [],
+      timestamp: new Date().toISOString(),
+    };
+  });
 
 /* ---------- Artifact (resume / cover letter) ---------- */
 const ArtifactInput = z.object({ path: z.string().min(1) });
 
 export const getArtifact = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => ArtifactInput.parse(input))
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     const m = data.path.match(/^application:([^:]+):(resume|cover)$/);
     if (!m) throw new Error("Invalid artifact path");
     const [, appId, kind] = m;
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: row, error } = await supabaseAdmin
+    const { supabase } = context;
+    const { data: row, error } = await supabase
       .from("applications")
       .select("resume_md, cover_letter_md")
       .eq("id", appId)
@@ -308,16 +341,17 @@ const RenderResumeInput = z.object({
 });
 
 export const renderApplicationResume = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => RenderResumeInput.parse(input))
-  .handler(async ({ data }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
     const { renderResumeHtml, analyzeAts } = await import("./rendercv.server");
     const [{ data: app }, { data: profile }] = await Promise.all([
-      supabaseAdmin.from("applications").select("*").eq("id", data.application_id).maybeSingle(),
-      supabaseAdmin.from("candidate_profiles").select("*").eq("id", "default").maybeSingle(),
+      supabase.from("applications").select("*").eq("id", data.application_id).maybeSingle(),
+      supabase.from("profiles").select("*").eq("id", userId).maybeSingle(),
     ]);
     if (!app) throw new Error("Application not found");
-    const { data: listing } = await supabaseAdmin
+    const { data: listing } = await supabase
       .from("job_listings")
       .select("tech_stack, description, title")
       .eq("id", app.listing_id as string)
@@ -344,8 +378,8 @@ const RunSearchInput = z.object({
   location: z.string().min(1),
   experience: z.string().default(""),
   skills: z.string().default(""),
-  name: z.string().default("Candidate"),
-  email: z.string().default("candidate@example.com"),
+  name: z.string().default(""),
+  email: z.string().default(""),
   phone: z.string().default(""),
   company: z.string().default(""),
   max_applications: z.number().int().min(1).max(25).default(8),
@@ -353,37 +387,40 @@ const RunSearchInput = z.object({
 });
 
 export const runJobSearch = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => RunSearchInput.parse(input))
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     const { runPipeline } = await import("./pipeline.server");
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { supabase, userId, claims } = context;
     const task_id = `t_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 
-    await supabaseAdmin.from("candidate_profiles").upsert(
+    // Persist latest profile snapshot for the user
+    const skillList = data.skills.split(",").map((s) => s.trim()).filter(Boolean);
+    const fallbackEmail = (claims?.email as string | undefined) ?? "";
+    await supabase.from("profiles").upsert(
       {
-        id: "default",
+        id: userId,
         name: data.name || "Candidate",
-        email: data.email || "candidate@example.com",
+        email: data.email || fallbackEmail,
         phone: data.phone,
         location: data.location,
         headline: data.role,
         summary: data.resume_text.slice(0, 1000),
-        skills: data.skills.split(",").map((s) => s.trim()).filter(Boolean),
-        updated_at: new Date().toISOString(),
+        skills: skillList,
       },
       { onConflict: "id" },
     );
 
-    const skillList = data.skills.split(",").map((s) => s.trim()).filter(Boolean);
     const result = await runPipeline({
       task_id,
+      user_id: userId,
       role: data.role,
       location: data.location,
       experience: data.experience,
       skills: skillList,
       candidate: {
         name: data.name || "Candidate",
-        email: data.email || "candidate@example.com",
+        email: data.email || fallbackEmail || "candidate@example.com",
         phone: data.phone,
         summary: data.resume_text.slice(0, 1000),
       },

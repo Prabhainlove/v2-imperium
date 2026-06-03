@@ -19,7 +19,6 @@ import { Route as AuthenticatedJobsRouteImport } from './routes/_authenticated/j
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedApplicationsRouteImport } from './routes/_authenticated/applications'
 import { Route as AuthenticatedActivityRouteImport } from './routes/_authenticated/activity'
-import { Route as ApiPublicImperiumTestRouteImport } from './routes/api/public/imperium-test'
 import { Route as AuthenticatedReviewIdRouteImport } from './routes/_authenticated/review.$id'
 
 const AuthRoute = AuthRouteImport.update({
@@ -72,11 +71,6 @@ const AuthenticatedActivityRoute = AuthenticatedActivityRouteImport.update({
   path: '/activity',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const ApiPublicImperiumTestRoute = ApiPublicImperiumTestRouteImport.update({
-  id: '/api/public/imperium-test',
-  path: '/api/public/imperium-test',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AuthenticatedReviewIdRoute = AuthenticatedReviewIdRouteImport.update({
   id: '/review/$id',
   path: '/review/$id',
@@ -94,7 +88,6 @@ export interface FileRoutesByFullPath {
   '/search': typeof AuthenticatedSearchRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/review/$id': typeof AuthenticatedReviewIdRoute
-  '/api/public/imperium-test': typeof ApiPublicImperiumTestRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -107,7 +100,6 @@ export interface FileRoutesByTo {
   '/search': typeof AuthenticatedSearchRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/review/$id': typeof AuthenticatedReviewIdRoute
-  '/api/public/imperium-test': typeof ApiPublicImperiumTestRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -122,7 +114,6 @@ export interface FileRoutesById {
   '/_authenticated/search': typeof AuthenticatedSearchRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/review/$id': typeof AuthenticatedReviewIdRoute
-  '/api/public/imperium-test': typeof ApiPublicImperiumTestRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -137,7 +128,6 @@ export interface FileRouteTypes {
     | '/search'
     | '/settings'
     | '/review/$id'
-    | '/api/public/imperium-test'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -150,7 +140,6 @@ export interface FileRouteTypes {
     | '/search'
     | '/settings'
     | '/review/$id'
-    | '/api/public/imperium-test'
   id:
     | '__root__'
     | '/'
@@ -164,14 +153,12 @@ export interface FileRouteTypes {
     | '/_authenticated/search'
     | '/_authenticated/settings'
     | '/_authenticated/review/$id'
-    | '/api/public/imperium-test'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
-  ApiPublicImperiumTestRoute: typeof ApiPublicImperiumTestRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -246,13 +233,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedActivityRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/api/public/imperium-test': {
-      id: '/api/public/imperium-test'
-      path: '/api/public/imperium-test'
-      fullPath: '/api/public/imperium-test'
-      preLoaderRoute: typeof ApiPublicImperiumTestRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/_authenticated/review/$id': {
       id: '/_authenticated/review/$id'
       path: '/review/$id'
@@ -292,8 +272,17 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
-  ApiPublicImperiumTestRoute: ApiPublicImperiumTestRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
