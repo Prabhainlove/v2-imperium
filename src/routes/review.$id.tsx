@@ -348,7 +348,7 @@ function ReviewPage() {
         <CardContent>
           <div className="max-h-60 overflow-y-auto">
             <ActivityFeed
-              entries={(live.data ?? []).filter((e) => e.task_id === (live.data?.find(()=>true) && live.data?.find(()=>true)?.task_id) || true).slice(0, 20)}
+              entries={(live.data ?? []).slice(0, 20)}
               dense
               showRelative={false}
               emptyHint="No events yet."
