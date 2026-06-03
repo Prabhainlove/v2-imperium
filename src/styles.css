@@ -269,3 +269,216 @@
     }
   }
 }
+
+/* =====================================================================
+ * Imperium cinematic landing — editorial, scroll-snapped, oversized
+ * ===================================================================== */
+
+.imp-stage {
+  --imp-navy: #0b1729;
+  --imp-navy-2: #11233d;
+  --imp-ink: #d8e3f2;
+  --imp-ember: #ff6b3d;
+  --imp-line: rgba(216, 227, 242, 0.18);
+
+  position: relative;
+  min-height: 100vh;
+  background: radial-gradient(ellipse at 50% -10%, #173458 0%, var(--imp-navy) 55%, #060d18 100%);
+  color: var(--imp-ink);
+  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+  overflow: hidden;
+}
+
+.imp-stage .font-display {
+  font-family: "Inter Tight", "Inter", ui-sans-serif, system-ui, sans-serif;
+  font-weight: 700;
+  font-stretch: 110%;
+  letter-spacing: -0.04em;
+  text-transform: uppercase;
+}
+
+.imp-scroller {
+  height: 100vh;
+  overflow-y: scroll;
+  scroll-snap-type: y mandatory;
+  scrollbar-width: none;
+}
+.imp-scroller::-webkit-scrollbar { display: none; }
+
+.imp-snap {
+  position: relative;
+  height: 100vh;
+  scroll-snap-align: start;
+  overflow: hidden;
+}
+
+/* logo mark */
+.imp-mark {
+  position: relative;
+  display: inline-block;
+  width: 22px; height: 22px;
+  border: 1px solid var(--imp-ember);
+  transform: rotate(45deg);
+}
+.imp-mark::after {
+  content: ""; position: absolute; inset: 4px;
+  background: var(--imp-ember);
+  opacity: 0.85;
+}
+
+/* corner ticks */
+.imp-tick { position: absolute; width: 14px; height: 14px; opacity: 0.55; }
+.imp-tick-tl { top: 18px; left: 18px; border-top: 1px solid var(--imp-line); border-left: 1px solid var(--imp-line); }
+.imp-tick-tr { top: 18px; right: 18px; border-top: 1px solid var(--imp-line); border-right: 1px solid var(--imp-line); }
+.imp-tick-bl { bottom: 18px; left: 18px; border-bottom: 1px solid var(--imp-line); border-left: 1px solid var(--imp-line); }
+.imp-tick-br { bottom: 18px; right: 18px; border-bottom: 1px solid var(--imp-line); border-right: 1px solid var(--imp-line); }
+
+/* CTA pill */
+.imp-cta-pill {
+  display: inline-flex; align-items: center; gap: 12px;
+  padding: 10px 18px;
+  border: 1px solid var(--imp-ember);
+  color: #fff; background: transparent;
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.28em;
+  border-radius: 999px;
+  transition: background 0.4s ease, color 0.4s ease, transform 0.4s ease;
+}
+.imp-cta-pill:hover { background: var(--imp-ember); color: #0b1729; transform: translateY(-1px); }
+
+/* ----- Hero ----- */
+.imp-hero {
+  display: grid; place-items: center;
+}
+.imp-band {
+  position: absolute; left: 0; right: 0;
+  display: flex; justify-content: center; align-items: center;
+  pointer-events: none;
+  font-family: "Inter Tight", Inter, sans-serif;
+  font-weight: 800;
+  font-stretch: 120%;
+  text-transform: uppercase;
+  letter-spacing: -0.05em;
+  line-height: 0.85;
+  font-size: clamp(5rem, 18vw, 16rem);
+  color: rgba(216, 227, 242, 0.92);
+  white-space: nowrap;
+}
+.imp-band-top { top: 6vh; -webkit-text-stroke: 0; background: linear-gradient(180deg, #cfe0f7 0%, #6f93c1 80%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.imp-band-bottom {
+  bottom: 6vh;
+  color: transparent;
+  -webkit-text-stroke: 1px rgba(216, 227, 242, 0.55);
+}
+
+.imp-year {
+  position: absolute; bottom: 5vh;
+  font-family: "Inter Tight", Inter, sans-serif;
+  font-weight: 800; font-stretch: 120%;
+  font-size: clamp(3rem, 9vw, 8rem);
+  -webkit-text-stroke: 1px rgba(216, 227, 242, 0.35);
+  color: transparent;
+  letter-spacing: -0.04em;
+  pointer-events: none;
+}
+.imp-year-left { left: 3vw; }
+.imp-year-right { right: 3vw; }
+
+.imp-stage-center {
+  position: relative;
+  z-index: 5;
+  perspective: 1400px;
+}
+
+.imp-artifact {
+  position: relative;
+  width: clamp(260px, 32vw, 420px);
+  aspect-ratio: 3 / 4;
+  transform-style: preserve-3d;
+  animation: imp-float 7s ease-in-out infinite;
+}
+@keyframes imp-float {
+  0%, 100% { transform: translateY(0) rotateX(0deg) rotateY(0deg); }
+  50% { transform: translateY(-12px) rotateX(2deg) rotateY(-2deg); }
+}
+.imp-artifact-card {
+  position: relative;
+  height: 100%; width: 100%;
+  border-radius: 18px;
+  background: linear-gradient(160deg, #1b3358 0%, #0d1c33 60%, #081424 100%);
+  border: 1px solid rgba(216, 227, 242, 0.14);
+  box-shadow:
+    0 30px 80px -20px rgba(0, 0, 0, 0.7),
+    0 0 0 1px rgba(255, 107, 61, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+.imp-artifact-glow {
+  position: absolute; inset: -40%;
+  background: radial-gradient(circle at 30% 20%, rgba(255, 107, 61, 0.35), transparent 55%);
+  filter: blur(20px);
+}
+.imp-artifact-shadow {
+  position: absolute; left: 10%; right: 10%; bottom: -20px; height: 30px;
+  background: radial-gradient(ellipse at center, rgba(0,0,0,0.55), transparent 70%);
+  filter: blur(8px);
+}
+
+.imp-anywhere {
+  position: absolute; left: 50%; bottom: 8vh; transform: translateX(-50%);
+  font-size: 11px; letter-spacing: 0.32em; text-transform: uppercase;
+  color: rgba(216,227,242,0.55);
+}
+.imp-anywhere:hover { color: var(--imp-ember); }
+
+/* ----- Numbered sections ----- */
+.imp-section { padding: 9vh 6vw; }
+.imp-section-grid {
+  position: relative;
+  display: grid; grid-template-columns: 1fr; gap: 24px;
+  height: 100%;
+  align-items: center;
+}
+@media (min-width: 900px) {
+  .imp-section-grid {
+    grid-template-columns: 0.9fr 1.1fr;
+    grid-template-areas: "copy stage";
+    gap: 64px;
+  }
+  .imp-section-copy { grid-area: copy; }
+  .imp-section-stage { grid-area: stage; }
+}
+.imp-section-copy { position: relative; z-index: 2; }
+.imp-section-stage { position: relative; z-index: 2; min-height: 320px; }
+
+.imp-numeral {
+  position: absolute;
+  left: -2vw; top: -4vh;
+  font-family: "Inter Tight", Inter, sans-serif;
+  font-weight: 800; font-stretch: 120%;
+  font-size: clamp(10rem, 28vw, 28rem);
+  line-height: 0.8;
+  -webkit-text-stroke: 1px rgba(216, 227, 242, 0.22);
+  color: transparent;
+  letter-spacing: -0.06em;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.imp-card {
+  position: relative;
+  height: 100%;
+  padding: 20px;
+  border-radius: 14px;
+  border: 1px solid rgba(216, 227, 242, 0.12);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.01)),
+    rgba(11, 23, 41, 0.55);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 20px 60px -30px rgba(0,0,0,0.8);
+}
+
+/* ----- Launch ----- */
+.imp-launch {
+  display: grid; place-items: center;
+}
+
