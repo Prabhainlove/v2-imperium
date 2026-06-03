@@ -49,9 +49,12 @@ export const getProfile = createServerFn({ method: "GET" })
           github_url: data.github_url,
           portfolio_url: data.portfolio_url,
           skills,
-          experience: (data.experience ?? []) as unknown as Record<string, unknown>[],
-          education: (data.education ?? []) as unknown as Record<string, unknown>[],
-          certifications: (data.certifications ?? []) as unknown as Record<string, unknown>[],
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          experience: ((data.experience ?? []) as any[]),
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          education: ((data.education ?? []) as any[]),
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          certifications: ((data.certifications ?? []) as any[]),
           target_roles: data.headline ? [data.headline] : [],
           preferred_locations: data.location ? [data.location] : [],
           remote_only: false,
