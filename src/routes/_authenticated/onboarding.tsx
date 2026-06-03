@@ -162,15 +162,17 @@ function OnboardingPage() {
 
   return (
     <div className="mx-auto w-full max-w-2xl space-y-6 p-4 md:p-8">
-      <div className="space-y-2 text-center">
-        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-primary shadow-glow">
-          <Sparkles className="h-6 w-6 text-primary-foreground" />
+      <div className="space-y-3 text-center">
+        <div className="mx-auto flex items-center justify-center gap-3">
+          <span className="imp-mark-sm" aria-hidden />
+          <span className="imp-eyebrow">Onboarding</span>
         </div>
-        <h1 className="text-2xl font-semibold tracking-tight">Set up your candidate profile</h1>
+        <h1 className="imp-display text-2xl text-foreground">Set up your candidate profile</h1>
         <p className="text-sm text-muted-foreground">
           Imperium uses this to tailor every resume and cover letter to you.
         </p>
       </div>
+
 
       <div className="space-y-2">
         <Progress value={progress} />

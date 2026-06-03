@@ -56,18 +56,15 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader className="border-b border-sidebar-border">
-        <div className="flex items-center gap-2 px-1 py-1.5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-primary shadow-glow">
-            <Sparkles className="h-5 w-5 text-primary-foreground" />
-          </div>
+        <div className="flex items-center gap-2.5 px-1 py-2">
+          <span className="imp-mark-sm" aria-hidden />
           <div className="flex flex-col leading-tight group-data-[collapsible=icon]:hidden">
-            <span className="text-sm font-semibold tracking-tight">IMPERIUM</span>
-            <span className="text-[10px] uppercase tracking-widest text-muted-foreground">
-              AI Job Agent
-            </span>
+            <span className="imp-display text-[13px] text-foreground">IMPERIUM</span>
+            <span className="imp-eyebrow">AI Job Agent</span>
           </div>
         </div>
       </SidebarHeader>
+
 
       <SidebarContent>
         <SidebarGroup>
