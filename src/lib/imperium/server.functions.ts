@@ -211,7 +211,7 @@ export const getActivity = createServerFn({ method: "GET" })
 /* ---------- Notifications (no-op, kept for UI shape) ---------- */
 
 export const getNotifications = createServerFn({ method: "GET" }).handler(async () => {
-  return [] as unknown[];
+  return [] as { notification_id: string; title: string; message: string; created_at: string }[];
 });
 
 /* ---------- Dashboard ---------- */
