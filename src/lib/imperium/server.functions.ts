@@ -118,7 +118,7 @@ export const saveProfile = createServerFn({ method: "POST" })
 /* ---------- Jobs ---------- */
 
 const ListInput = z.object({
-  limit: z.number().int().min(1).max(200).optional(),
+  limit: z.number().int().min(1).max(1000).optional(),
   status: z.string().optional(),
   task_id: z.string().optional(),
 });
