@@ -421,11 +421,12 @@ export async function runPipeline(input: PipelineInput) {
  * application-fill animation. Marks the application as Applied. No real
  * external submission is sent — clearly logged as a manual hand-off step.
  */
-export async function simulateSubmission(applicationId: string) {
+export async function simulateSubmission(applicationId: string, user_id: string) {
   const { data: app, error } = await supabaseAdmin
     .from("applications")
     .select("*")
     .eq("id", applicationId)
+    .eq("user_id", user_id)
     .maybeSingle();
   if (error || !app) throw new Error("Application not found");
   const task_id = (app.task_id as string) || `submit_${applicationId.slice(0, 8)}`;
@@ -467,6 +468,7 @@ export async function simulateSubmission(applicationId: string) {
     .eq("id", applicationId);
 
   await log(
+    user_id,
     task_id,
     "application_submitted",
     "completed",
@@ -476,18 +478,21 @@ export async function simulateSubmission(applicationId: string) {
   return { ok: true };
 }
 
-export async function skipApplication(applicationId: string) {
+export async function skipApplication(applicationId: string, user_id: string) {
   const { data: app, error } = await supabaseAdmin
     .from("applications")
     .select("task_id, company, job_title")
     .eq("id", applicationId)
+    .eq("user_id", user_id)
     .maybeSingle();
   if (error || !app) throw new Error("Application not found");
   await supabaseAdmin
     .from("applications")
     .update({ status: "Skipped", updated_at: new Date().toISOString() })
-    .eq("id", applicationId);
+    .eq("id", applicationId)
+    .eq("user_id", user_id);
   await log(
+    user_id,
     (app.task_id as string) || "skip",
     "user_skip",
     "ok",
