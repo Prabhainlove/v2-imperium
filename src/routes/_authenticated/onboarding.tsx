@@ -1,294 +1,157 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { ArrowLeft, ArrowRight, CheckCircle2, Loader2, Sparkles } from "lucide-react";
+import { ArrowLeft, ArrowRight, CheckCircle2, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  CareerSection, EducationSection, ExperienceSection, LinksSection,
+  PersonalSection, ProjectsSection, SkillsSection,
+} from "@/components/imperium/profile-sections";
+import { EMPTY_PROFILE, type ImperiumProfile } from "@/lib/imperium/profile/types";
+import { computeCompleteness } from "@/lib/imperium/profile/completeness";
+import { getProfile, saveProfile } from "@/lib/imperium/client";
 
 export const Route = createFileRoute("/_authenticated/onboarding")({
   head: () => ({
     meta: [
       { title: "Welcome — Imperium" },
-      { name: "description", content: "Set up your candidate profile so Imperium can tailor every application to you." },
+      { name: "description", content: "Set up your Imperium profile so Brain can power every workflow." },
     ],
   }),
   component: OnboardingPage,
 });
 
-type Form = {
-  name: string;
-  headline: string;
-  location: string;
-  phone: string;
-  summary: string;
-  skills: string[];
-  linkedin_url: string;
-  github_url: string;
-  portfolio_url: string;
-};
-
-const EMPTY: Form = {
-  name: "",
-  headline: "",
-  location: "",
-  phone: "",
-  summary: "",
-  skills: [],
-  linkedin_url: "",
-  github_url: "",
-  portfolio_url: "",
-};
-
-const STEPS = ["Basics", "Experience", "Links"] as const;
+const STEPS = [
+  { key: "personal", label: "Personal" },
+  { key: "career", label: "Career" },
+  { key: "skills", label: "Skills" },
+  { key: "experience", label: "Experience" },
+  { key: "projects", label: "Projects" },
+  { key: "education", label: "Education" },
+  { key: "links", label: "Links" },
+] as const;
 
 function OnboardingPage() {
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
-  const [form, setForm] = useState<Form>(EMPTY);
-  const [skillInput, setSkillInput] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [email, setEmail] = useState("");
+  const [draft, setDraft] = useState<ImperiumProfile | null>(null);
 
   useEffect(() => {
     let mounted = true;
     (async () => {
       const { data: userRes } = await supabase.auth.getUser();
       if (!userRes.user) return;
-      if (mounted) setEmail(userRes.user.email ?? "");
-      const { data } = await supabase
-        .from("profiles")
-        .select("name,headline,location,phone,summary,skills,linkedin_url,github_url,portfolio_url,onboarded")
-        .eq("id", userRes.user.id)
-        .maybeSingle();
+      const res = await getProfile();
       if (!mounted) return;
-      if (data?.onboarded) {
+      if (res.profile?.onboarded) {
         navigate({ to: "/dashboard", replace: true });
         return;
       }
-      if (data) {
-        setForm({
-          name: data.name || userRes.user.user_metadata?.name || "",
-          headline: data.headline || "",
-          location: data.location || "",
-          phone: data.phone || "",
-          summary: data.summary || "",
-          skills: Array.isArray(data.skills) ? (data.skills as string[]) : [],
-          linkedin_url: data.linkedin_url || "",
-          github_url: data.github_url || "",
-          portfolio_url: data.portfolio_url || "",
-        });
-      }
+      const base: ImperiumProfile = res.profile
+        ? (res.profile as ImperiumProfile)
+        : { id: userRes.user.id, ...EMPTY_PROFILE };
+      if (!base.name) base.name = (userRes.user.user_metadata?.name as string) ?? "";
+      if (!base.email) base.email = userRes.user.email ?? "";
+      setDraft(base);
       setLoading(false);
     })();
-    return () => {
-      mounted = false;
-    };
+    return () => { mounted = false; };
   }, [navigate]);
 
-  const update = <K extends keyof Form>(k: K, v: Form[K]) =>
-    setForm((f) => ({ ...f, [k]: v }));
+  const completeness = useMemo(() => computeCompleteness(draft ?? EMPTY_PROFILE), [draft]);
 
-  const addSkill = () => {
-    const s = skillInput.trim();
-    if (!s) return;
-    if (form.skills.includes(s)) {
-      setSkillInput("");
-      return;
+  const set = (patch: Partial<ImperiumProfile>) => setDraft((d) => (d ? { ...d, ...patch } : d));
+
+  const canNext = useMemo(() => {
+    if (!draft) return false;
+    switch (STEPS[step].key) {
+      case "personal": return draft.name.trim().length > 1 && draft.headline.trim().length > 1;
+      case "career": return draft.target_role.trim().length > 1;
+      case "skills": return draft.skills.length >= 3;
+      case "experience": return true;
+      case "projects": return true;
+      case "education": return true;
+      case "links": return true;
     }
-    update("skills", [...form.skills, s]);
-    setSkillInput("");
-  };
-
-  const removeSkill = (s: string) =>
-    update("skills", form.skills.filter((x) => x !== s));
-
-  const canNext =
-    step === 0
-      ? form.name.trim().length > 1 && form.headline.trim().length > 1
-      : step === 1
-        ? form.summary.trim().length > 10 && form.skills.length >= 3
-        : true;
+  }, [draft, step]);
 
   const finish = async () => {
+    if (!draft) return;
     setSaving(true);
-    const { data: userRes } = await supabase.auth.getUser();
-    if (!userRes.user) {
+    try {
+      await saveProfile({ ...draft, onboarded: true });
+      toast.success("Welcome to Imperium", { description: "Your profile is ready." });
+      navigate({ to: "/dashboard", replace: true });
+    } catch (e) {
+      toast.error("Could not save profile", { description: (e as Error).message });
+    } finally {
       setSaving(false);
-      return;
     }
-    const { error } = await supabase
-      .from("profiles")
-      .update({
-        name: form.name,
-        headline: form.headline,
-        location: form.location,
-        phone: form.phone,
-        summary: form.summary,
-        skills: form.skills,
-        linkedin_url: form.linkedin_url,
-        github_url: form.github_url,
-        portfolio_url: form.portfolio_url,
-        email,
-        onboarded: true,
-      })
-      .eq("id", userRes.user.id);
-    setSaving(false);
-    if (error) {
-      toast.error("Could not save profile", { description: error.message });
-      return;
-    }
-    toast.success("Welcome to Imperium", {
-      description: "Your profile is ready. Let's find you some jobs.",
-    });
-    navigate({ to: "/dashboard", replace: true });
   };
 
-  if (loading) {
-    return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-      </div>
-    );
+  if (loading || !draft) {
+    return <div className="flex min-h-[60vh] items-center justify-center"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>;
   }
 
   const progress = ((step + 1) / STEPS.length) * 100;
+  const cur = STEPS[step];
 
   return (
-    <div className="mx-auto w-full max-w-2xl space-y-6 p-4 md:p-8">
+    <div className="mx-auto w-full max-w-3xl space-y-6 p-4 md:p-8">
       <div className="space-y-3 text-center">
         <div className="mx-auto flex items-center justify-center gap-3">
           <span className="imp-mark-sm" aria-hidden />
           <span className="imp-eyebrow">Onboarding</span>
         </div>
-        <h1 className="imp-display text-2xl text-foreground">Set up your candidate profile</h1>
+        <h1 className="imp-display text-2xl text-foreground">Build your Imperium profile</h1>
         <p className="text-sm text-muted-foreground">
-          Imperium uses this to tailor every resume and cover letter to you.
+          The deeper your profile, the smarter every workflow becomes. You can refine everything later in Settings.
         </p>
       </div>
 
-
       <div className="space-y-2">
         <Progress value={progress} />
-        <div className="flex justify-between text-xs text-muted-foreground">
+        <div className="flex justify-between gap-2 overflow-x-auto text-xs text-muted-foreground">
           {STEPS.map((s, i) => (
-            <span key={s} className={i === step ? "text-foreground font-medium" : ""}>
-              {i + 1}. {s}
-            </span>
+            <button
+              key={s.key}
+              type="button"
+              onClick={() => setStep(i)}
+              className={`whitespace-nowrap ${i === step ? "font-semibold text-foreground" : ""}`}
+            >
+              {i + 1}. {s.label}
+            </button>
           ))}
         </div>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">{STEPS[step]}</CardTitle>
+          <CardTitle className="text-base">{cur.label}</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          {step === 0 && (
-            <>
-              <div className="grid gap-2">
-                <Label htmlFor="name">Full name</Label>
-                <Input id="name" value={form.name} onChange={(e) => update("name", e.target.value)} placeholder="Ada Lovelace" />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="headline">Professional headline</Label>
-                <Input id="headline" value={form.headline} onChange={(e) => update("headline", e.target.value)} placeholder="Senior Full-Stack Engineer · React / Node / AWS" />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="grid gap-2">
-                  <Label htmlFor="location">Location</Label>
-                  <Input id="location" value={form.location} onChange={(e) => update("location", e.target.value)} placeholder="Remote · EU" />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="phone">Phone (optional)</Label>
-                  <Input id="phone" value={form.phone} onChange={(e) => update("phone", e.target.value)} placeholder="+44 ..." />
-                </div>
-              </div>
-            </>
-          )}
-
-          {step === 1 && (
-            <>
-              <div className="grid gap-2">
-                <Label htmlFor="summary">Professional summary</Label>
-                <Textarea
-                  id="summary"
-                  rows={5}
-                  value={form.summary}
-                  onChange={(e) => update("summary", e.target.value)}
-                  placeholder="2–4 sentences about what you build, the stacks you love, and the roles you want."
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label>Core skills (min. 3)</Label>
-                <div className="flex gap-2">
-                  <Input
-                    value={skillInput}
-                    onChange={(e) => setSkillInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        addSkill();
-                      }
-                    }}
-                    placeholder="e.g. TypeScript"
-                  />
-                  <Button type="button" variant="secondary" onClick={addSkill}>
-                    Add
-                  </Button>
-                </div>
-                {form.skills.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 pt-1">
-                    {form.skills.map((s) => (
-                      <Badge
-                        key={s}
-                        variant="secondary"
-                        className="cursor-pointer"
-                        onClick={() => removeSkill(s)}
-                      >
-                        {s} ×
-                      </Badge>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </>
-          )}
-
-          {step === 2 && (
-            <>
-              <div className="grid gap-2">
-                <Label htmlFor="linkedin">LinkedIn URL</Label>
-                <Input id="linkedin" value={form.linkedin_url} onChange={(e) => update("linkedin_url", e.target.value)} placeholder="https://linkedin.com/in/..." />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="github">GitHub URL</Label>
-                <Input id="github" value={form.github_url} onChange={(e) => update("github_url", e.target.value)} placeholder="https://github.com/..." />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="portfolio">Portfolio / website</Label>
-                <Input id="portfolio" value={form.portfolio_url} onChange={(e) => update("portfolio_url", e.target.value)} placeholder="https://..." />
-              </div>
-              <p className="text-xs text-muted-foreground">
-                All optional — you can edit these any time in Settings.
-              </p>
-            </>
-          )}
+        <CardContent>
+          {cur.key === "personal" && <PersonalSection p={draft} set={set} />}
+          {cur.key === "career" && <CareerSection p={draft} set={set} />}
+          {cur.key === "skills" && <SkillsSection p={draft} set={set} />}
+          {cur.key === "experience" && <ExperienceSection p={draft} set={set} />}
+          {cur.key === "projects" && <ProjectsSection p={draft} set={set} />}
+          {cur.key === "education" && <EducationSection p={draft} set={set} />}
+          {cur.key === "links" && <LinksSection p={draft} set={set} />}
         </CardContent>
       </Card>
 
+      <div className="rounded-md border border-border/60 bg-card/40 p-3 text-xs text-muted-foreground">
+        Profile completeness: <span className="font-semibold text-foreground">{Math.round(completeness.completion * 100)}%</span>
+        {" · "}Readiness: <span className="font-semibold text-foreground">{completeness.readiness}</span>
+      </div>
+
       <div className="flex items-center justify-between gap-2">
-        <Button
-          variant="ghost"
-          disabled={step === 0 || saving}
-          onClick={() => setStep((s) => Math.max(0, s - 1))}
-        >
+        <Button variant="ghost" disabled={step === 0 || saving} onClick={() => setStep((s) => Math.max(0, s - 1))}>
           <ArrowLeft className="mr-2 h-4 w-4" /> Back
         </Button>
         {step < STEPS.length - 1 ? (
