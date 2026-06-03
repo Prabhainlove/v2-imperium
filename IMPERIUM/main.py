@@ -630,14 +630,16 @@ async def job_agent_search(
         from agents.job_agent.job_agent import JobAgent
 
         job_agent = JobAgent(workspace_root=IMPERIUM_ROOT)
+        auto_apply_bool = str(auto_apply).strip().lower() in ("1", "true", "yes", "on")
         result = await job_agent.execute({
             "task_id": task_id,
             "command": "run_cycle",
             "candidate_profile": profile_data,
-            "auto_apply": False,
-            "manual_review": True,
+            "auto_apply": auto_apply_bool,
+            "manual_review": not auto_apply_bool,
             "application_mode": application_mode,
             "max_applications_per_cycle": max(1, min(int(max_applications), 20)),
+            "min_match_threshold": max(0.0, min(1.0, float(min_match_threshold))),
         })
 
         if result.get("status") != "success":
