@@ -14,7 +14,203 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      activity_log: {
+        Row: {
+          action: string
+          agent: string
+          created_at: string
+          detail: string
+          id: number
+          status: string
+          task_id: string
+        }
+        Insert: {
+          action: string
+          agent?: string
+          created_at?: string
+          detail?: string
+          id?: number
+          status?: string
+          task_id?: string
+        }
+        Update: {
+          action?: string
+          agent?: string
+          created_at?: string
+          detail?: string
+          id?: number
+          status?: string
+          task_id?: string
+        }
+        Relationships: []
+      }
+      applications: {
+        Row: {
+          applied_at: string | null
+          company: string
+          cover_letter_md: string
+          created_at: string
+          id: string
+          job_title: string
+          listing_id: string
+          match_score: number
+          notes: string
+          resume_md: string
+          status: string
+          task_id: string
+          updated_at: string
+        }
+        Insert: {
+          applied_at?: string | null
+          company: string
+          cover_letter_md?: string
+          created_at?: string
+          id?: string
+          job_title: string
+          listing_id: string
+          match_score?: number
+          notes?: string
+          resume_md?: string
+          status?: string
+          task_id?: string
+          updated_at?: string
+        }
+        Update: {
+          applied_at?: string | null
+          company?: string
+          cover_letter_md?: string
+          created_at?: string
+          id?: string
+          job_title?: string
+          listing_id?: string
+          match_score?: number
+          notes?: string
+          resume_md?: string
+          status?: string
+          task_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "applications_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "job_listings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      candidate_profiles: {
+        Row: {
+          created_at: string
+          education: Json
+          email: string
+          experience: Json
+          headline: string
+          id: string
+          links: Json
+          location: string
+          name: string
+          phone: string
+          skills: Json
+          summary: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          education?: Json
+          email?: string
+          experience?: Json
+          headline?: string
+          id?: string
+          links?: Json
+          location?: string
+          name?: string
+          phone?: string
+          skills?: Json
+          summary?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          education?: Json
+          email?: string
+          experience?: Json
+          headline?: string
+          id?: string
+          links?: Json
+          location?: string
+          name?: string
+          phone?: string
+          skills?: Json
+          summary?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      job_listings: {
+        Row: {
+          company: string
+          description: string
+          discovered_at: string
+          external_id: string
+          id: string
+          location: string
+          match_score: number
+          posted_at: string | null
+          remote: boolean
+          salary_currency: string
+          salary_max: number | null
+          salary_min: number | null
+          source: string
+          status: string
+          task_id: string
+          tech_stack: Json
+          title: string
+          url: string
+        }
+        Insert: {
+          company: string
+          description?: string
+          discovered_at?: string
+          external_id: string
+          id?: string
+          location?: string
+          match_score?: number
+          posted_at?: string | null
+          remote?: boolean
+          salary_currency?: string
+          salary_max?: number | null
+          salary_min?: number | null
+          source: string
+          status?: string
+          task_id?: string
+          tech_stack?: Json
+          title: string
+          url?: string
+        }
+        Update: {
+          company?: string
+          description?: string
+          discovered_at?: string
+          external_id?: string
+          id?: string
+          location?: string
+          match_score?: number
+          posted_at?: string | null
+          remote?: boolean
+          salary_currency?: string
+          salary_max?: number | null
+          salary_min?: number | null
+          source?: string
+          status?: string
+          task_id?: string
+          tech_stack?: Json
+          title?: string
+          url?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
