@@ -89,6 +89,12 @@ function SettingsPage() {
 
       <ProfileCompletenessPanel completeness={completeness} />
 
+      <ProfileImportCard
+        current={draft}
+        onApply={(patch) => setDraft((d) => (d ? { ...d, ...patch } : d))}
+      />
+
+
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
