@@ -1,6 +1,8 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { motion, useScroll, useTransform, useSpring, useInView } from "motion/react";
+import { LogOut } from "lucide-react";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/")({
@@ -23,10 +25,17 @@ export const Route = createFileRoute("/")({
 
 function LandingPage() {
   const [signedIn, setSignedIn] = useState(false);
+  const [userEmail, setUserEmail] = useState<string>("");
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setSignedIn(!!data.session));
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => setSignedIn(!!s));
+    supabase.auth.getUser().then(({ data }) => {
+      setSignedIn(!!data.user);
+      setUserEmail(data.user?.email ?? "");
+    });
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => {
+      setSignedIn(!!s);
+      setUserEmail(s?.user?.email ?? "");
+    });
     return () => sub.subscription.unsubscribe();
   }, []);
 
@@ -40,7 +49,7 @@ function LandingPage() {
   return (
     <div className="imp-stage">
       {/* fixed chrome */}
-      <FrameChrome cta={cta} ctaLabel={ctaLabel} />
+      <FrameChrome cta={cta} ctaLabel={ctaLabel} signedIn={signedIn} userEmail={userEmail} />
       <ProgressRail progress={progress} />
 
       {/* scroll-snap stage */}
@@ -59,7 +68,15 @@ function LandingPage() {
 
 /* ---------- chrome ---------- */
 
-function FrameChrome({ cta, ctaLabel }: { cta: string; ctaLabel: string }) {
+function FrameChrome({ cta, ctaLabel, signedIn, userEmail }: { cta: string; ctaLabel: string; signedIn: boolean; userEmail: string }) {
+  const navigate = useNavigate();
+  const initials = (userEmail || "?").slice(0, 1).toUpperCase();
+  const signOut = async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) return toast.error(error.message);
+    toast.success("Signed out");
+    navigate({ to: "/", replace: true });
+  };
   return (
     <>
       <header className="pointer-events-none fixed inset-x-0 top-0 z-50 flex items-center justify-between px-6 py-5 md:px-10">
@@ -69,19 +86,40 @@ function FrameChrome({ cta, ctaLabel }: { cta: string; ctaLabel: string }) {
             Imperium
           </span>
         </Link>
-        <div className="pointer-events-auto hidden items-center gap-8 text-[10px] uppercase tracking-[0.3em] text-white/55 md:flex">
-          <span>An AI Job Agent</span>
-          <span className="text-white/30">·</span>
-          <span>v2 · 2026</span>
-        </div>
-        <Link
-          to={cta}
-          className="imp-cta-pill pointer-events-auto"
-          data-label={ctaLabel}
-        >
-          <span>{ctaLabel}</span>
-          <span aria-hidden>→</span>
-        </Link>
+        <nav className="pointer-events-auto hidden items-center gap-6 text-[10px] uppercase tracking-[0.3em] text-white/55 md:flex">
+          {signedIn ? (
+            <>
+              <Link to="/dashboard" className="hover:text-white/90">Dashboard</Link>
+              <Link to="/settings" className="hover:text-white/90">Settings</Link>
+              <button onClick={signOut} className="flex items-center gap-1.5 hover:text-white/90">
+                <LogOut className="h-3 w-3" /> Logout
+              </button>
+            </>
+          ) : (
+            <>
+              <a href="#features" className="hover:text-white/90">Features</a>
+              <a href="#about" className="hover:text-white/90">About</a>
+              <Link to="/auth" className="hover:text-white/90">Login</Link>
+            </>
+          )}
+        </nav>
+        {signedIn ? (
+          <Link to="/settings" className="pointer-events-auto flex items-center gap-2" aria-label="Account">
+            <span className="hidden text-[10px] uppercase tracking-[0.3em] text-white/55 sm:inline">{userEmail}</span>
+            <span className="flex h-8 w-8 items-center justify-center rounded-full border border-white/20 bg-white/5 text-[11px] font-semibold text-white/90">
+              {initials}
+            </span>
+          </Link>
+        ) : (
+          <Link
+            to={cta}
+            className="imp-cta-pill pointer-events-auto"
+            data-label={ctaLabel}
+          >
+            <span>{ctaLabel}</span>
+            <span aria-hidden>→</span>
+          </Link>
+        )}
       </header>
 
       {/* corner ticks like editorial sites */}
@@ -97,7 +135,7 @@ function FrameChrome({ cta, ctaLabel }: { cta: string; ctaLabel: string }) {
           Scroll · Discover the agent
         </span>
         <span className="text-[10px] uppercase tracking-[0.35em] text-white/40">
-          Frontend / Cinematic Build
+          {signedIn ? `Signed in · ${userEmail}` : "Frontend / Cinematic Build"}
         </span>
       </footer>
     </>

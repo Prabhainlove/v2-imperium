@@ -1,14 +1,14 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
-import { Sparkles, Loader2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Loader2, Eye, EyeOff, Check, X, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
@@ -20,13 +20,40 @@ export const Route = createFileRoute("/auth")({
   component: AuthPage,
 });
 
+type PwChecks = { len: boolean; upper: boolean; lower: boolean; num: boolean };
+function checkPassword(pw: string): PwChecks {
+  return {
+    len: pw.length >= 8,
+    upper: /[A-Z]/.test(pw),
+    lower: /[a-z]/.test(pw),
+    num: /\d/.test(pw),
+  };
+}
+function pwScore(c: PwChecks, pw: string): { score: number; label: string; tone: string } {
+  const base = [c.len, c.upper, c.lower, c.num].filter(Boolean).length;
+  const bonus = pw.length >= 12 ? 1 : 0;
+  const score = base + bonus; // 0..5
+  if (score <= 1) return { score: 1, label: "Weak", tone: "bg-red-500" };
+  if (score === 2) return { score: 2, label: "Weak", tone: "bg-red-500" };
+  if (score === 3) return { score: 3, label: "Medium", tone: "bg-yellow-500" };
+  if (score === 4) return { score: 4, label: "Strong", tone: "bg-green-500" };
+  return { score: 5, label: "Very strong", tone: "bg-emerald-500" };
+}
+
 function AuthPage() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPw, setShowPw] = useState(false);
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
   const [resetSending, setResetSending] = useState(false);
+
+  // OTP verification step
+  const [pendingEmail, setPendingEmail] = useState<string | null>(null);
+  const [otp, setOtp] = useState("");
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const [resending, setResending] = useState(false);
 
   // If already signed in, bounce to dashboard.
   useEffect(() => {
@@ -43,8 +70,20 @@ function AuthPage() {
     };
   }, [navigate]);
 
+  // Cooldown timer for resend OTP
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const t = setInterval(() => setResendCooldown((s) => Math.max(0, s - 1)), 1000);
+    return () => clearInterval(t);
+  }, [resendCooldown]);
+
+  const pwChecks = useMemo(() => checkPassword(password), [password]);
+  const pwOk = pwChecks.len && pwChecks.upper && pwChecks.lower && pwChecks.num;
+  const strength = useMemo(() => pwScore(pwChecks, password), [pwChecks, password]);
+
   const signUp = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!pwOk) return toast.error("Password does not meet all requirements");
     setBusy(true);
     const { error } = await supabase.auth.signUp({
       email,
@@ -56,7 +95,35 @@ function AuthPage() {
     });
     setBusy(false);
     if (error) return toast.error(error.message);
-    toast.success("Account created. Check your email to confirm.");
+    setPendingEmail(email);
+    setResendCooldown(60);
+    toast.success("Verification code sent", { description: `Enter the 6-digit code we emailed to ${email}.` });
+  };
+
+  const verifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!pendingEmail) return;
+    if (otp.length !== 6) return toast.error("Enter the full 6-digit code");
+    setBusy(true);
+    const { error } = await supabase.auth.verifyOtp({
+      email: pendingEmail,
+      token: otp,
+      type: "signup",
+    });
+    setBusy(false);
+    if (error) return toast.error(error.message);
+    toast.success("Email verified", { description: "Welcome to Imperium." });
+    // onAuthStateChange listener will redirect to /dashboard → onboarding gate handles next step
+  };
+
+  const resendOtp = async () => {
+    if (!pendingEmail || resendCooldown > 0) return;
+    setResending(true);
+    const { error } = await supabase.auth.resend({ type: "signup", email: pendingEmail });
+    setResending(false);
+    if (error) return toast.error(error.message);
+    setResendCooldown(60);
+    toast.success("Code resent");
   };
 
   const signIn = async (e: React.FormEvent) => {
@@ -65,17 +132,6 @@ function AuthPage() {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     setBusy(false);
     if (error) return toast.error(error.message);
-  };
-
-  const google = async () => {
-    setBusy(true);
-    const res = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: window.location.origin + "/dashboard",
-    });
-    if (res.error) {
-      setBusy(false);
-      toast.error(res.error.message ?? "Google sign-in failed");
-    }
   };
 
   const sendReset = async () => {
@@ -104,75 +160,131 @@ function AuthPage() {
           </div>
         </Link>
 
-
-
         <Card className="p-6">
-          <Tabs defaultValue="signin">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="signin">Sign in</TabsTrigger>
-              <TabsTrigger value="signup">Create account</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="signin" className="mt-6 space-y-4">
-              <form onSubmit={signIn} className="space-y-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="si-email">Email</Label>
-                  <Input id="si-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" />
+          {pendingEmail ? (
+            <div className="space-y-5">
+              <button
+                type="button"
+                onClick={() => { setPendingEmail(null); setOtp(""); }}
+                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+              >
+                <ArrowLeft className="h-3 w-3" /> Back
+              </button>
+              <div className="space-y-1.5 text-center">
+                <h2 className="imp-display text-base text-foreground">Verify your email</h2>
+                <p className="text-xs text-muted-foreground">
+                  We sent a 6-digit code to <span className="font-medium text-foreground">{pendingEmail}</span>
+                </p>
+              </div>
+              <form onSubmit={verifyOtp} className="space-y-4">
+                <div className="flex justify-center">
+                  <InputOTP maxLength={6} value={otp} onChange={setOtp}>
+                    <InputOTPGroup>
+                      <InputOTPSlot index={0} />
+                      <InputOTPSlot index={1} />
+                      <InputOTPSlot index={2} />
+                      <InputOTPSlot index={3} />
+                      <InputOTPSlot index={4} />
+                      <InputOTPSlot index={5} />
+                    </InputOTPGroup>
+                  </InputOTP>
                 </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="si-pass">Password</Label>
-                  <Input id="si-pass" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
-                </div>
-                <Button type="submit" disabled={busy} className="w-full">
-                  {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Sign in"}
+                <Button type="submit" disabled={busy || otp.length !== 6} className="w-full">
+                  {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Verify & continue"}
                 </Button>
+              </form>
+              <div className="text-center text-xs text-muted-foreground">
+                Didn't get it?{" "}
                 <button
                   type="button"
-                  onClick={sendReset}
-                  disabled={resetSending}
-                  className="block w-full text-center text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+                  onClick={resendOtp}
+                  disabled={resendCooldown > 0 || resending}
+                  className="font-medium text-foreground underline-offset-2 hover:underline disabled:opacity-50 disabled:no-underline"
                 >
-                  {resetSending ? "Sending reset link…" : "Forgot password?"}
+                  {resending ? "Sending…" : resendCooldown > 0 ? `Resend in ${resendCooldown}s` : "Resend code"}
                 </button>
-              </form>
-            </TabsContent>
+              </div>
+            </div>
+          ) : (
+            <Tabs defaultValue="signin">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="signin">Sign in</TabsTrigger>
+                <TabsTrigger value="signup">Create account</TabsTrigger>
+              </TabsList>
 
-            <TabsContent value="signup" className="mt-6 space-y-4">
-              <form onSubmit={signUp} className="space-y-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="su-name">Full name</Label>
-                  <Input id="su-name" required value={name} onChange={(e) => setName(e.target.value)} placeholder="Ada Lovelace" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="su-email">Email</Label>
-                  <Input id="su-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="su-pass">Password</Label>
-                  <Input id="su-pass" type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} />
-                </div>
-                <Button type="submit" disabled={busy} className="w-full">
-                  {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Create account"}
-                </Button>
-              </form>
-            </TabsContent>
-          </Tabs>
+              <TabsContent value="signin" className="mt-6 space-y-4">
+                <form onSubmit={signIn} className="space-y-3">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="si-email">Email</Label>
+                    <Input id="si-email" type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="si-pass">Password</Label>
+                    <div className="relative">
+                      <Input id="si-pass" type={showPw ? "text" : "password"} required autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
+                      <button type="button" onClick={() => setShowPw((v) => !v)} className="absolute inset-y-0 right-2 flex items-center text-muted-foreground hover:text-foreground" aria-label={showPw ? "Hide password" : "Show password"}>
+                        {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                  </div>
+                  <Button type="submit" disabled={busy} className="w-full">
+                    {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Sign in"}
+                  </Button>
+                  <button
+                    type="button"
+                    onClick={sendReset}
+                    disabled={resetSending}
+                    className="block w-full text-center text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+                  >
+                    {resetSending ? "Sending reset link…" : "Forgot password?"}
+                  </button>
+                </form>
+              </TabsContent>
 
-          <div className="my-5 flex items-center gap-3 text-xs text-muted-foreground">
-            <div className="h-px flex-1 bg-border" />
-            <span>OR</span>
-            <div className="h-px flex-1 bg-border" />
-          </div>
-
-          <Button variant="outline" onClick={google} disabled={busy} className="w-full">
-            <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
-              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84A10.99 10.99 0 0012 23z" />
-              <path fill="#FBBC05" d="M5.84 14.1A6.6 6.6 0 015.5 12c0-.73.13-1.43.34-2.1V7.06H2.18A10.99 10.99 0 001 12c0 1.78.43 3.46 1.18 4.94l3.66-2.84z" />
-              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84C6.71 7.31 9.14 5.38 12 5.38z" />
-            </svg>
-            Continue with Google
-          </Button>
+              <TabsContent value="signup" className="mt-6 space-y-4">
+                <form onSubmit={signUp} className="space-y-3">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="su-name">Full name</Label>
+                    <Input id="su-name" required value={name} onChange={(e) => setName(e.target.value)} placeholder="Ada Lovelace" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="su-email">Email</Label>
+                    <Input id="su-email" type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="su-pass">Password</Label>
+                    <div className="relative">
+                      <Input id="su-pass" type={showPw ? "text" : "password"} required autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} />
+                      <button type="button" onClick={() => setShowPw((v) => !v)} className="absolute inset-y-0 right-2 flex items-center text-muted-foreground hover:text-foreground" aria-label={showPw ? "Hide password" : "Show password"}>
+                        {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                    {/* strength meter */}
+                    {password.length > 0 && (
+                      <>
+                        <div className="mt-1.5 flex h-1 gap-1">
+                          {[1, 2, 3, 4, 5].map((i) => (
+                            <div key={i} className={`flex-1 rounded ${i <= strength.score ? strength.tone : "bg-border"}`} />
+                          ))}
+                        </div>
+                        <div className="text-[11px] text-muted-foreground">Strength: <span className="font-medium text-foreground">{strength.label}</span></div>
+                      </>
+                    )}
+                    {/* checklist */}
+                    <ul className="space-y-0.5 pt-1 text-[11px]">
+                      <ReqRow ok={pwChecks.len} label="At least 8 characters" />
+                      <ReqRow ok={pwChecks.upper} label="One uppercase letter" />
+                      <ReqRow ok={pwChecks.lower} label="One lowercase letter" />
+                      <ReqRow ok={pwChecks.num} label="One number" />
+                    </ul>
+                  </div>
+                  <Button type="submit" disabled={busy || !pwOk} className="w-full">
+                    {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Create account"}
+                  </Button>
+                </form>
+              </TabsContent>
+            </Tabs>
+          )}
         </Card>
 
         <p className="mt-6 text-center text-xs text-muted-foreground">
@@ -180,5 +292,14 @@ function AuthPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+function ReqRow({ ok, label }: { ok: boolean; label: string }) {
+  return (
+    <li className={`flex items-center gap-1.5 ${ok ? "text-green-500" : "text-muted-foreground"}`}>
+      {ok ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
+      <span>{label}</span>
+    </li>
   );
 }
