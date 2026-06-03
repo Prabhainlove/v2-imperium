@@ -8,6 +8,12 @@
  */
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { SOURCES, type RawJob } from "./sources.server";
+import {
+  analyzeJob,
+  optimizeResume,
+  generateCoverLetter,
+  evaluateApplicationReadiness,
+} from "./brain/brain.server";
 
 export interface PipelineInput {
   task_id: string;
