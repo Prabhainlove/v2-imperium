@@ -1,13 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { Briefcase, ExternalLink, Filter, MapPin, Search } from "lucide-react";
+import { Brain, Briefcase, ExternalLink, Filter, MapPin, Search } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/imperium/page-header";
 import { MatchScore } from "@/components/imperium/match-score";
+import { JobIntelligencePanel } from "@/components/imperium/job-intelligence";
 import { getJobs } from "@/lib/imperium/client";
 import {
   formatRelativeTime,
