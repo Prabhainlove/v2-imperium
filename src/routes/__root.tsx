@@ -17,20 +17,20 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 
 function NotFoundComponent() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <div className="max-w-md text-center">
-        <h1 className="text-7xl font-bold text-gradient">404</h1>
-        <h2 className="mt-4 text-xl font-semibold text-foreground">Page not found</h2>
-        <p className="mt-2 text-sm text-muted-foreground">
+    <div className="imp-surface flex items-center justify-center px-4">
+      <span className="imp-tick imp-tick-tl" aria-hidden />
+      <span className="imp-tick imp-tick-tr" aria-hidden />
+      <span className="imp-tick imp-tick-bl" aria-hidden />
+      <span className="imp-tick imp-tick-br" aria-hidden />
+      <div className="relative z-10 max-w-md text-center">
+        <div className="imp-eyebrow mb-3">Off-grid</div>
+        <h1 className="imp-display text-7xl text-[#d8e3f2]" style={{ WebkitTextStroke: "1px rgba(216,227,242,0.35)", color: "transparent" }}>404</h1>
+        <h2 className="mt-4 imp-display text-xl text-[#d8e3f2]">Page not found</h2>
+        <p className="mt-2 text-sm text-[rgba(216,227,242,0.6)]">
           That route isn't on the Imperium map.
         </p>
-        <div className="mt-6">
-          <Link
-            to="/"
-            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-          >
-            Go home
-          </Link>
+        <div className="mt-8">
+          <Link to="/" className="imp-ember-btn">Return home</Link>
         </div>
       </div>
     </div>
@@ -45,26 +45,23 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   }, [error]);
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <div className="max-w-md text-center">
-        <h1 className="text-xl font-semibold tracking-tight text-foreground">
-          Imperium hit an error
-        </h1>
-        <p className="mt-2 text-sm text-muted-foreground">{error.message}</p>
-        <div className="mt-6 flex flex-wrap justify-center gap-2">
+    <div className="imp-surface flex items-center justify-center px-4">
+      <span className="imp-tick imp-tick-tl" aria-hidden />
+      <span className="imp-tick imp-tick-tr" aria-hidden />
+      <span className="imp-tick imp-tick-bl" aria-hidden />
+      <span className="imp-tick imp-tick-br" aria-hidden />
+      <div className="relative z-10 max-w-md text-center">
+        <div className="imp-eyebrow mb-3">System alert</div>
+        <h1 className="imp-display text-xl text-[#d8e3f2]">Imperium hit an error</h1>
+        <p className="mt-2 text-sm text-[rgba(216,227,242,0.65)]">{error.message}</p>
+        <div className="mt-8 flex flex-wrap justify-center gap-3">
           <button
-            onClick={() => {
-              router.invalidate();
-              reset();
-            }}
-            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+            onClick={() => { router.invalidate(); reset(); }}
+            className="imp-ember-btn"
           >
             Try again
           </button>
-          <a
-            href="/"
-            className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
-          >
+          <a href="/" className="imp-ember-btn" style={{ borderColor: "rgba(216,227,242,0.4)" }}>
             Home
           </a>
         </div>
