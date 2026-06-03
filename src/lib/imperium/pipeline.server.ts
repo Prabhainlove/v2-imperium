@@ -252,6 +252,7 @@ export async function runPipeline(input: PipelineInput) {
       match_score: Number(s.overall.toFixed(3)),
       status: "discovered",
       task_id,
+      user_id,
     }));
     const { error } = await supabaseAdmin
       .from("job_listings")
@@ -357,6 +358,7 @@ export async function runPipeline(input: PipelineInput) {
         cover_letter_md: cover_md,
         notes: JSON.stringify(meta),
         task_id,
+        user_id,
       })
       .select("id")
       .single();
@@ -385,12 +387,14 @@ export async function runPipeline(input: PipelineInput) {
 
   const duration_seconds = Math.round((Date.now() - started) / 100) / 10;
   await log(
+    user_id,
     task_id,
     "user_review",
     "ok",
     `${matches.length} application packages awaiting user approval`,
   );
   await log(
+    user_id,
     task_id,
     "complete",
     "completed",
