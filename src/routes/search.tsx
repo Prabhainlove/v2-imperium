@@ -250,6 +250,13 @@ function SearchPage() {
     },
   });
 
+  // Autopilot: jump to /applications when the pipeline reaches the review stage.
+  useWorkflowAutopilot({
+    entries: activity.data,
+    enabled: !!result || running,
+    reviewPath: "/applications",
+  });
+
   function cancel() {
     abortRef.current?.abort();
     setRunning(false);
