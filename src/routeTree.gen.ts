@@ -16,6 +16,7 @@ import { Route as JobsRouteImport } from './routes/jobs'
 import { Route as ApplicationsRouteImport } from './routes/applications'
 import { Route as ActivityRouteImport } from './routes/activity'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApplicationsIdReviewRouteImport } from './routes/applications.$id.review'
 import { Route as ApiPublicImperiumTestRouteImport } from './routes/api/public/imperium-test'
 
 const SettingsRoute = SettingsRouteImport.update({
@@ -53,6 +54,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApplicationsIdReviewRoute = ApplicationsIdReviewRouteImport.update({
+  id: '/$id/review',
+  path: '/$id/review',
+  getParentRoute: () => ApplicationsRoute,
+} as any)
 const ApiPublicImperiumTestRoute = ApiPublicImperiumTestRouteImport.update({
   id: '/api/public/imperium-test',
   path: '/api/public/imperium-test',
@@ -62,33 +68,36 @@ const ApiPublicImperiumTestRoute = ApiPublicImperiumTestRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/activity': typeof ActivityRoute
-  '/applications': typeof ApplicationsRoute
+  '/applications': typeof ApplicationsRouteWithChildren
   '/jobs': typeof JobsRoute
   '/resume': typeof ResumeRoute
   '/search': typeof SearchRoute
   '/settings': typeof SettingsRoute
   '/api/public/imperium-test': typeof ApiPublicImperiumTestRoute
+  '/applications/$id/review': typeof ApplicationsIdReviewRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/activity': typeof ActivityRoute
-  '/applications': typeof ApplicationsRoute
+  '/applications': typeof ApplicationsRouteWithChildren
   '/jobs': typeof JobsRoute
   '/resume': typeof ResumeRoute
   '/search': typeof SearchRoute
   '/settings': typeof SettingsRoute
   '/api/public/imperium-test': typeof ApiPublicImperiumTestRoute
+  '/applications/$id/review': typeof ApplicationsIdReviewRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/activity': typeof ActivityRoute
-  '/applications': typeof ApplicationsRoute
+  '/applications': typeof ApplicationsRouteWithChildren
   '/jobs': typeof JobsRoute
   '/resume': typeof ResumeRoute
   '/search': typeof SearchRoute
   '/settings': typeof SettingsRoute
   '/api/public/imperium-test': typeof ApiPublicImperiumTestRoute
+  '/applications/$id/review': typeof ApplicationsIdReviewRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -101,6 +110,7 @@ export interface FileRouteTypes {
     | '/search'
     | '/settings'
     | '/api/public/imperium-test'
+    | '/applications/$id/review'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -111,6 +121,7 @@ export interface FileRouteTypes {
     | '/search'
     | '/settings'
     | '/api/public/imperium-test'
+    | '/applications/$id/review'
   id:
     | '__root__'
     | '/'
@@ -121,12 +132,13 @@ export interface FileRouteTypes {
     | '/search'
     | '/settings'
     | '/api/public/imperium-test'
+    | '/applications/$id/review'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ActivityRoute: typeof ActivityRoute
-  ApplicationsRoute: typeof ApplicationsRoute
+  ApplicationsRoute: typeof ApplicationsRouteWithChildren
   JobsRoute: typeof JobsRoute
   ResumeRoute: typeof ResumeRoute
   SearchRoute: typeof SearchRoute
@@ -185,6 +197,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/applications/$id/review': {
+      id: '/applications/$id/review'
+      path: '/$id/review'
+      fullPath: '/applications/$id/review'
+      preLoaderRoute: typeof ApplicationsIdReviewRouteImport
+      parentRoute: typeof ApplicationsRoute
+    }
     '/api/public/imperium-test': {
       id: '/api/public/imperium-test'
       path: '/api/public/imperium-test'
@@ -195,10 +214,22 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface ApplicationsRouteChildren {
+  ApplicationsIdReviewRoute: typeof ApplicationsIdReviewRoute
+}
+
+const ApplicationsRouteChildren: ApplicationsRouteChildren = {
+  ApplicationsIdReviewRoute: ApplicationsIdReviewRoute,
+}
+
+const ApplicationsRouteWithChildren = ApplicationsRoute._addFileChildren(
+  ApplicationsRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ActivityRoute: ActivityRoute,
-  ApplicationsRoute: ApplicationsRoute,
+  ApplicationsRoute: ApplicationsRouteWithChildren,
   JobsRoute: JobsRoute,
   ResumeRoute: ResumeRoute,
   SearchRoute: SearchRoute,
@@ -208,3 +239,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

@@ -1,4 +1,4 @@
-import { CheckCircle2, Globe, KeyRound, Loader2, XCircle } from "lucide-react";
+import { CheckCircle2, Globe, KeyRound, Loader2, XCircle, AlertCircle } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -12,15 +12,12 @@ export interface SourceStatus {
   detail?: string;
 }
 
-const stateMeta: Record<
-  SourceState,
-  { label: string; cls: string; Icon: typeof Globe }
-> = {
-  idle: { label: "Idle", cls: "text-muted-foreground", Icon: Globe },
-  searching: { label: "Searching…", cls: "text-primary", Icon: Loader2 },
-  done: { label: "Done", cls: "text-success", Icon: CheckCircle2 },
-  error: { label: "Failed", cls: "text-destructive", Icon: XCircle },
-  skipped: { label: "Skipped", cls: "text-muted-foreground", Icon: Globe },
+const stateMeta: Record<SourceState, { label: string; cls: string; Icon: typeof Globe }> = {
+  idle:      { label: "Idle",          cls: "text-muted-foreground", Icon: Globe },
+  searching: { label: "Searching…",    cls: "text-primary",          Icon: Loader2 },
+  done:      { label: "Done",          cls: "text-success",          Icon: CheckCircle2 },
+  error:     { label: "Failed",        cls: "text-destructive",      Icon: XCircle },
+  skipped:   { label: "Unavailable",   cls: "text-muted-foreground", Icon: AlertCircle },
 };
 
 export function SourceMonitor({
@@ -40,6 +37,7 @@ export function SourceMonitor({
             className={cn(
               "relative overflow-hidden border-border/60 transition-all",
               animated && "ring-1 ring-primary/40 shadow-glow",
+              s.state === "skipped" && "opacity-70",
             )}
           >
             {animated && (
@@ -52,21 +50,24 @@ export function SourceMonitor({
                   meta.cls,
                 )}
               >
-                <meta.Icon
-                  className={cn("h-4 w-4", animated && "animate-spin")}
-                />
+                <meta.Icon className={cn("h-4 w-4", animated && "animate-spin")} />
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1.5">
-                  <span className="truncate text-sm font-medium">
-                    {src.label}
-                  </span>
+                  <span className="truncate text-sm font-medium">{src.label}</span>
                   {src.requiresKey && (
-                    <KeyRound className="h-3 w-3 text-muted-foreground" />
+                    <KeyRound
+                      className="h-3 w-3 text-muted-foreground"
+                      aria-label="Requires API key"
+                    />
                   )}
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className={cn("text-xs", meta.cls)}>{meta.label}</span>
+                  <span className={cn("text-xs", meta.cls)}>
+                    {s.state === "skipped" && s.detail
+                      ? "Needs API key"
+                      : meta.label}
+                  </span>
                   {typeof s.count === "number" && s.state === "done" && (
                     <Badge variant="secondary" className="h-4 px-1.5 text-[10px]">
                       {s.count}
