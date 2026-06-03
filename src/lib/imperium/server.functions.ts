@@ -24,57 +24,64 @@ export const getAgents = createServerFn({ method: "GET" }).handler(async () => [
   },
 ]);
 
-/* ---------- Profile ---------- */
+/* ---------- Profile (V2 — source of truth) ---------- */
+const PROFILE_V2_COLUMNS = [
+  "id", "name", "email", "phone", "location", "headline", "summary",
+  "target_role", "seniority", "work_mode", "target_locations", "salary_expectation",
+  "skills", "experience", "education", "projects", "certifications",
+  "languages", "achievements",
+  "linkedin_url", "github_url", "portfolio_url",
+  "github_intel", "linkedin_intel", "profile_intel",
+  "onboarded",
+].join(",");
+
+function rowToProfile(userId: string, data: Record<string, unknown> | null) {
+  if (!data) return null;
+  const arr = <T = unknown>(v: unknown): T[] => (Array.isArray(v) ? (v as T[]) : []);
+  const obj = (v: unknown): Record<string, unknown> =>
+    v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : {};
+  return {
+    id: userId,
+    name: (data.name as string) ?? "",
+    email: (data.email as string) ?? "",
+    phone: (data.phone as string) ?? "",
+    location: (data.location as string) ?? "",
+    headline: (data.headline as string) ?? "",
+    summary: (data.summary as string) ?? "",
+    target_role: (data.target_role as string) ?? "",
+    seniority: (data.seniority as string) ?? "",
+    work_mode: (data.work_mode as string) ?? "",
+    target_locations: arr<string>(data.target_locations),
+    salary_expectation: obj(data.salary_expectation),
+    skills: arr<string>(data.skills),
+    experience: arr(data.experience),
+    education: arr(data.education),
+    projects: arr(data.projects),
+    certifications: arr(data.certifications),
+    languages: arr(data.languages),
+    achievements: arr<string>(data.achievements),
+    linkedin_url: (data.linkedin_url as string) ?? "",
+    github_url: (data.github_url as string) ?? "",
+    portfolio_url: (data.portfolio_url as string) ?? "",
+    github_intel: obj(data.github_intel),
+    linkedin_intel: obj(data.linkedin_intel),
+    profile_intel: obj(data.profile_intel),
+    onboarded: Boolean(data.onboarded),
+  };
+}
+
 export const getProfile = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { supabase, userId } = context;
     const { data, error } = await supabase
       .from("profiles")
-      .select("*")
+      .select(PROFILE_V2_COLUMNS)
       .eq("id", userId)
       .maybeSingle();
     if (error) throw new Error(error.message);
-    const skills = ((data?.skills as string[] | null) ?? []) as string[];
-    const profile = data
-      ? {
-          profile_id: userId,
-          name: data.name,
-          email: data.email,
-          phone: data.phone,
-          location: data.location,
-          headline: data.headline,
-          summary: data.summary,
-          linkedin_url: data.linkedin_url,
-          github_url: data.github_url,
-          portfolio_url: data.portfolio_url,
-          skills,
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          experience: ((data.experience ?? []) as any[]),
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          education: ((data.education ?? []) as any[]),
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          certifications: ((data.certifications ?? []) as any[]),
-          target_roles: data.headline ? [data.headline] : [],
-          preferred_locations: data.location ? [data.location] : [],
-          remote_only: false,
-          onboarded: data.onboarded,
-        }
-      : null;
-    const checks = {
-      name: !!data?.name && data.name !== "",
-      email: !!data?.email,
-      skills: skills.length > 0,
-      summary: !!data?.summary,
-      location: !!data?.location,
-    };
-    const passed = Object.values(checks).filter(Boolean).length;
-    const missing = Object.entries(checks).filter(([, v]) => !v).map(([k]) => k);
-    return {
-      status: "ok",
-      profile,
-      profile_health: { score: passed / Object.keys(checks).length, checks, missing },
-    };
+    const profile = rowToProfile(userId, data as Record<string, unknown> | null);
+    return { status: "ok", profile };
   });
 
 const SaveProfileInput = z
@@ -85,14 +92,21 @@ const SaveProfileInput = z
     location: z.string().optional(),
     headline: z.string().optional(),
     summary: z.string().optional(),
+    target_role: z.string().optional(),
+    seniority: z.string().optional(),
+    work_mode: z.string().optional(),
+    target_locations: z.array(z.string()).optional(),
+    salary_expectation: z.record(z.string(), z.unknown()).optional(),
     linkedin_url: z.string().optional(),
     github_url: z.string().optional(),
     portfolio_url: z.string().optional(),
     skills: z.array(z.string()).optional(),
     experience: z.array(z.unknown()).optional(),
     education: z.array(z.unknown()).optional(),
+    projects: z.array(z.unknown()).optional(),
     certifications: z.array(z.unknown()).optional(),
-    target_roles: z.array(z.string()).optional(),
+    languages: z.array(z.unknown()).optional(),
+    achievements: z.array(z.string()).optional(),
     onboarded: z.boolean().optional(),
   })
   .passthrough();
@@ -103,24 +117,40 @@ export const saveProfile = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     const update: Record<string, unknown> = { id: userId };
-    if (data.name !== undefined) update.name = data.name;
-    if (data.email !== undefined) update.email = data.email;
-    if (data.phone !== undefined) update.phone = data.phone;
-    if (data.location !== undefined) update.location = data.location;
-    if (data.headline !== undefined) update.headline = data.headline;
-    else if (data.target_roles?.[0]) update.headline = data.target_roles[0];
-    if (data.summary !== undefined) update.summary = data.summary;
-    if (data.linkedin_url !== undefined) update.linkedin_url = data.linkedin_url;
-    if (data.github_url !== undefined) update.github_url = data.github_url;
-    if (data.portfolio_url !== undefined) update.portfolio_url = data.portfolio_url;
-    if (data.skills !== undefined) update.skills = data.skills;
-    if (data.experience !== undefined) update.experience = data.experience;
-    if (data.education !== undefined) update.education = data.education;
-    if (data.certifications !== undefined) update.certifications = data.certifications;
-    if (data.onboarded !== undefined) update.onboarded = data.onboarded;
+    for (const k of Object.keys(data)) {
+      const v = (data as Record<string, unknown>)[k];
+      if (v !== undefined) update[k] = v;
+    }
+    // Keep headline in sync with target_role if not explicitly set.
+    if (update.target_role && !update.headline) update.headline = update.target_role;
     const { error } = await supabase.from("profiles").upsert(update as never, { onConflict: "id" });
     if (error) throw new Error(error.message);
-    return { status: "ok" };
+    const { data: row } = await supabase
+      .from("profiles")
+      .select(PROFILE_V2_COLUMNS)
+      .eq("id", userId)
+      .maybeSingle();
+    return { status: "ok", profile: rowToProfile(userId, row as Record<string, unknown> | null) };
+  });
+
+/* ---------- GitHub Intelligence ---------- */
+const GithubInput = z.object({ url: z.string().min(1).optional() });
+
+export const refreshGithubIntel = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => GithubInput.parse(input ?? {}))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    let url = data.url ?? "";
+    if (!url) {
+      const { data: p } = await supabase.from("profiles").select("github_url").eq("id", userId).maybeSingle();
+      url = (p?.github_url as string) ?? "";
+    }
+    if (!url) throw new Error("No GitHub URL on profile. Add one first.");
+    const { analyzeGithubUrl } = await import("./brain/github-intel.server");
+    const intel = await analyzeGithubUrl(url);
+    await supabase.from("profiles").update({ github_url: url, github_intel: intel as never }).eq("id", userId);
+    return intel;
   });
 
 /* ---------- Jobs ---------- */
