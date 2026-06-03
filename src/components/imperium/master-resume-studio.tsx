@@ -62,8 +62,9 @@ interface Version {
   created_at: string;
 }
 
-export function MasterResumeStudio({ userId }: { userId: string }) {
+export function MasterResumeStudio({ userId: propUserId }: { userId?: string } = {}) {
   const qc = useQueryClient();
+  const [userId, setUserId] = useState<string | null>(propUserId ?? null);
   const [md, setMd] = useState<string>("");
   const [template, setTemplate] = useState<ResumeTemplate>("classic");
   const [jobDesc, setJobDesc] = useState<string>("");
@@ -72,13 +73,19 @@ export function MasterResumeStudio({ userId }: { userId: string }) {
   const [loaded, setLoaded] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
+  useEffect(() => {
+    if (userId) return;
+    supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id ?? null));
+  }, [userId]);
+
   const doc = useQuery({
     queryKey: ["resume-doc", userId],
+    enabled: !!userId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("resume_documents")
         .select("content_md,template,updated_at")
-        .eq("user_id", userId)
+        .eq("user_id", userId!)
         .maybeSingle();
       if (error) throw error;
       return data;
@@ -88,11 +95,12 @@ export function MasterResumeStudio({ userId }: { userId: string }) {
 
   const versions = useQuery({
     queryKey: ["resume-versions", userId],
+    enabled: !!userId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("resume_versions")
         .select("id,label,content_md,template,created_at")
-        .eq("user_id", userId)
+        .eq("user_id", userId!)
         .order("created_at", { ascending: false })
         .limit(20);
       if (error) throw error;
