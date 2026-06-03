@@ -16,6 +16,7 @@ import { Route as JobsRouteImport } from './routes/jobs'
 import { Route as ApplicationsRouteImport } from './routes/applications'
 import { Route as ActivityRouteImport } from './routes/activity'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ReviewIdRouteImport } from './routes/review.$id'
 import { Route as ApiPublicImperiumTestRouteImport } from './routes/api/public/imperium-test'
 
 const SettingsRoute = SettingsRouteImport.update({
@@ -53,6 +54,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ReviewIdRoute = ReviewIdRouteImport.update({
+  id: '/review/$id',
+  path: '/review/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicImperiumTestRoute = ApiPublicImperiumTestRouteImport.update({
   id: '/api/public/imperium-test',
   path: '/api/public/imperium-test',
@@ -67,6 +73,7 @@ export interface FileRoutesByFullPath {
   '/resume': typeof ResumeRoute
   '/search': typeof SearchRoute
   '/settings': typeof SettingsRoute
+  '/review/$id': typeof ReviewIdRoute
   '/api/public/imperium-test': typeof ApiPublicImperiumTestRoute
 }
 export interface FileRoutesByTo {
@@ -77,6 +84,7 @@ export interface FileRoutesByTo {
   '/resume': typeof ResumeRoute
   '/search': typeof SearchRoute
   '/settings': typeof SettingsRoute
+  '/review/$id': typeof ReviewIdRoute
   '/api/public/imperium-test': typeof ApiPublicImperiumTestRoute
 }
 export interface FileRoutesById {
@@ -88,6 +96,7 @@ export interface FileRoutesById {
   '/resume': typeof ResumeRoute
   '/search': typeof SearchRoute
   '/settings': typeof SettingsRoute
+  '/review/$id': typeof ReviewIdRoute
   '/api/public/imperium-test': typeof ApiPublicImperiumTestRoute
 }
 export interface FileRouteTypes {
@@ -100,6 +109,7 @@ export interface FileRouteTypes {
     | '/resume'
     | '/search'
     | '/settings'
+    | '/review/$id'
     | '/api/public/imperium-test'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -110,6 +120,7 @@ export interface FileRouteTypes {
     | '/resume'
     | '/search'
     | '/settings'
+    | '/review/$id'
     | '/api/public/imperium-test'
   id:
     | '__root__'
@@ -120,6 +131,7 @@ export interface FileRouteTypes {
     | '/resume'
     | '/search'
     | '/settings'
+    | '/review/$id'
     | '/api/public/imperium-test'
   fileRoutesById: FileRoutesById
 }
@@ -131,6 +143,7 @@ export interface RootRouteChildren {
   ResumeRoute: typeof ResumeRoute
   SearchRoute: typeof SearchRoute
   SettingsRoute: typeof SettingsRoute
+  ReviewIdRoute: typeof ReviewIdRoute
   ApiPublicImperiumTestRoute: typeof ApiPublicImperiumTestRoute
 }
 
@@ -185,6 +198,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/review/$id': {
+      id: '/review/$id'
+      path: '/review/$id'
+      fullPath: '/review/$id'
+      preLoaderRoute: typeof ReviewIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/imperium-test': {
       id: '/api/public/imperium-test'
       path: '/api/public/imperium-test'
@@ -203,18 +223,9 @@ const rootRouteChildren: RootRouteChildren = {
   ResumeRoute: ResumeRoute,
   SearchRoute: SearchRoute,
   SettingsRoute: SettingsRoute,
+  ReviewIdRoute: ReviewIdRoute,
   ApiPublicImperiumTestRoute: ApiPublicImperiumTestRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

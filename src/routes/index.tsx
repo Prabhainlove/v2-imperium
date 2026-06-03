@@ -18,7 +18,8 @@ import { StatCard } from "@/components/imperium/stat-card";
 import { ActivityFeed } from "@/components/imperium/activity-feed";
 import { StatusBadge } from "@/components/imperium/status-badge";
 import { MatchScore } from "@/components/imperium/match-score";
-import { getDashboard, getApplications, getJobs } from "@/lib/imperium/client";
+import { ExecutionTimeline } from "@/components/imperium/execution-timeline";
+import { getDashboard, getApplications, getJobs, getActivity } from "@/lib/imperium/client";
 import { formatRelativeTime } from "@/lib/imperium/format";
 import { getApiBaseUrl } from "@/lib/imperium/config";
 
@@ -55,6 +56,13 @@ function DashboardPage() {
   const jobs = useQuery({
     queryKey: ["jobs", { limit: 5 }],
     queryFn: ({ signal }) => getJobs({ limit: 5 }, signal),
+    retry: false,
+  });
+
+  const recentActivity = useQuery({
+    queryKey: ["activity", { dashboard: true }],
+    queryFn: ({ signal }) => getActivity({ limit: 60 }, signal),
+    refetchInterval: 4_000,
     retry: false,
   });
 
@@ -155,6 +163,19 @@ function DashboardPage() {
           <StatCard key={s.label} {...s} />
         ))}
       </div>
+
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <ActivityIcon className="h-4 w-4 text-primary" /> Execution Timeline
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ExecutionTimeline entries={recentActivity.data ?? []} />
+        </CardContent>
+      </Card>
+
+
 
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2">

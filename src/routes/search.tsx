@@ -39,6 +39,7 @@ import {
 } from "@/lib/imperium/client";
 import { REAL_SOURCES, type SourceId } from "@/lib/imperium/config";
 import type { SearchResponse } from "@/lib/imperium/types";
+import { useWorkflowAutopilot } from "@/hooks/use-workflow-autopilot";
 
 export const Route = createFileRoute("/search")({
   head: () => ({
@@ -247,6 +248,13 @@ function SearchPage() {
       setRunning(false);
       abortRef.current = null;
     },
+  });
+
+  // Autopilot: jump to /applications when the pipeline reaches the review stage.
+  useWorkflowAutopilot({
+    entries: activity.data,
+    enabled: !!result || running,
+    reviewPath: "/applications",
   });
 
   function cancel() {

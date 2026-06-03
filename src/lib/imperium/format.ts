@@ -39,8 +39,7 @@ export function formatSalary(
 ): string {
   if (!min && !max) return "—";
   const c = currency ?? "USD";
-  const fmt = (n: number) =>
-    n >= 1000 ? `${Math.round(n / 1000)}k` : `${n}`;
+  const fmt = (n: number) => (n >= 1000 ? `${Math.round(n / 1000)}k` : `${n}`);
   if (min && max) return `${c} ${fmt(min)}–${fmt(max)}`;
   if (min) return `${c} ${fmt(min)}+`;
   return `${c} up to ${fmt(max ?? 0)}`;
@@ -60,18 +59,21 @@ export function scoreTone(score?: number | null): "high" | "mid" | "low" {
 }
 
 export const APPLICATION_STATUS_ORDER: ApplicationStatus[] = [
-  "Manual Review",
+  "Pending Review",
   "Applied",
   "Under Review",
   "Interview Scheduled",
   "Offer Received",
   "Rejected",
+  "Skipped",
 ];
 
 export function statusTone(
   status: string,
 ): "info" | "success" | "warning" | "destructive" | "muted" | "primary" {
   switch (status) {
+    case "Pending Review":
+      return "warning";
     case "Applied":
       return "info";
     case "Under Review":
@@ -82,6 +84,7 @@ export function statusTone(
       return "success";
     case "Rejected":
       return "destructive";
+    case "Skipped":
     case "Manual Review":
       return "muted";
     default:
@@ -90,7 +93,5 @@ export function statusTone(
 }
 
 export function humanizeAction(action: string): string {
-  return action
-    .replace(/_/g, " ")
-    .replace(/\b\w/g, (c) => c.toUpperCase());
+  return action.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }

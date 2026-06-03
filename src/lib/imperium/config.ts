@@ -1,10 +1,5 @@
 /**
- * Imperium backend connection config.
- *
- * Resolution order:
- *  1. localStorage override (set from the Settings page)
- *  2. VITE_IMPERIUM_API_BASE_URL build-time env
- *  3. http://localhost:8000 default (matches main.py IMPERIUM_PORT)
+ * Imperium frontend config + source registry (UI-side).
  */
 
 const STORAGE_KEY = "imperium-api-base-url";
@@ -26,11 +21,8 @@ export function getApiBaseUrl(): string {
 export function setApiBaseUrl(url: string): void {
   if (typeof window === "undefined") return;
   const clean = url.trim().replace(/\/+$/, "");
-  if (clean.length === 0) {
-    window.localStorage.removeItem(STORAGE_KEY);
-  } else {
-    window.localStorage.setItem(STORAGE_KEY, clean);
-  }
+  if (clean.length === 0) window.localStorage.removeItem(STORAGE_KEY);
+  else window.localStorage.setItem(STORAGE_KEY, clean);
 }
 
 export function getDefaultBaseUrl(): string {
@@ -43,14 +35,17 @@ export function apiUrl(path: string): string {
   return `${base}${p}`;
 }
 
-/** Real, backend-supported sources (per discovery.py investigation). */
+/**
+ * Production job sources the Imperium agent actually attempts.
+ * `requiresKey` sources are gracefully skipped without a secret.
+ */
 export const REAL_SOURCES = [
-  { id: "remoteok", label: "RemoteOK", requiresKey: false },
-  { id: "remotive", label: "Remotive", requiresKey: false },
-  { id: "arbeitnow", label: "Arbeitnow", requiresKey: false },
-  { id: "hackernews", label: "Hacker News", requiresKey: false },
-  { id: "adzuna", label: "Adzuna", requiresKey: true },
-  { id: "jsearch", label: "JSearch", requiresKey: true },
+  { id: "remoteok",  label: "RemoteOK",            requiresKey: false },
+  { id: "remotive",  label: "Remotive",            requiresKey: false },
+  { id: "arbeitnow", label: "Arbeitnow",           requiresKey: false },
+  { id: "linkedin",  label: "LinkedIn",            requiresKey: false },
+  { id: "indeed",    label: "Indeed (via Adzuna)", requiresKey: true  },
+  { id: "naukri",    label: "Naukri",              requiresKey: false },
 ] as const;
 
 export type SourceId = (typeof REAL_SOURCES)[number]["id"];
