@@ -49,9 +49,9 @@ export const getProfile = createServerFn({ method: "GET" })
           github_url: data.github_url,
           portfolio_url: data.portfolio_url,
           skills,
-          experience: (data.experience as unknown[]) ?? [],
-          education: (data.education as unknown[]) ?? [],
-          certifications: (data.certifications as unknown[]) ?? [],
+          experience: (data.experience ?? []) as unknown as Record<string, unknown>[],
+          education: (data.education ?? []) as unknown as Record<string, unknown>[],
+          certifications: (data.certifications ?? []) as unknown as Record<string, unknown>[],
           target_roles: data.headline ? [data.headline] : [],
           preferred_locations: data.location ? [data.location] : [],
           remote_only: false,
@@ -115,7 +115,7 @@ export const saveProfile = createServerFn({ method: "POST" })
     if (data.education !== undefined) update.education = data.education;
     if (data.certifications !== undefined) update.certifications = data.certifications;
     if (data.onboarded !== undefined) update.onboarded = data.onboarded;
-    const { error } = await supabase.from("profiles").upsert(update, { onConflict: "id" });
+    const { error } = await supabase.from("profiles").upsert(update as never, { onConflict: "id" });
     if (error) throw new Error(error.message);
     return { status: "ok" };
   });
