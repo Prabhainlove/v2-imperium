@@ -55,7 +55,16 @@ function DashboardPage() {
 
   const jobs = useQuery({
     queryKey: ["jobs", { limit: 5 }],
+  const jobs = useQuery({
+    queryKey: ["jobs", { limit: 5 }],
     queryFn: ({ signal }) => getJobs({ limit: 5 }, signal),
+    retry: false,
+  });
+
+  const recentActivity = useQuery({
+    queryKey: ["activity", { dashboard: true }],
+    queryFn: ({ signal }) => getActivity({ limit: 60 }, signal),
+    refetchInterval: 4_000,
     retry: false,
   });
 
