@@ -1,8 +1,8 @@
 import { createStart, createMiddleware } from "@tanstack/react-start";
 
 import { renderErrorPage } from "./lib/error-page";
-import { attachSupabaseAuth } from "@/integrations/supabase/auth-attacher";
-import { logger, newRequestId } from "@/lib/logger";
+import { attachSupabaseAuth } from "./integrations/supabase/auth-attacher";
+import { logger, newRequestId } from "./lib/logger";
 
 /**
  * Baseline security response headers applied to every request.
