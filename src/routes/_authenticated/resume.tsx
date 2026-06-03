@@ -51,10 +51,9 @@ export const Route = createFileRoute("/_authenticated/resume")({
 type Template = "classic" | "modern" | "compact";
 
 function ResumeStudioPage() {
-  const qc = useQueryClient();
   const profile = useQuery({
     queryKey: ["profile"],
-    queryFn: ({ signal }) => getProfile(signal),
+    queryFn: () => getProfile(),
     retry: false,
   });
 
@@ -64,38 +63,8 @@ function ResumeStudioPage() {
     retry: false,
   });
 
-  const [form, setForm] = useState<CandidateProfile>({});
-  useEffect(() => {
-    if (profile.data?.profile) setForm(profile.data.profile);
-  }, [profile.data]);
+  const profileLoaded = !!profile.data?.profile;
 
-  const save = useMutation({
-    mutationFn: () =>
-      saveProfile({
-        ...form,
-        skills:
-          typeof (form as unknown as { skills?: string | string[] }).skills === "string"
-            ? ((form as unknown as { skills: string }).skills as string)
-                .split(",").map((s) => s.trim()).filter(Boolean)
-            : form.skills,
-      }),
-    onSuccess: () => {
-      toast.success("Profile saved");
-      qc.invalidateQueries({ queryKey: ["profile"] });
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
-  const skillsString = useMemo(
-    () =>
-      Array.isArray(form.skills)
-        ? form.skills.join(", ")
-        : (form.skills as unknown as string) ?? "",
-    [form.skills],
-  );
-
-  const health = profile.data?.profile_health;
-  const healthPct = scoreToPercent(health?.score);
 
   const generated = (apps.data ?? []).filter((a) => a.resume_path);
   const [selectedAppId, setSelectedAppId] = useState<string | null>(null);
