@@ -1,4 +1,4 @@
-/** Types mirroring the Imperium FastAPI response shapes (main.py + storage/database.py). */
+/** Types mirroring Imperium server function responses. */
 
 export interface HealthResponse {
   status: string;
@@ -55,6 +55,7 @@ export interface JobListing {
   title: string;
   company: string;
   location?: string;
+  remote?: boolean;
   salary_min?: number | null;
   salary_max?: number | null;
   salary_currency?: string | null;
@@ -69,11 +70,13 @@ export interface JobListing {
 }
 
 export type ApplicationStatus =
+  | "Pending Review"
   | "Applied"
   | "Under Review"
   | "Interview Scheduled"
   | "Rejected"
   | "Offer Received"
+  | "Skipped"
   | "Manual Review";
 
 export interface ApplicationRecord {
@@ -88,6 +91,12 @@ export interface ApplicationRecord {
   cover_letter_path?: string | null;
   last_updated?: string;
   notes?: string | null;
+  matched_skills?: string[];
+  missing_skills?: string[];
+  salary_match?: number;
+  experience_match?: number;
+  location_match?: number;
+  application_fields?: Record<string, string>;
 }
 
 export interface ActivityLogEntry {
@@ -121,6 +130,7 @@ export interface DashboardSnapshot {
 }
 
 export interface SearchMatch {
+  application_id?: string;
   listing_id: string;
   title: string;
   company: string;
@@ -131,6 +141,9 @@ export interface SearchMatch {
   is_recent?: boolean;
   matched_skills?: string[];
   missing_skills?: string[];
+  salary_match?: number;
+  experience_match?: number;
+  location_match?: number;
   resume_path?: string | null;
   cover_letter_path?: string | null;
   submission_status?: string;
@@ -155,6 +168,7 @@ export interface SearchResponse {
   summary?: SearchSummary;
   matches?: SearchMatch[];
   skipped?: SearchMatch[];
+  per_source?: Record<string, { count: number; status: "ok" | "failed" | "skipped" }>;
   reflection?: string;
 }
 
@@ -171,4 +185,22 @@ export interface SearchInput {
   company?: string;
   application_mode?: string;
   max_applications?: number;
+}
+
+export interface AtsAnalysis {
+  score: number;
+  matched_keywords: string[];
+  missing_keywords: string[];
+  added_keywords: string[];
+  improvements: string[];
+  word_count: number;
+}
+
+export interface RenderedResume {
+  application_id: string;
+  template: "classic" | "modern" | "compact";
+  original_md: string;
+  optimized_md: string;
+  rendered_html: string;
+  ats: AtsAnalysis;
 }
