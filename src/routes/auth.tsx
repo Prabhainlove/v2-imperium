@@ -78,17 +78,21 @@ function AuthPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4 py-12">
-      <div className="w-full max-w-md">
-        <Link to="/" className="mb-8 flex items-center justify-center gap-2">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-primary shadow-glow">
-            <Sparkles className="h-5 w-5 text-primary-foreground" />
-          </div>
-          <div>
-            <div className="text-base font-semibold tracking-tight">IMPERIUM</div>
-            <div className="text-[10px] uppercase tracking-widest text-muted-foreground">AI Job Agent</div>
+    <div className="imp-surface flex items-center justify-center px-4 py-12">
+      <span className="imp-tick imp-tick-tl" aria-hidden />
+      <span className="imp-tick imp-tick-tr" aria-hidden />
+      <span className="imp-tick imp-tick-bl" aria-hidden />
+      <span className="imp-tick imp-tick-br" aria-hidden />
+      <div className="relative z-10 w-full max-w-md">
+        <Link to="/" className="mb-10 flex items-center justify-center gap-3">
+          <span className="imp-mark-sm" aria-hidden />
+          <div className="text-center">
+            <div className="imp-display text-base text-[#d8e3f2]">IMPERIUM</div>
+            <div className="imp-eyebrow">AI Job Agent</div>
           </div>
         </Link>
+
+
 
         <Card className="p-6">
           <Tabs defaultValue="signin">
