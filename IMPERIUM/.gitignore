@@ -1,0 +1,56 @@
+# ── Python ──────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+*.pyc
+
+# ── Virtual environments ─────────────────────────
+.venv/
+venv/
+env/
+.env
+.env.local
+
+# ── Node / Frontend ──────────────────────────────
+imperium/frontend/node_modules/
+imperium/frontend/dist/
+*.tsbuildinfo
+.npm
+
+# ── SQLite databases (generated at runtime) ─────
+*.db
+*.db-shm
+*.db-wal
+
+# ── Logs ─────────────────────────────────────────
+*.log
+imperium/agents/job_agent/data/logs/
+
+# ── Artifacts (generated resumes/cover letters) ─
+imperium/agents/job_agent/data/artifacts/
+imperium/imperium_data/
+
+# ── IDE / OS ──────────────────────────────────────
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# ── Test coverage ────────────────────────────────
+.pytest_cache/
+.coverage
+htmlcov/
+
+# ── Temp files ───────────────────────────────────
+tmp/
+temp/
+*.tmp

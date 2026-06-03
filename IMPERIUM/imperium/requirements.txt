@@ -1,0 +1,56 @@
+# ============================================================
+# Imperium — Production Requirements
+# Pin exact versions for reproducible builds.
+# Run: pip install -r requirements.txt
+# ============================================================
+
+# --- Web framework ---
+fastapi==0.115.5
+pydantic==2.9.2
+uvicorn[standard]==0.32.1
+python-multipart==0.0.20
+
+# --- HTTP clients ---
+requests==2.32.3
+aiohttp==3.11.10
+httpx==0.28.1
+
+# --- Data / ML ---
+numpy==2.1.3
+
+# --- System utilities ---
+psutil==6.1.0
+
+# --- Database ---
+sqlalchemy==2.0.36
+
+# --- Config / serialization ---
+python-dotenv==1.0.1
+PyYAML==6.0.2
+python-dateutil==2.9.0.post0
+typing-extensions==4.12.2
+
+# --- Web scraping / parsing ---
+beautifulsoup4==4.12.3
+lxml==5.3.0
+
+# --- Resume parsing (optional — install as needed) ---
+# PyPDF2==3.0.1
+# pdfplumber==0.11.4
+# python-docx==1.1.2
+
+# --- PDF generation (optional — install for PDF resumes) ---
+# reportlab==4.2.5
+
+# --- Browser automation (optional) ---
+# playwright==1.49.0
+# selenium==4.27.1
+
+# --- AI / ML (optional — heavy installs) ---
+# sentence-transformers==3.3.1
+# faiss-cpu==1.9.0
+
+# --- Testing (dev only — install with: pip install -r requirements-dev.txt) ---
+# pytest==8.3.4
+# pytest-asyncio==0.24.0
+# pytest-mock==3.14.0
