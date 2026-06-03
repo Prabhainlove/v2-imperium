@@ -15,7 +15,7 @@ import {
 } from "@/lib/imperium/format";
 import { REAL_SOURCES } from "@/lib/imperium/config";
 
-export const Route = createFileRoute("/jobs")({
+export const Route = createFileRoute("/_authenticated/jobs")({
   head: () => ({
     meta: [
       { title: "Discovered Jobs — Imperium" },

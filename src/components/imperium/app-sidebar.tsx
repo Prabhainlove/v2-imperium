@@ -1,14 +1,16 @@
-import { Link, useRouterState } from "@tanstack/react-router";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   Activity,
   Briefcase,
   FileText,
   LayoutDashboard,
+  LogOut,
   Search,
   Send,
   Settings as SettingsIcon,
   Sparkles,
 } from "lucide-react";
+import { useEffect, useState } from "react";
 import {
   Sidebar,
   SidebarContent,
@@ -21,9 +23,11 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 const primaryNav = [
-  { title: "Dashboard", url: "/", icon: LayoutDashboard, exact: true },
+  { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard, exact: true },
   { title: "Job Search", url: "/search", icon: Search },
   { title: "Jobs", url: "/jobs", icon: Briefcase },
   { title: "Applications", url: "/applications", icon: Send },
@@ -31,15 +35,23 @@ const primaryNav = [
   { title: "Activity", url: "/activity", icon: Activity },
 ];
 
-const secondaryNav = [{ title: "Settings", url: "/settings", icon: SettingsIcon }];
-
 export function AppSidebar() {
-  const pathname = useRouterState({
-    select: (router) => router.location.pathname,
-  });
+  const pathname = useRouterState({ select: (r) => r.location.pathname });
+  const navigate = useNavigate();
+  const [email, setEmail] = useState<string>("");
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setEmail(data.user?.email ?? ""));
+  }, []);
 
   const isActive = (url: string, exact?: boolean) =>
     exact ? pathname === url : pathname === url || pathname.startsWith(`${url}/`);
+
+  const signOut = async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) return toast.error(error.message);
+    navigate({ to: "/auth", replace: true });
+  };
 
   return (
     <Sidebar collapsible="icon">
@@ -64,11 +76,7 @@ export function AppSidebar() {
             <SidebarMenu>
               {primaryNav.map((item) => (
                 <SidebarMenuItem key={item.url}>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={isActive(item.url, item.exact)}
-                    tooltip={item.title}
-                  >
+                  <SidebarMenuButton asChild isActive={isActive(item.url, item.exact)} tooltip={item.title}>
                     <Link to={item.url} className="flex items-center gap-2">
                       <item.icon className="h-4 w-4" />
                       <span>{item.title}</span>
@@ -83,20 +91,20 @@ export function AppSidebar() {
 
       <SidebarFooter>
         <SidebarMenu>
-          {secondaryNav.map((item) => (
-            <SidebarMenuItem key={item.url}>
-              <SidebarMenuButton
-                asChild
-                isActive={isActive(item.url)}
-                tooltip={item.title}
-              >
-                <Link to={item.url} className="flex items-center gap-2">
-                  <item.icon className="h-4 w-4" />
-                  <span>{item.title}</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          ))}
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild isActive={isActive("/settings")} tooltip="Settings">
+              <Link to="/settings" className="flex items-center gap-2">
+                <SettingsIcon className="h-4 w-4" />
+                <span>Settings</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton onClick={signOut} tooltip={email || "Sign out"}>
+              <LogOut className="h-4 w-4" />
+              <span className="truncate">{email ? `Sign out (${email})` : "Sign out"}</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>
     </Sidebar>

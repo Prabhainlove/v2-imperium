@@ -31,7 +31,7 @@ import {
 import type { CandidateProfile } from "@/lib/imperium/types";
 import { scoreToPercent } from "@/lib/imperium/format";
 
-export const Route = createFileRoute("/resume")({
+export const Route = createFileRoute("/_authenticated/resume")({
   head: () => ({
     meta: [
       { title: "Resume Studio — Imperium" },

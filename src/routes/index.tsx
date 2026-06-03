@@ -1,277 +1,179 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
-import {
-  Activity as ActivityIcon,
-  AlertCircle,
-  Briefcase,
-  CheckCircle2,
-  ChevronRight,
-  Search as SearchIcon,
-  Send,
-  Sparkles,
-  Trophy,
-} from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useEffect, useState } from "react";
+import { ArrowRight, Sparkles, Search, FileText, Send, Activity, ShieldCheck, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { PageHeader } from "@/components/imperium/page-header";
-import { StatCard } from "@/components/imperium/stat-card";
-import { ActivityFeed } from "@/components/imperium/activity-feed";
-import { StatusBadge } from "@/components/imperium/status-badge";
-import { MatchScore } from "@/components/imperium/match-score";
-import { ExecutionTimeline } from "@/components/imperium/execution-timeline";
-import { getDashboard, getApplications, getJobs, getActivity } from "@/lib/imperium/client";
-import { formatRelativeTime } from "@/lib/imperium/format";
-import { getApiBaseUrl } from "@/lib/imperium/config";
+import { Card } from "@/components/ui/card";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Dashboard — Imperium" },
-      {
-        name: "description",
-        content:
-          "Imperium command center: jobs found, applications, interviews, offers and live agent activity.",
-      },
-      { property: "og:title", content: "Dashboard — Imperium" },
-      { property: "og:description", content: "Live AI Job Agent dashboard." },
+      { title: "Imperium — AI Job Agent Platform" },
+      { name: "description", content: "Imperium is an AI-powered job agent that searches roles across the web, tailors your resume to each posting, prepares applications, and tracks every opportunity — with every step visible." },
+      { property: "og:title", content: "Imperium — AI Job Agent Platform" },
+      { property: "og:description", content: "Search jobs, optimize resumes with ATS scoring, prepare applications, and track every opportunity. Transparent AI job agent." },
     ],
   }),
-  component: DashboardPage,
+  component: LandingPage,
 });
 
-function DashboardPage() {
-  const dashboard = useQuery({
-    queryKey: ["dashboard"],
-    queryFn: ({ signal }) => getDashboard(signal),
-    refetchInterval: 15_000,
-    retry: false,
-  });
+function LandingPage() {
+  const [signedIn, setSignedIn] = useState(false);
 
-  const apps = useQuery({
-    queryKey: ["applications", { limit: 5 }],
-    queryFn: ({ signal }) => getApplications({ limit: 5 }, signal),
-    retry: false,
-  });
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => setSignedIn(!!data.session));
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => setSignedIn(!!s));
+    return () => sub.subscription.unsubscribe();
+  }, []);
 
-  const jobs = useQuery({
-    queryKey: ["jobs", { limit: 5 }],
-    queryFn: ({ signal }) => getJobs({ limit: 5 }, signal),
-    retry: false,
-  });
-
-  const recentActivity = useQuery({
-    queryKey: ["activity", { dashboard: true }],
-    queryFn: ({ signal }) => getActivity({ limit: 60 }, signal),
-    refetchInterval: 4_000,
-    retry: false,
-  });
-
-  const metrics = (dashboard.data?.metrics ?? {}) as Record<string, number>;
-  const recentApps = dashboard.data?.recent_applications ?? apps.data ?? [];
-  const activity = dashboard.data?.activity ?? [];
-
-  const stats = [
-    {
-      label: "Jobs Discovered",
-      value:
-        metrics.jobs_discovered ??
-        metrics.total_jobs ??
-        jobs.data?.length ??
-        0,
-      icon: Briefcase,
-      tone: "primary" as const,
-    },
-    {
-      label: "Applications",
-      value: metrics.total_applications ?? recentApps.length ?? 0,
-      icon: Send,
-      tone: "info" as const,
-    },
-    {
-      label: "Interviews",
-      value:
-        metrics.interviews ??
-        recentApps.filter((a) => a.status === "Interview Scheduled").length,
-      icon: ActivityIcon,
-      tone: "warning" as const,
-    },
-    {
-      label: "Offers",
-      value:
-        metrics.offers ??
-        recentApps.filter((a) => a.status === "Offer Received").length,
-      icon: Trophy,
-      tone: "success" as const,
-    },
-  ];
-
-  const showOffline =
-    dashboard.isError && jobs.isError && apps.isError;
+  const cta = signedIn ? "/dashboard" : "/auth";
+  const ctaLabel = signedIn ? "Open Console" : "Get Started — Free";
 
   return (
-    <div className="mx-auto w-full max-w-7xl space-y-6 p-4 md:p-6">
-      <PageHeader
-        title="Mission Control"
-        description="Live view of the Imperium AI Job Agent. Every action is logged and visible."
-        actions={
-          <>
-            <Button asChild variant="outline">
-              <Link to="/activity">
-                <ActivityIcon className="mr-2 h-4 w-4" /> Activity
-              </Link>
-            </Button>
-            <Button asChild className="bg-gradient-primary text-primary-foreground shadow-glow hover:opacity-95">
-              <Link to="/search">
-                <SearchIcon className="mr-2 h-4 w-4" /> Run Job Search
-              </Link>
-            </Button>
-          </>
-        }
-      />
-
-      {showOffline && (
-        <Card className="border-destructive/30 bg-destructive/5">
-          <CardContent className="flex items-start gap-3 p-4 text-sm">
-            <AlertCircle className="mt-0.5 h-5 w-5 text-destructive" />
-            <div className="flex-1">
-              <div className="font-medium text-destructive">
-                Imperium backend is offline
-              </div>
-              <div className="mt-0.5 text-muted-foreground">
-                The frontend is configured to talk to{" "}
-                <code className="rounded bg-muted px-1.5 py-0.5 text-xs">
-                  {getApiBaseUrl()}
-                </code>
-                . Start the FastAPI server (
-                <code className="rounded bg-muted px-1.5 py-0.5 text-xs">
-                  uvicorn main:app --port 8000
-                </code>
-                ) or change the URL in Settings.
-              </div>
-              <div className="mt-2">
-                <Button asChild size="sm" variant="outline">
-                  <Link to="/settings">Open Settings</Link>
-                </Button>
-              </div>
+    <div className="min-h-screen bg-background">
+      {/* Nav */}
+      <header className="sticky top-0 z-40 border-b border-border/60 bg-background/80 backdrop-blur">
+        <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4">
+          <Link to="/" className="flex items-center gap-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-primary shadow-glow">
+              <Sparkles className="h-4 w-4 text-primary-foreground" />
             </div>
-          </CardContent>
-        </Card>
-      )}
+            <span className="text-sm font-semibold tracking-tight">IMPERIUM</span>
+          </Link>
+          <nav className="hidden items-center gap-6 text-sm text-muted-foreground md:flex">
+            <a href="#features" className="hover:text-foreground">Features</a>
+            <a href="#how" className="hover:text-foreground">How it works</a>
+            <a href="#faq" className="hover:text-foreground">FAQ</a>
+          </nav>
+          <Button asChild size="sm">
+            <Link to={cta}>{ctaLabel}</Link>
+          </Button>
+        </div>
+      </header>
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        {stats.map((s) => (
-          <StatCard key={s.label} {...s} />
-        ))}
-      </div>
-
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <ActivityIcon className="h-4 w-4 text-primary" /> Execution Timeline
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ExecutionTimeline entries={recentActivity.data ?? []} />
-        </CardContent>
-      </Card>
-
-
-
-      <div className="grid gap-4 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Send className="h-4 w-4 text-primary" /> Recent Applications
-            </CardTitle>
-            <Button asChild variant="ghost" size="sm">
-              <Link to="/applications">
-                View all <ChevronRight className="ml-1 h-3.5 w-3.5" />
+      {/* Hero */}
+      <section className="relative overflow-hidden border-b border-border/60">
+        <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top,theme(colors.primary/15),transparent_60%)]" />
+        <div className="mx-auto max-w-6xl px-4 py-24 text-center">
+          <div className="mx-auto mb-5 inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/60 px-3 py-1 text-xs text-muted-foreground">
+            <span className="h-1.5 w-1.5 rounded-full bg-success" /> Production-ready AI Job Agent
+          </div>
+          <h1 className="mx-auto max-w-3xl text-balance text-5xl font-semibold tracking-tight md:text-6xl">
+            Your <span className="text-gradient">AI Job Agent</span> — transparent by design
+          </h1>
+          <p className="mx-auto mt-5 max-w-2xl text-balance text-base text-muted-foreground md:text-lg">
+            Search jobs across the web, tailor your resume to every posting with ATS scoring, prepare applications, and track every opportunity. Every step visible. No silent submissions.
+          </p>
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+            <Button asChild size="lg">
+              <Link to={cta}>
+                {ctaLabel}
+                <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
             </Button>
-          </CardHeader>
-          <CardContent>
-            {recentApps.length === 0 ? (
-              <div className="rounded-md border border-dashed border-border/60 p-8 text-center text-sm text-muted-foreground">
-                No applications yet. Start a search to generate application packages.
-              </div>
-            ) : (
-              <ul className="divide-y divide-border/60">
-                {recentApps.slice(0, 6).map((a) => (
-                  <li
-                    key={a.application_id}
-                    className="flex items-center gap-3 py-3"
-                  >
-                    <MatchScore score={a.match_score} size="sm" />
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate text-sm font-medium">
-                        {a.job_title}
-                      </div>
-                      <div className="truncate text-xs text-muted-foreground">
-                        {a.company} · {formatRelativeTime(a.date_applied)}
-                      </div>
-                    </div>
-                    <StatusBadge status={a.status} />
-                  </li>
-                ))}
-              </ul>
-            )}
-          </CardContent>
-        </Card>
+            <Button asChild size="lg" variant="outline">
+              <a href="#how">How it works</a>
+            </Button>
+          </div>
+        </div>
+      </section>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <ActivityIcon className="h-4 w-4 text-primary" /> Live Activity
-            </CardTitle>
-            <Button asChild variant="ghost" size="sm">
-              <Link to="/activity">
-                Open <ChevronRight className="ml-1 h-3.5 w-3.5" />
+      {/* Features */}
+      <section id="features" className="border-b border-border/60 py-20">
+        <div className="mx-auto max-w-6xl px-4">
+          <div className="mb-12 text-center">
+            <h2 className="text-3xl font-semibold tracking-tight md:text-4xl">Everything you need to land the role</h2>
+            <p className="mx-auto mt-3 max-w-xl text-muted-foreground">Built for serious job seekers. Visible at every step.</p>
+          </div>
+          <div className="grid gap-4 md:grid-cols-3">
+            {[
+              { icon: Search, title: "Multi-source job search", body: "RemoteOK, Remotive, Arbeitnow today — Adzuna, Jooble, LinkedIn integrations coming next." },
+              { icon: FileText, title: "RenderCV-grade resume studio", body: "Live markdown editor, multiple ATS-friendly templates, keyword scoring, PDF export." },
+              { icon: Send, title: "Application review center", body: "Nothing is sent without your approval. Inspect, edit, approve or skip every package." },
+              { icon: Activity, title: "Full workflow visibility", body: "Watch every step in real time: discover → analyze → optimize → prepare → review." },
+              { icon: ShieldCheck, title: "Your data, your account", body: "Row-level security on every record. Jobs, applications and activity are scoped to you." },
+              { icon: Zap, title: "Fast by default", body: "Cloud-native edge runtime. AI gateway included — no API keys to configure." },
+            ].map((f) => (
+              <Card key={f.title} className="p-6">
+                <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-md bg-primary/10">
+                  <f.icon className="h-5 w-5 text-primary" />
+                </div>
+                <div className="text-base font-semibold">{f.title}</div>
+                <p className="mt-1.5 text-sm text-muted-foreground">{f.body}</p>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* How it works */}
+      <section id="how" className="border-b border-border/60 py-20">
+        <div className="mx-auto max-w-4xl px-4">
+          <div className="mb-12 text-center">
+            <h2 className="text-3xl font-semibold tracking-tight md:text-4xl">How Imperium works</h2>
+          </div>
+          <ol className="space-y-4">
+            {[
+              ["1", "Set up your profile", "Tell us about your role, skills, and target locations."],
+              ["2", "Launch a search", "Imperium queries every connected job source in parallel."],
+              ["3", "Watch the pipeline", "Every step is logged: dedupe → score → analyze → resume → cover letter."],
+              ["4", "Review each application", "Inspect the tailored resume, cover letter, and form fields."],
+              ["5", "Approve or skip", "Approved applications are marked Applied. Nothing happens silently."],
+              ["6", "Track everything", "Dashboard shows all statuses from Saved to Offer."],
+            ].map(([n, title, body]) => (
+              <li key={n} className="flex gap-4 rounded-lg border border-border/60 bg-card p-5">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">{n}</div>
+                <div>
+                  <div className="font-medium">{title}</div>
+                  <div className="mt-0.5 text-sm text-muted-foreground">{body}</div>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </section>
+
+      {/* FAQ */}
+      <section id="faq" className="border-b border-border/60 py-20">
+        <div className="mx-auto max-w-3xl px-4">
+          <h2 className="mb-10 text-center text-3xl font-semibold tracking-tight md:text-4xl">Frequently asked</h2>
+          <div className="space-y-4">
+            {[
+              ["Does Imperium auto-submit applications?", "No. Imperium prepares the application package and waits for your explicit approval before marking it as applied."],
+              ["Which job sources are supported?", "RemoteOK, Remotive, and Arbeitnow are live. Adzuna, Jooble, and LinkedIn are coming in the next release."],
+              ["Is my data private?", "Yes. Every record is row-level scoped to your account. Other users cannot see your jobs, resumes, or applications."],
+              ["Do I need any API keys?", "No. The Lovable AI gateway is included. You only need to bring your own keys for premium job sources if you opt in."],
+            ].map(([q, a]) => (
+              <details key={q} className="group rounded-lg border border-border/60 bg-card p-5">
+                <summary className="cursor-pointer list-none font-medium">{q}</summary>
+                <p className="mt-2 text-sm text-muted-foreground">{a}</p>
+              </details>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* CTA */}
+      <section className="py-24">
+        <div className="mx-auto max-w-3xl px-4 text-center">
+          <h2 className="text-3xl font-semibold tracking-tight md:text-4xl">Ready to launch your agent?</h2>
+          <p className="mx-auto mt-3 max-w-xl text-muted-foreground">Set up takes under a minute. Cancel anytime.</p>
+          <div className="mt-6">
+            <Button asChild size="lg">
+              <Link to={cta}>
+                {ctaLabel} <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
             </Button>
-          </CardHeader>
-          <CardContent>
-            <ActivityFeed
-              entries={activity.slice(0, 8)}
-              dense
-              emptyHint="Run a search to populate the activity timeline."
-            />
-          </CardContent>
-        </Card>
-      </div>
+          </div>
+        </div>
+      </section>
 
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Sparkles className="h-4 w-4 text-accent" /> How Imperium Works
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-3 md:grid-cols-5">
-          {[
-            { title: "Discovery", desc: "Scans 6 real job sources in parallel." },
-            { title: "Analysis", desc: "Extracts requirements, scores match." },
-            { title: "Resume", desc: "ATS-optimized resume per role." },
-            { title: "Cover Letter", desc: "Personalized to company & role." },
-            { title: "Tracking", desc: "Full lifecycle, recruiter events, alerts." },
-          ].map((s, i) => (
-            <div
-              key={s.title}
-              className="rounded-lg border border-border/60 bg-card/40 p-3"
-            >
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary/15 text-[10px] font-semibold text-primary">
-                  {i + 1}
-                </span>
-                Stage
-              </div>
-              <div className="mt-1 text-sm font-medium">{s.title}</div>
-              <div className="mt-0.5 text-xs text-muted-foreground">
-                {s.desc}
-              </div>
-              <CheckCircle2 className="mt-2 h-3.5 w-3.5 text-success/70" />
-            </div>
-          ))}
-        </CardContent>
-      </Card>
+      <footer className="border-t border-border/60 py-8">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 text-xs text-muted-foreground">
+          <span>© {new Date().getFullYear()} Imperium</span>
+          <span>Built on Lovable Cloud</span>
+        </div>
+      </footer>
     </div>
   );
 }

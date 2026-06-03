@@ -1,4 +1,4 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import {
   Outlet,
   Link,
@@ -9,11 +9,8 @@ import {
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
 import { Toaster } from "@/components/ui/sonner";
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/imperium/app-sidebar";
-import { HealthBadge } from "@/components/imperium/health-badge";
 import { ThemeProvider } from "@/components/imperium/theme-provider";
-import { ThemeToggle } from "@/components/imperium/theme-toggle";
+import { supabase } from "@/integrations/supabase/client";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
@@ -32,7 +29,7 @@ function NotFoundComponent() {
             to="/"
             className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
           >
-            Go to Dashboard
+            Go home
           </Link>
         </div>
       </div>
@@ -68,7 +65,7 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
             href="/"
             className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
           >
-            Dashboard
+            Home
           </a>
         </div>
       </div>
@@ -86,12 +83,6 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         name: "description",
         content:
           "Imperium is a transparent AI-powered job agent platform. Watch every step: discovery, matching, resume optimization, application preparation and tracking.",
-      },
-      { property: "og:title", content: "Imperium — AI Job Agent" },
-      {
-        property: "og:description",
-        content:
-          "Transparent AI Job Agent: live job discovery, ATS resume optimization, application monitor and tracker.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -121,36 +112,28 @@ function RootShell({ children }: { children: ReactNode }) {
   );
 }
 
+function AuthSync() {
+  const router = useRouter();
+  const qc = useQueryClient();
+  useEffect(() => {
+    const { data: sub } = supabase.auth.onAuthStateChange(() => {
+      router.invalidate();
+      qc.invalidateQueries();
+    });
+    return () => sub.subscription.unsubscribe();
+  }, [router, qc]);
+  return null;
+}
+
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
-        <SidebarProvider>
-          <div className="flex min-h-screen w-full bg-background">
-            <AppSidebar />
-            <div className="flex min-w-0 flex-1 flex-col">
-              <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-border/60 bg-background/80 px-4 backdrop-blur">
-                <SidebarTrigger />
-                <div className="hidden md:flex flex-col leading-none">
-                  <span className="text-xs uppercase tracking-widest text-muted-foreground">
-                    Imperium
-                  </span>
-                  <span className="text-sm font-medium">AI Job Agent Console</span>
-                </div>
-                <div className="ml-auto flex items-center gap-2">
-                  <HealthBadge />
-                  <ThemeToggle />
-                </div>
-              </header>
-              <main className="flex-1">
-                <Outlet />
-              </main>
-            </div>
-          </div>
-          <Toaster richColors closeButton />
-        </SidebarProvider>
+        <AuthSync />
+        <Outlet />
+        <Toaster richColors closeButton />
       </ThemeProvider>
     </QueryClientProvider>
   );

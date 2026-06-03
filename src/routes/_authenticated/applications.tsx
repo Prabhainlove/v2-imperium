@@ -20,7 +20,7 @@ import { getApplications } from "@/lib/imperium/client";
 import { artifactUrl } from "@/lib/imperium/client";
 import { APPLICATION_STATUS_ORDER, formatRelativeTime } from "@/lib/imperium/format";
 
-export const Route = createFileRoute("/applications")({
+export const Route = createFileRoute("/_authenticated/applications")({
   head: () => ({
     meta: [
       { title: "Applications — Imperium" },

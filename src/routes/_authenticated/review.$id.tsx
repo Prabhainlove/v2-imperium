@@ -30,7 +30,7 @@ import {
 } from "@/lib/imperium/client";
 import { scoreToPercent } from "@/lib/imperium/format";
 
-export const Route = createFileRoute("/review/$id")({
+export const Route = createFileRoute("/_authenticated/review/$id")({
   head: () => ({
     meta: [
       { title: "Application Review — Imperium" },

@@ -41,7 +41,7 @@ import { REAL_SOURCES, type SourceId } from "@/lib/imperium/config";
 import type { SearchResponse } from "@/lib/imperium/types";
 import { useWorkflowAutopilot } from "@/hooks/use-workflow-autopilot";
 
-export const Route = createFileRoute("/search")({
+export const Route = createFileRoute("/_authenticated/search")({
   head: () => ({
     meta: [
       { title: "Job Agent Control Center — Imperium" },

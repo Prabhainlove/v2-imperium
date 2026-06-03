@@ -25,7 +25,7 @@ import {
 } from "@/lib/imperium/config";
 import { getAgents, getHealth } from "@/lib/imperium/client";
 
-export const Route = createFileRoute("/settings")({
+export const Route = createFileRoute("/_authenticated/settings")({
   head: () => ({
     meta: [
       { title: "Settings — Imperium" },

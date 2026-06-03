@@ -10,7 +10,7 @@ import { PageHeader } from "@/components/imperium/page-header";
 import { ActivityFeed } from "@/components/imperium/activity-feed";
 import { getActivity } from "@/lib/imperium/client";
 
-export const Route = createFileRoute("/activity")({
+export const Route = createFileRoute("/_authenticated/activity")({
   head: () => ({
     meta: [
       { title: "Activity Center — Imperium" },
