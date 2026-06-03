@@ -52,6 +52,7 @@ type Template = "classic" | "modern" | "compact";
 
 function ResumeStudioPage() {
   const qc = useQueryClient();
+  const { user } = Route.useRouteContext();
   const profile = useQuery({
     queryKey: ["profile"],
     queryFn: ({ signal }) => getProfile(signal),
