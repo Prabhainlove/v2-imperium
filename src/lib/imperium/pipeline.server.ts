@@ -300,42 +300,108 @@ export async function runPipeline(input: PipelineInput) {
     }
     const listing_id = listingRow.id as string;
 
-    await log(user_id, task_id, "analyze_job", "running", `${s.job.company} — ${s.job.title}`);
+    await log(user_id, task_id, "brain_analyze_job", "running", `Brain analysing ${s.job.company} — ${s.job.title}…`);
+    const brainScore = await analyzeJob({
+      title: s.job.title,
+      company: s.job.company,
+      description: s.job.description,
+      tech_stack: s.job.tech_stack,
+      location: s.job.location,
+      remote: s.job.remote,
+      candidate_skills: input.skills,
+      candidate_role: input.role,
+      candidate_experience: input.experience,
+    });
     await log(
       user_id,
       task_id,
-      "analyze_job",
+      "brain_analyze_job",
       "success",
-      `match=${(s.overall * 100).toFixed(0)}% · matched=[${s.matched.join(", ") || "—"}] · missing=[${s.missing.slice(0, 4).join(", ") || "—"}]`,
+      `Brain match=${(brainScore.match_score * 100).toFixed(0)}% · conf=${(brainScore.confidence * 100).toFixed(0)}% · rec=${brainScore.recommendation}`,
     );
 
-    // Resume
+    // Resume — Brain-optimized
     let resume_md = "";
-    await log(user_id, task_id, "generate_resume", "running", `${s.job.company} — ${s.job.title}`);
+    let resumeAts = 0;
+    await log(user_id, task_id, "brain_optimize_resume", "running", `Optimizing resume for ${s.job.company}…`);
     try {
-      resume_md = await lovableAI(
-        `Tailor a 1-page resume in markdown for this job. Format: # Name on first line, contact on second line, then ## Sections.\n\nCandidate: ${input.candidate.name}\nEmail: ${input.candidate.email}\nPhone: ${input.candidate.phone}\nExperience: ${input.experience}\nSkills: ${input.skills.join(", ")}\nSummary: ${input.candidate.summary ?? ""}\n\nJob title: ${s.job.title}\nCompany: ${s.job.company}\nDescription (truncated): ${s.job.description.slice(0, 1200)}\nTech stack: ${s.job.tech_stack.join(", ")}\nMatched skills: ${s.matched.join(", ")}\n\nOutput ONLY the resume markdown. Sections: Summary, Core Skills, Experience, Education. Keep it ATS-friendly: clean headers, no tables, no emojis, plain '-' bullets.`,
-        "You are an expert technical resume writer. Output concise, truthful, ATS-optimized resumes in markdown.",
+      const opt = await optimizeResume({
+        candidate_name: input.candidate.name,
+        candidate_email: input.candidate.email,
+        candidate_phone: input.candidate.phone,
+        candidate_summary: input.candidate.summary,
+        candidate_skills: input.skills,
+        candidate_experience: input.experience,
+        job_title: s.job.title,
+        company: s.job.company,
+        job_description: s.job.description,
+        job_tech_stack: s.job.tech_stack,
+        matched_skills: brainScore.matched_skills.length ? brainScore.matched_skills : s.matched,
+        missing_skills: brainScore.missing_skills.length ? brainScore.missing_skills : s.missing,
+      });
+      resume_md = opt.optimized_md;
+      resumeAts = opt.ats_score_after;
+      await log(
+        user_id,
+        task_id,
+        "brain_optimize_resume",
+        "success",
+        `ATS ${opt.ats_score_before}→${opt.ats_score_after} · +${opt.added_keywords.length} keywords`,
       );
-      await log(user_id, task_id, "generate_resume", "success", `${resume_md.length} chars`);
     } catch (err) {
       resume_md = fallbackResume(input, s.job, s.matched);
-      await log(user_id, task_id, "generate_resume", "failed", `${err instanceof Error ? err.message : err} — fallback used`);
+      await log(user_id, task_id, "brain_optimize_resume", "failed", `${err instanceof Error ? err.message : err} — fallback used`);
     }
 
-    // Cover letter
+    // Cover letter — Brain-generated
     let cover_md = "";
-    await log(user_id, task_id, "generate_cover_letter", "running", `${s.job.company}`);
+    await log(user_id, task_id, "brain_cover_letter", "running", `Drafting cover letter for ${s.job.company}…`);
     try {
-      cover_md = await lovableAI(
-        `Write a short (under 200 words) professional cover letter in markdown for this job.\n\nCandidate: ${input.candidate.name}\nExperience: ${input.experience}\nSkills: ${input.skills.join(", ")}\n\nJob title: ${s.job.title}\nCompany: ${s.job.company}\nDescription (truncated): ${s.job.description.slice(0, 800)}\n\nOutput ONLY the cover letter markdown.`,
-        "You are a professional cover-letter writer. Be specific, concise, no clichés.",
+      const cover = await generateCoverLetter({
+        candidate_name: input.candidate.name,
+        candidate_summary: input.candidate.summary,
+        candidate_skills: input.skills,
+        candidate_experience: input.experience,
+        job_title: s.job.title,
+        company: s.job.company,
+        job_description: s.job.description,
+      });
+      cover_md = cover.cover_letter_md;
+      await log(
+        user_id,
+        task_id,
+        "brain_cover_letter",
+        "success",
+        `Conf ${(cover.confidence * 100).toFixed(0)}% · aligned to ${s.job.company}`,
       );
-      await log(user_id, task_id, "generate_cover_letter", "success", `${cover_md.length} chars`);
     } catch (err) {
       cover_md = fallbackCover(input, s.job);
-      await log(user_id, task_id, "generate_cover_letter", "failed", `${err instanceof Error ? err.message : err} — fallback used`);
+      await log(user_id, task_id, "brain_cover_letter", "failed", `${err instanceof Error ? err.message : err} — fallback used`);
     }
+
+    // Brain readiness check
+    await log(user_id, task_id, "brain_readiness", "running", `Evaluating application readiness…`);
+    let readiness;
+    try {
+      readiness = await evaluateApplicationReadiness({
+        job_score: brainScore,
+        resume_ats_score: resumeAts || 65,
+        resume_excerpt: resume_md.slice(0, 800),
+        cover_letter_excerpt: cover_md.slice(0, 400),
+        job_title: s.job.title,
+        company: s.job.company,
+      });
+      await log(
+        user_id,
+        task_id,
+        "brain_readiness",
+        "success",
+        `Readiness ${readiness.readiness_score}/100 · ${readiness.final_recommendation}`,
+      );
+    } catch (err) {
+      await log(user_id, task_id, "brain_readiness", "failed", err instanceof Error ? err.message : String(err));
+    }
+
 
     // Application — staged as Pending Review (NEVER auto-submit)
     await log(user_id, task_id, "prepare_application", "running", `${s.job.company} — ${s.job.title}`);
