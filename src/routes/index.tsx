@@ -164,6 +164,19 @@ function DashboardPage() {
         ))}
       </div>
 
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <ActivityIcon className="h-4 w-4 text-primary" /> Execution Timeline
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ExecutionTimeline entries={recentActivity.data ?? []} />
+        </CardContent>
+      </Card>
+
+
+
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2">
           <CardHeader className="flex flex-row items-center justify-between">
