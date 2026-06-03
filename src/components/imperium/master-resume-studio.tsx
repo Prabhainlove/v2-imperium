@@ -129,6 +129,7 @@ export function MasterResumeStudio({ userId: propUserId }: { userId?: string } =
   );
 
   const save = async () => {
+    if (!userId) return;
     setSaving(true);
     const { error } = await supabase
       .from("resume_documents")
@@ -143,6 +144,7 @@ export function MasterResumeStudio({ userId: propUserId }: { userId?: string } =
   };
 
   const snapshot = async () => {
+    if (!userId) return;
     const label = window.prompt("Version label (optional)", `v${versions.data?.length ?? 0 + 1}`) ?? "";
     setSnapshotting(true);
     const { error } = await supabase
