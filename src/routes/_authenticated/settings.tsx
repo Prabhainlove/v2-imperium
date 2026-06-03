@@ -9,6 +9,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/imperium/page-header";
 import { ProfileCompletenessPanel } from "@/components/imperium/profile-completeness-panel";
+import { ProfileImportCard } from "@/components/imperium/profile-import";
+
 import {
   AchievementsSection, CareerSection, CertsSection, EducationSection, ExperienceSection,
   LanguagesSection, LinksSection, PersonalSection, ProjectsSection, SkillsSection,
