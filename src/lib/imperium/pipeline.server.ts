@@ -11,6 +11,7 @@ import { SOURCES, type RawJob } from "./sources.server";
 
 export interface PipelineInput {
   task_id: string;
+  user_id: string;
   role: string;
   location: string;
   experience: string;
@@ -26,12 +27,14 @@ export interface PipelineInput {
 }
 
 async function log(
+  user_id: string,
   task_id: string,
   action: string,
   status: "ok" | "running" | "success" | "failed" | "completed" | "skipped" = "ok",
   detail = "",
 ) {
   await supabaseAdmin.from("activity_log").insert({
+    user_id,
     task_id,
     agent: "job_agent",
     action,
