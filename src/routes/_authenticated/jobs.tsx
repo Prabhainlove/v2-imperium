@@ -40,6 +40,8 @@ function JobsPage() {
     refetchOnWindowFocus: false,
   });
 
+  const [expanded, setExpanded] = useState<string | null>(null);
+
   const [q, setQ] = useState("");
   const [source, setSource] = useState<string | null>(null);
 
