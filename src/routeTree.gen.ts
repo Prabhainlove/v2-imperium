@@ -9,54 +9,50 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as SettingsRouteImport } from './routes/settings'
-import { Route as SearchRouteImport } from './routes/search'
-import { Route as ResumeRouteImport } from './routes/resume'
-import { Route as JobsRouteImport } from './routes/jobs'
-import { Route as ApplicationsRouteImport } from './routes/applications'
-import { Route as ActivityRouteImport } from './routes/activity'
-import { Route as IndexRouteImport } from './routes/index'
-import { Route as ReviewIdRouteImport } from './routes/review.$id'
+import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
+import { Route as AuthenticatedSearchRouteImport } from './routes/_authenticated/search'
+import { Route as AuthenticatedResumeRouteImport } from './routes/_authenticated/resume'
+import { Route as AuthenticatedJobsRouteImport } from './routes/_authenticated/jobs'
+import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedApplicationsRouteImport } from './routes/_authenticated/applications'
+import { Route as AuthenticatedActivityRouteImport } from './routes/_authenticated/activity'
 import { Route as ApiPublicImperiumTestRouteImport } from './routes/api/public/imperium-test'
+import { Route as AuthenticatedReviewIdRouteImport } from './routes/_authenticated/review.$id'
 
-const SettingsRoute = SettingsRouteImport.update({
-  id: '/settings',
+const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
+  id: '/_authenticated/settings',
   path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
-const SearchRoute = SearchRouteImport.update({
-  id: '/search',
+const AuthenticatedSearchRoute = AuthenticatedSearchRouteImport.update({
+  id: '/_authenticated/search',
   path: '/search',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ResumeRoute = ResumeRouteImport.update({
-  id: '/resume',
+const AuthenticatedResumeRoute = AuthenticatedResumeRouteImport.update({
+  id: '/_authenticated/resume',
   path: '/resume',
   getParentRoute: () => rootRouteImport,
 } as any)
-const JobsRoute = JobsRouteImport.update({
-  id: '/jobs',
+const AuthenticatedJobsRoute = AuthenticatedJobsRouteImport.update({
+  id: '/_authenticated/jobs',
   path: '/jobs',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApplicationsRoute = ApplicationsRouteImport.update({
-  id: '/applications',
-  path: '/applications',
+const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
+  id: '/_authenticated/dashboard',
+  path: '/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ActivityRoute = ActivityRouteImport.update({
-  id: '/activity',
+const AuthenticatedApplicationsRoute =
+  AuthenticatedApplicationsRouteImport.update({
+    id: '/_authenticated/applications',
+    path: '/applications',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const AuthenticatedActivityRoute = AuthenticatedActivityRouteImport.update({
+  id: '/_authenticated/activity',
   path: '/activity',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ReviewIdRoute = ReviewIdRouteImport.update({
-  id: '/review/$id',
-  path: '/review/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicImperiumTestRoute = ApiPublicImperiumTestRouteImport.update({
@@ -64,47 +60,52 @@ const ApiPublicImperiumTestRoute = ApiPublicImperiumTestRouteImport.update({
   path: '/api/public/imperium-test',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedReviewIdRoute = AuthenticatedReviewIdRouteImport.update({
+  id: '/_authenticated/review/$id',
+  path: '/review/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
-  '/activity': typeof ActivityRoute
-  '/applications': typeof ApplicationsRoute
-  '/jobs': typeof JobsRoute
-  '/resume': typeof ResumeRoute
-  '/search': typeof SearchRoute
-  '/settings': typeof SettingsRoute
-  '/review/$id': typeof ReviewIdRoute
+  '/activity': typeof AuthenticatedActivityRoute
+  '/applications': typeof AuthenticatedApplicationsRoute
+  '/dashboard': typeof AuthenticatedDashboardRoute
+  '/jobs': typeof AuthenticatedJobsRoute
+  '/resume': typeof AuthenticatedResumeRoute
+  '/search': typeof AuthenticatedSearchRoute
+  '/settings': typeof AuthenticatedSettingsRoute
+  '/review/$id': typeof AuthenticatedReviewIdRoute
   '/api/public/imperium-test': typeof ApiPublicImperiumTestRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
-  '/activity': typeof ActivityRoute
-  '/applications': typeof ApplicationsRoute
-  '/jobs': typeof JobsRoute
-  '/resume': typeof ResumeRoute
-  '/search': typeof SearchRoute
-  '/settings': typeof SettingsRoute
-  '/review/$id': typeof ReviewIdRoute
+  '/activity': typeof AuthenticatedActivityRoute
+  '/applications': typeof AuthenticatedApplicationsRoute
+  '/dashboard': typeof AuthenticatedDashboardRoute
+  '/jobs': typeof AuthenticatedJobsRoute
+  '/resume': typeof AuthenticatedResumeRoute
+  '/search': typeof AuthenticatedSearchRoute
+  '/settings': typeof AuthenticatedSettingsRoute
+  '/review/$id': typeof AuthenticatedReviewIdRoute
   '/api/public/imperium-test': typeof ApiPublicImperiumTestRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
-  '/activity': typeof ActivityRoute
-  '/applications': typeof ApplicationsRoute
-  '/jobs': typeof JobsRoute
-  '/resume': typeof ResumeRoute
-  '/search': typeof SearchRoute
-  '/settings': typeof SettingsRoute
-  '/review/$id': typeof ReviewIdRoute
+  '/_authenticated/activity': typeof AuthenticatedActivityRoute
+  '/_authenticated/applications': typeof AuthenticatedApplicationsRoute
+  '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/jobs': typeof AuthenticatedJobsRoute
+  '/_authenticated/resume': typeof AuthenticatedResumeRoute
+  '/_authenticated/search': typeof AuthenticatedSearchRoute
+  '/_authenticated/settings': typeof AuthenticatedSettingsRoute
+  '/_authenticated/review/$id': typeof AuthenticatedReviewIdRoute
   '/api/public/imperium-test': typeof ApiPublicImperiumTestRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    | '/'
     | '/activity'
     | '/applications'
+    | '/dashboard'
     | '/jobs'
     | '/resume'
     | '/search'
@@ -113,9 +114,9 @@ export interface FileRouteTypes {
     | '/api/public/imperium-test'
   fileRoutesByTo: FileRoutesByTo
   to:
-    | '/'
     | '/activity'
     | '/applications'
+    | '/dashboard'
     | '/jobs'
     | '/resume'
     | '/search'
@@ -124,85 +125,78 @@ export interface FileRouteTypes {
     | '/api/public/imperium-test'
   id:
     | '__root__'
-    | '/'
-    | '/activity'
-    | '/applications'
-    | '/jobs'
-    | '/resume'
-    | '/search'
-    | '/settings'
-    | '/review/$id'
+    | '/_authenticated/activity'
+    | '/_authenticated/applications'
+    | '/_authenticated/dashboard'
+    | '/_authenticated/jobs'
+    | '/_authenticated/resume'
+    | '/_authenticated/search'
+    | '/_authenticated/settings'
+    | '/_authenticated/review/$id'
     | '/api/public/imperium-test'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
-  ActivityRoute: typeof ActivityRoute
-  ApplicationsRoute: typeof ApplicationsRoute
-  JobsRoute: typeof JobsRoute
-  ResumeRoute: typeof ResumeRoute
-  SearchRoute: typeof SearchRoute
-  SettingsRoute: typeof SettingsRoute
-  ReviewIdRoute: typeof ReviewIdRoute
+  AuthenticatedActivityRoute: typeof AuthenticatedActivityRoute
+  AuthenticatedApplicationsRoute: typeof AuthenticatedApplicationsRoute
+  AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedJobsRoute: typeof AuthenticatedJobsRoute
+  AuthenticatedResumeRoute: typeof AuthenticatedResumeRoute
+  AuthenticatedSearchRoute: typeof AuthenticatedSearchRoute
+  AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
+  AuthenticatedReviewIdRoute: typeof AuthenticatedReviewIdRoute
   ApiPublicImperiumTestRoute: typeof ApiPublicImperiumTestRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/settings': {
-      id: '/settings'
+    '/_authenticated/settings': {
+      id: '/_authenticated/settings'
       path: '/settings'
       fullPath: '/settings'
-      preLoaderRoute: typeof SettingsRouteImport
+      preLoaderRoute: typeof AuthenticatedSettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/search': {
-      id: '/search'
+    '/_authenticated/search': {
+      id: '/_authenticated/search'
       path: '/search'
       fullPath: '/search'
-      preLoaderRoute: typeof SearchRouteImport
+      preLoaderRoute: typeof AuthenticatedSearchRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/resume': {
-      id: '/resume'
+    '/_authenticated/resume': {
+      id: '/_authenticated/resume'
       path: '/resume'
       fullPath: '/resume'
-      preLoaderRoute: typeof ResumeRouteImport
+      preLoaderRoute: typeof AuthenticatedResumeRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/jobs': {
-      id: '/jobs'
+    '/_authenticated/jobs': {
+      id: '/_authenticated/jobs'
       path: '/jobs'
       fullPath: '/jobs'
-      preLoaderRoute: typeof JobsRouteImport
+      preLoaderRoute: typeof AuthenticatedJobsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/applications': {
-      id: '/applications'
+    '/_authenticated/dashboard': {
+      id: '/_authenticated/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof AuthenticatedDashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/applications': {
+      id: '/_authenticated/applications'
       path: '/applications'
       fullPath: '/applications'
-      preLoaderRoute: typeof ApplicationsRouteImport
+      preLoaderRoute: typeof AuthenticatedApplicationsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/activity': {
-      id: '/activity'
+    '/_authenticated/activity': {
+      id: '/_authenticated/activity'
       path: '/activity'
       fullPath: '/activity'
-      preLoaderRoute: typeof ActivityRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/review/$id': {
-      id: '/review/$id'
-      path: '/review/$id'
-      fullPath: '/review/$id'
-      preLoaderRoute: typeof ReviewIdRouteImport
+      preLoaderRoute: typeof AuthenticatedActivityRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/imperium-test': {
@@ -212,20 +206,37 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicImperiumTestRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/review/$id': {
+      id: '/_authenticated/review/$id'
+      path: '/review/$id'
+      fullPath: '/review/$id'
+      preLoaderRoute: typeof AuthenticatedReviewIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
-  ActivityRoute: ActivityRoute,
-  ApplicationsRoute: ApplicationsRoute,
-  JobsRoute: JobsRoute,
-  ResumeRoute: ResumeRoute,
-  SearchRoute: SearchRoute,
-  SettingsRoute: SettingsRoute,
-  ReviewIdRoute: ReviewIdRoute,
+  AuthenticatedActivityRoute: AuthenticatedActivityRoute,
+  AuthenticatedApplicationsRoute: AuthenticatedApplicationsRoute,
+  AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedJobsRoute: AuthenticatedJobsRoute,
+  AuthenticatedResumeRoute: AuthenticatedResumeRoute,
+  AuthenticatedSearchRoute: AuthenticatedSearchRoute,
+  AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
+  AuthenticatedReviewIdRoute: AuthenticatedReviewIdRoute,
   ApiPublicImperiumTestRoute: ApiPublicImperiumTestRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
