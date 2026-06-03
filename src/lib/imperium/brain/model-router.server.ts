@@ -1,46 +1,78 @@
 /**
- * Imperium Brain — model router with automatic failover.
- * Server-only. Prefers Lovable AI Gateway (LOVABLE_API_KEY, auto-provisioned).
- * Falls back to OpenRouter only if OPENROUTER_API_KEY is configured.
+ * Imperium Brain — model router with multi-provider failover.
+ *
+ * Provider priority (whichever keys are present, in this order):
+ *   1. OPENROUTER_API_KEY   (broadest model catalog, recommended default)
+ *   2. OPENAI_API_KEY       (OpenAI direct)
+ *   3. ANTHROPIC_API_KEY    (Anthropic direct)
+ *   4. LOVABLE_API_KEY      (Lovable AI Gateway — only available on Lovable Cloud)
+ *
+ * Configure exactly the providers you want by setting the corresponding
+ * env vars. If none are set, calls throw a clear error explaining what
+ * to add to `.env`.
+ *
+ * Server-only. Never import from client code.
  */
 import type { BrainModelInfo } from "./types";
 
-/** Lovable AI Gateway models (primary chain). */
-export const BRAIN_MODELS: BrainModelInfo[] = [
-  { id: "google/gemini-3-flash-preview", label: "Gemini 3 Flash", free: false },
-  { id: "google/gemini-2.5-flash", label: "Gemini 2.5 Flash", free: false },
-  { id: "google/gemini-2.5-flash-lite", label: "Gemini 2.5 Flash Lite", free: false },
-  { id: "google/gemini-2.5-pro", label: "Gemini 2.5 Pro", free: false },
-];
+type Provider = "openrouter" | "openai" | "anthropic" | "lovable";
 
-/** OpenRouter fallback chain — used only if OPENROUTER_API_KEY is set. */
-const OPENROUTER_MODELS: BrainModelInfo[] = [
-  { id: "deepseek/deepseek-chat", label: "DeepSeek Chat", free: false },
-  { id: "qwen/qwen3-235b-a22b", label: "Qwen3 235B", free: false },
-  { id: "meta-llama/llama-4-maverick", label: "Llama 4 Maverick", free: false },
-];
+/** Default chat-model chain per provider (most-capable → cheapest). */
+const PROVIDER_MODELS: Record<Provider, BrainModelInfo[]> = {
+  openrouter: [
+    { id: "openai/gpt-4o-mini", label: "GPT-4o mini (OR)", free: false },
+    { id: "deepseek/deepseek-chat", label: "DeepSeek Chat (OR)", free: false },
+    { id: "google/gemini-flash-1.5", label: "Gemini 1.5 Flash (OR)", free: false },
+    { id: "meta-llama/llama-3.1-70b-instruct", label: "Llama 3.1 70B (OR)", free: false },
+  ],
+  openai: [
+    { id: "gpt-4o-mini", label: "GPT-4o mini", free: false },
+    { id: "gpt-4o", label: "GPT-4o", free: false },
+  ],
+  anthropic: [
+    { id: "claude-3-5-haiku-latest", label: "Claude 3.5 Haiku", free: false },
+    { id: "claude-3-5-sonnet-latest", label: "Claude 3.5 Sonnet", free: false },
+  ],
+  lovable: [
+    { id: "google/gemini-2.5-flash", label: "Gemini 2.5 Flash (Lovable)", free: false },
+    { id: "google/gemini-2.5-flash-lite", label: "Gemini 2.5 Flash Lite (Lovable)", free: false },
+    { id: "google/gemini-2.5-pro", label: "Gemini 2.5 Pro (Lovable)", free: false },
+  ],
+};
+
+/** Exported for UI display. Returns the active chain based on configured keys. */
+export const BRAIN_MODELS: BrainModelInfo[] = (() => {
+  const out: BrainModelInfo[] = [];
+  // Order matters: same as the failover order in routeBrainCall.
+  if (process.env.OPENROUTER_API_KEY) out.push(...PROVIDER_MODELS.openrouter);
+  if (process.env.OPENAI_API_KEY) out.push(...PROVIDER_MODELS.openai);
+  if (process.env.ANTHROPIC_API_KEY) out.push(...PROVIDER_MODELS.anthropic);
+  if (process.env.LOVABLE_API_KEY) out.push(...PROVIDER_MODELS.lovable);
+  return out;
+})();
 
 const PROVIDER_HEALTH = new Map<string, { failures: number; cooldownUntil: number }>();
 const COOLDOWN_MS = 60_000;
 const MAX_FAILURES_BEFORE_COOLDOWN = 2;
 
-function isInCooldown(modelId: string): boolean {
-  const h = PROVIDER_HEALTH.get(modelId);
+function healthKey(provider: Provider, modelId: string) {
+  return `${provider}:${modelId}`;
+}
+function isInCooldown(key: string): boolean {
+  const h = PROVIDER_HEALTH.get(key);
   if (!h) return false;
   if (h.failures >= MAX_FAILURES_BEFORE_COOLDOWN && Date.now() < h.cooldownUntil) return true;
-  if (Date.now() >= h.cooldownUntil) PROVIDER_HEALTH.delete(modelId);
+  if (Date.now() >= h.cooldownUntil) PROVIDER_HEALTH.delete(key);
   return false;
 }
-
-function markFailure(modelId: string) {
-  const h = PROVIDER_HEALTH.get(modelId) ?? { failures: 0, cooldownUntil: 0 };
+function markFailure(key: string) {
+  const h = PROVIDER_HEALTH.get(key) ?? { failures: 0, cooldownUntil: 0 };
   h.failures += 1;
   if (h.failures >= MAX_FAILURES_BEFORE_COOLDOWN) h.cooldownUntil = Date.now() + COOLDOWN_MS;
-  PROVIDER_HEALTH.set(modelId, h);
+  PROVIDER_HEALTH.set(key, h);
 }
-
-function markSuccess(modelId: string) {
-  PROVIDER_HEALTH.delete(modelId);
+function markSuccess(key: string) {
+  PROVIDER_HEALTH.delete(key);
 }
 
 export interface BrainModelCallInput {
@@ -59,7 +91,121 @@ export interface BrainModelCallResult {
   duration_ms: number;
 }
 
-type Provider = "lovable" | "openrouter";
+interface ProviderConfig {
+  url: string;
+  headers: Record<string, string>;
+  /** Build the request body for this provider. */
+  buildBody: (modelId: string, input: BrainModelCallInput) => Record<string, unknown>;
+  /** Extract content from the response JSON. */
+  extractContent: (json: unknown) => string;
+}
+
+function configFor(provider: Provider, apiKey: string): ProviderConfig {
+  switch (provider) {
+    case "openrouter":
+      return {
+        url: "https://openrouter.ai/api/v1/chat/completions",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+          "HTTP-Referer": process.env.PUBLIC_APP_URL ?? "http://localhost:3000",
+          "X-Title": "Imperium Brain",
+        },
+        buildBody: (modelId, input) => {
+          const body: Record<string, unknown> = {
+            model: modelId,
+            messages: [
+              { role: "system", content: input.system },
+              { role: "user", content: input.user },
+            ],
+            temperature: input.temperature ?? 0.4,
+            max_tokens: input.max_tokens ?? 1400,
+          };
+          if (input.json) body.response_format = { type: "json_object" };
+          return body;
+        },
+        extractContent: (json) =>
+          (json as { choices?: { message?: { content?: string } }[] }).choices?.[0]?.message
+            ?.content ?? "",
+      };
+
+    case "openai":
+      return {
+        url: "https://api.openai.com/v1/chat/completions",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        },
+        buildBody: (modelId, input) => {
+          const body: Record<string, unknown> = {
+            model: modelId,
+            messages: [
+              { role: "system", content: input.system },
+              { role: "user", content: input.user },
+            ],
+            temperature: input.temperature ?? 0.4,
+            max_tokens: input.max_tokens ?? 1400,
+          };
+          if (input.json) body.response_format = { type: "json_object" };
+          return body;
+        },
+        extractContent: (json) =>
+          (json as { choices?: { message?: { content?: string } }[] }).choices?.[0]?.message
+            ?.content ?? "",
+      };
+
+    case "anthropic":
+      return {
+        url: "https://api.anthropic.com/v1/messages",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": apiKey,
+          "anthropic-version": "2023-06-01",
+        },
+        buildBody: (modelId, input) => ({
+          model: modelId,
+          system: input.json
+            ? `${input.system}\n\nReturn ONLY a valid JSON object. No prose, no markdown fences.`
+            : input.system,
+          messages: [{ role: "user", content: input.user }],
+          temperature: input.temperature ?? 0.4,
+          max_tokens: input.max_tokens ?? 1400,
+        }),
+        extractContent: (json) => {
+          const parts = (json as { content?: { type: string; text?: string }[] }).content ?? [];
+          return parts
+            .filter((p) => p.type === "text")
+            .map((p) => p.text ?? "")
+            .join("");
+        },
+      };
+
+    case "lovable":
+      return {
+        url: "https://ai.gateway.lovable.dev/v1/chat/completions",
+        headers: {
+          "Content-Type": "application/json",
+          "Lovable-API-Key": apiKey,
+        },
+        buildBody: (modelId, input) => {
+          const body: Record<string, unknown> = {
+            model: modelId,
+            messages: [
+              { role: "system", content: input.system },
+              { role: "user", content: input.user },
+            ],
+            temperature: input.temperature ?? 0.4,
+            max_tokens: input.max_tokens ?? 1400,
+          };
+          if (input.json) body.response_format = { type: "json_object" };
+          return body;
+        },
+        extractContent: (json) =>
+          (json as { choices?: { message?: { content?: string } }[] }).choices?.[0]?.message
+            ?.content ?? "",
+      };
+  }
+}
 
 async function callChat(
   provider: Provider,
@@ -71,68 +217,50 @@ async function callChat(
   const controller = new AbortController();
   const t = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const body: Record<string, unknown> = {
-      model: modelId,
-      messages: [
-        { role: "system", content: input.system },
-        { role: "user", content: input.user },
-      ],
-      temperature: input.temperature ?? 0.4,
-      max_tokens: input.max_tokens ?? 1400,
-    };
-    if (input.json) body.response_format = { type: "json_object" };
-
-    const url =
-      provider === "lovable"
-        ? "https://ai.gateway.lovable.dev/v1/chat/completions"
-        : "https://openrouter.ai/api/v1/chat/completions";
-    const headers: Record<string, string> =
-      provider === "lovable"
-        ? { "Content-Type": "application/json", "Lovable-API-Key": apiKey }
-        : {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${apiKey}`,
-            "HTTP-Referer": "https://imperium.lovable.app",
-            "X-Title": "Imperium Brain",
-          };
-
-    const res = await fetch(url, {
+    const cfg = configFor(provider, apiKey);
+    const res = await fetch(cfg.url, {
       method: "POST",
-      headers,
-      body: JSON.stringify(body),
+      headers: cfg.headers,
+      body: JSON.stringify(cfg.buildBody(modelId, input)),
       signal: controller.signal,
     });
     if (!res.ok) {
       const text = await res.text();
-      const tag = provider === "lovable" ? "LovableAI" : "OpenRouter";
-      throw new Error(`${tag} ${res.status}: ${text.slice(0, 200)}`);
+      throw new Error(`${provider} ${res.status}: ${text.slice(0, 200)}`);
     }
-    const data = (await res.json()) as {
-      choices?: { message?: { content?: string } }[];
-    };
-    const content = data.choices?.[0]?.message?.content ?? "";
-    if (!content.trim()) throw new Error("Empty response from model");
+    const data = await res.json();
+    const content = cfg.extractContent(data);
+    if (!content.trim()) throw new Error(`${provider}: empty response from model`);
     return content;
   } finally {
     clearTimeout(t);
   }
 }
 
-/** Call models in order with automatic failover across providers. */
+/** Build the active provider chain from env keys. */
+function buildChain(): { provider: Provider; key: string; model: BrainModelInfo }[] {
+  const chain: { provider: Provider; key: string; model: BrainModelInfo }[] = [];
+  const push = (provider: Provider, key: string | undefined) => {
+    if (!key) return;
+    for (const m of PROVIDER_MODELS[provider]) chain.push({ provider, key, model: m });
+  };
+  push("openrouter", process.env.OPENROUTER_API_KEY);
+  push("openai", process.env.OPENAI_API_KEY);
+  push("anthropic", process.env.ANTHROPIC_API_KEY);
+  push("lovable", process.env.LOVABLE_API_KEY);
+  return chain;
+}
+
+/** Call configured models in order with automatic failover across providers. */
 export async function routeBrainCall(
   input: BrainModelCallInput,
 ): Promise<BrainModelCallResult> {
-  const lovableKey = process.env.LOVABLE_API_KEY;
-  const openrouterKey = process.env.OPENROUTER_API_KEY;
-  if (!lovableKey && !openrouterKey) {
+  const chain = buildChain();
+  if (chain.length === 0) {
     throw new Error(
-      "Brain needs an AI key. LOVABLE_API_KEY is auto-provisioned by Lovable Cloud — enable Cloud or add OPENROUTER_API_KEY.",
+      "Brain has no AI provider configured. Set one of OPENROUTER_API_KEY, OPENAI_API_KEY, ANTHROPIC_API_KEY, or LOVABLE_API_KEY in your .env file. See .env.example.",
     );
   }
-
-  const chain: { provider: Provider; key: string; model: BrainModelInfo }[] = [];
-  if (lovableKey) for (const m of BRAIN_MODELS) chain.push({ provider: "lovable", key: lovableKey, model: m });
-  if (openrouterKey) for (const m of OPENROUTER_MODELS) chain.push({ provider: "openrouter", key: openrouterKey, model: m });
 
   const start = Date.now();
   const fallback_chain: string[] = [];
@@ -140,26 +268,27 @@ export async function routeBrainCall(
   let lastErr: unknown = null;
 
   for (const step of chain) {
-    if (isInCooldown(step.model.id)) {
-      fallback_chain.push(`${step.model.id}:cooldown`);
+    const key = healthKey(step.provider, step.model.id);
+    if (isInCooldown(key)) {
+      fallback_chain.push(`${key}:cooldown`);
       continue;
     }
     attempts++;
     try {
       const content = await callChat(step.provider, step.model.id, input, step.key);
-      markSuccess(step.model.id);
+      markSuccess(key);
       return {
         content,
-        model: step.model.id,
+        model: `${step.provider}/${step.model.id}`,
         fallback_chain,
         attempts,
         duration_ms: Date.now() - start,
       };
     } catch (err) {
       lastErr = err;
-      markFailure(step.model.id);
+      markFailure(key);
       fallback_chain.push(
-        `${step.model.id}:${err instanceof Error ? err.message.slice(0, 60) : "error"}`,
+        `${key}:${err instanceof Error ? err.message.slice(0, 60) : "error"}`,
       );
       continue;
     }
