@@ -316,6 +316,73 @@ export const getDashboard = createServerFn({ method: "GET" })
     };
   });
 
+/* ---------- Brain: profile intelligence ---------- */
+export const getProfileIntelligence = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase, userId } = context;
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", userId)
+      .maybeSingle();
+    if (!profile) return null;
+    const { analyzeProfile } = await import("./brain/brain.server");
+    return analyzeProfile({
+      name: (profile.name as string) || "Candidate",
+      headline: (profile.headline as string) || undefined,
+      summary: (profile.summary as string) || undefined,
+      skills: ((profile.skills as string[] | null) ?? []) as string[],
+      experience: ((profile.experience as unknown[] | null) ?? []) as unknown[],
+      education: ((profile.education as unknown[] | null) ?? []) as unknown[],
+      linkedin_url: (profile.linkedin_url as string) || undefined,
+      github_url: (profile.github_url as string) || undefined,
+      portfolio_url: (profile.portfolio_url as string) || undefined,
+      target_roles: profile.headline ? [profile.headline as string] : [],
+    });
+  });
+
+/* ---------- Brain: career intelligence ---------- */
+export const getCareerIntelligence = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase, userId } = context;
+    const [{ data: profile }, { data: apps }, { data: jobs }] = await Promise.all([
+      supabase.from("profiles").select("headline, skills").eq("id", userId).maybeSingle(),
+      supabase.from("applications").select("status, company, match_score, job_title").limit(100),
+      supabase.from("job_listings").select("title, match_score").limit(50),
+    ]);
+    const totalApps = apps?.length ?? 0;
+    const applied = (apps ?? []).filter((a) => a.status === "Applied").length;
+    const interview = (apps ?? []).filter((a) =>
+      String(a.status).toLowerCase().includes("interview"),
+    ).length;
+    const companyCounts = new Map<string, number>();
+    for (const a of apps ?? []) {
+      const c = a.company as string;
+      if (c) companyCounts.set(c, (companyCounts.get(c) ?? 0) + 1);
+    }
+    const topCompanies = [...companyCounts.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([c]) => c);
+    const avg =
+      (jobs ?? []).reduce((acc, j) => acc + Number(j.match_score ?? 0), 0) /
+      Math.max(1, jobs?.length ?? 1);
+    const { generateCareerIntelligence } = await import("./brain/brain.server");
+    return generateCareerIntelligence({
+      candidate_role: (profile?.headline as string) || "Candidate",
+      candidate_skills: ((profile?.skills as string[] | null) ?? []) as string[],
+      total_applications: totalApps,
+      applied_count: applied,
+      interview_count: interview,
+      top_companies: topCompanies,
+      recent_job_titles: (jobs ?? []).slice(0, 10).map((j) => j.title as string),
+      avg_match_score: avg,
+    });
+  });
+
+
 /* ---------- Artifact (resume / cover letter) ---------- */
 const ArtifactInput = z.object({ path: z.string().min(1) });
 

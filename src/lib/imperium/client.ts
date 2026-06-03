@@ -72,6 +72,15 @@ export const renderApplicationResume = (
     data: { application_id, template },
   }) as unknown as Promise<RenderedResume>;
 
+export const getProfileIntelligence = () =>
+  fns.getProfileIntelligence() as unknown as Promise<
+    import("./brain/types").ProfileIntelligence | null
+  >;
+export const getCareerIntelligence = () =>
+  fns.getCareerIntelligence() as unknown as Promise<
+    import("./brain/types").CareerInsight
+  >;
+
 export function artifactUrl(path: string): string {
   return `#artifact/${encodeURIComponent(path)}`;
 }
