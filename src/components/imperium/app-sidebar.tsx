@@ -1,7 +1,6 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   Activity,
-  Brain,
   Briefcase,
   FileText,
   LayoutDashboard,
@@ -9,6 +8,7 @@ import {
   Search,
   Send,
   Settings as SettingsIcon,
+  Sparkles,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import {
@@ -28,7 +28,6 @@ import { toast } from "sonner";
 
 const primaryNav = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard, exact: true },
-  { title: "AI Strategist", url: "/strategist", icon: Brain },
   { title: "Job Search", url: "/search", icon: Search },
   { title: "Jobs", url: "/jobs", icon: Briefcase },
   { title: "Applications", url: "/applications", icon: Send },

@@ -12,7 +12,6 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as AuthenticatedStrategistRouteImport } from './routes/_authenticated/strategist'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedSearchRouteImport } from './routes/_authenticated/search'
 import { Route as AuthenticatedResumeRouteImport } from './routes/_authenticated/resume'
@@ -21,7 +20,6 @@ import { Route as AuthenticatedJobsRouteImport } from './routes/_authenticated/j
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedApplicationsRouteImport } from './routes/_authenticated/applications'
 import { Route as AuthenticatedActivityRouteImport } from './routes/_authenticated/activity'
-import { Route as ApiImperiumThinkRouteImport } from './routes/api/imperium/think'
 import { Route as AuthenticatedReviewIdRouteImport } from './routes/_authenticated/review.$id'
 
 const AuthRoute = AuthRouteImport.update({
@@ -37,11 +35,6 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
-} as any)
-const AuthenticatedStrategistRoute = AuthenticatedStrategistRouteImport.update({
-  id: '/strategist',
-  path: '/strategist',
-  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
   id: '/settings',
@@ -84,11 +77,6 @@ const AuthenticatedActivityRoute = AuthenticatedActivityRouteImport.update({
   path: '/activity',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const ApiImperiumThinkRoute = ApiImperiumThinkRouteImport.update({
-  id: '/api/imperium/think',
-  path: '/api/imperium/think',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AuthenticatedReviewIdRoute = AuthenticatedReviewIdRouteImport.update({
   id: '/review/$id',
   path: '/review/$id',
@@ -106,9 +94,7 @@ export interface FileRoutesByFullPath {
   '/resume': typeof AuthenticatedResumeRoute
   '/search': typeof AuthenticatedSearchRoute
   '/settings': typeof AuthenticatedSettingsRoute
-  '/strategist': typeof AuthenticatedStrategistRoute
   '/review/$id': typeof AuthenticatedReviewIdRoute
-  '/api/imperium/think': typeof ApiImperiumThinkRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -121,9 +107,7 @@ export interface FileRoutesByTo {
   '/resume': typeof AuthenticatedResumeRoute
   '/search': typeof AuthenticatedSearchRoute
   '/settings': typeof AuthenticatedSettingsRoute
-  '/strategist': typeof AuthenticatedStrategistRoute
   '/review/$id': typeof AuthenticatedReviewIdRoute
-  '/api/imperium/think': typeof ApiImperiumThinkRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -138,9 +122,7 @@ export interface FileRoutesById {
   '/_authenticated/resume': typeof AuthenticatedResumeRoute
   '/_authenticated/search': typeof AuthenticatedSearchRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
-  '/_authenticated/strategist': typeof AuthenticatedStrategistRoute
   '/_authenticated/review/$id': typeof AuthenticatedReviewIdRoute
-  '/api/imperium/think': typeof ApiImperiumThinkRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -155,9 +137,7 @@ export interface FileRouteTypes {
     | '/resume'
     | '/search'
     | '/settings'
-    | '/strategist'
     | '/review/$id'
-    | '/api/imperium/think'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -170,9 +150,7 @@ export interface FileRouteTypes {
     | '/resume'
     | '/search'
     | '/settings'
-    | '/strategist'
     | '/review/$id'
-    | '/api/imperium/think'
   id:
     | '__root__'
     | '/'
@@ -186,16 +164,13 @@ export interface FileRouteTypes {
     | '/_authenticated/resume'
     | '/_authenticated/search'
     | '/_authenticated/settings'
-    | '/_authenticated/strategist'
     | '/_authenticated/review/$id'
-    | '/api/imperium/think'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
-  ApiImperiumThinkRoute: typeof ApiImperiumThinkRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -220,13 +195,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
-    }
-    '/_authenticated/strategist': {
-      id: '/_authenticated/strategist'
-      path: '/strategist'
-      fullPath: '/strategist'
-      preLoaderRoute: typeof AuthenticatedStrategistRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/settings': {
       id: '/_authenticated/settings'
@@ -284,13 +252,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedActivityRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/api/imperium/think': {
-      id: '/api/imperium/think'
-      path: '/api/imperium/think'
-      fullPath: '/api/imperium/think'
-      preLoaderRoute: typeof ApiImperiumThinkRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/_authenticated/review/$id': {
       id: '/_authenticated/review/$id'
       path: '/review/$id'
@@ -310,7 +271,6 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedResumeRoute: typeof AuthenticatedResumeRoute
   AuthenticatedSearchRoute: typeof AuthenticatedSearchRoute
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
-  AuthenticatedStrategistRoute: typeof AuthenticatedStrategistRoute
   AuthenticatedReviewIdRoute: typeof AuthenticatedReviewIdRoute
 }
 
@@ -323,7 +283,6 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedResumeRoute: AuthenticatedResumeRoute,
   AuthenticatedSearchRoute: AuthenticatedSearchRoute,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
-  AuthenticatedStrategistRoute: AuthenticatedStrategistRoute,
   AuthenticatedReviewIdRoute: AuthenticatedReviewIdRoute,
 }
 
@@ -334,7 +293,6 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
-  ApiImperiumThinkRoute: ApiImperiumThinkRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
