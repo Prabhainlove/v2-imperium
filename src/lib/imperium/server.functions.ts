@@ -157,6 +157,28 @@ export const refreshGithubIntel = createServerFn({ method: "POST" })
     return intel;
   });
 
+/* ---------- Profile Import (resume text / LinkedIn) ---------- */
+const ImportTextInput = z.object({ text: z.string().min(20).max(200_000) });
+
+export const importProfileFromText = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) => ImportTextInput.parse(i))
+  .handler(async ({ data }) => {
+    const { extractProfileFromText } = await import("./brain/profile-import.server");
+    return extractProfileFromText(data.text);
+  });
+
+const ImportLinkedinInput = z.object({ url: z.string().min(8).max(500) });
+
+export const importProfileFromLinkedin = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) => ImportLinkedinInput.parse(i))
+  .handler(async ({ data }) => {
+    const { extractProfileFromLinkedinUrl } = await import("./brain/profile-import.server");
+    return extractProfileFromLinkedinUrl(data.url);
+  });
+
+
 /* ---------- Jobs ---------- */
 const ListInput = z.object({
   limit: z.number().int().min(1).max(1000).optional(),
