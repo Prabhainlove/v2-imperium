@@ -45,6 +45,8 @@ export const importProfileFromText = (text: string) =>
   fns.importProfileFromText({ data: { text } }) as unknown as Promise<ImportedProfileResult>;
 export const importProfileFromLinkedin = (url: string) =>
   fns.importProfileFromLinkedin({ data: { url } }) as unknown as Promise<ImportedProfileResult>;
+export const importProfileFromPdf = (base64: string) =>
+  fns.importProfileFromPdf({ data: { base64 } }) as unknown as Promise<ImportedProfileResult>;
 
 
 export const getDashboard = (_signal?: AbortSignal) =>
