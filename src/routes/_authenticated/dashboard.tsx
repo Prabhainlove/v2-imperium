@@ -136,34 +136,7 @@ function DashboardPage() {
         }
       />
 
-      {showOffline && (
-        <Card className="border-destructive/30 bg-destructive/5">
-          <CardContent className="flex items-start gap-3 p-4 text-sm">
-            <AlertCircle className="mt-0.5 h-5 w-5 text-destructive" />
-            <div className="flex-1">
-              <div className="font-medium text-destructive">
-                Imperium backend is offline
-              </div>
-              <div className="mt-0.5 text-muted-foreground">
-                The frontend is configured to talk to{" "}
-                <code className="rounded bg-muted px-1.5 py-0.5 text-xs">
-                  {getApiBaseUrl()}
-                </code>
-                . Start the FastAPI server (
-                <code className="rounded bg-muted px-1.5 py-0.5 text-xs">
-                  uvicorn main:app --port 8000
-                </code>
-                ) or change the URL in Settings.
-              </div>
-              <div className="mt-2">
-                <Button asChild size="sm" variant="outline">
-                  <Link to="/settings">Open Settings</Link>
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {/* removed dead "backend offline" panel that referenced legacy Python backend */}
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         {stats.map((s) => (
@@ -291,39 +264,7 @@ function DashboardPage() {
         </Card>
       </div>
 
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Sparkles className="h-4 w-4 text-accent" /> How Imperium Works
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-3 md:grid-cols-5">
-          {[
-            { title: "Discovery", desc: "Scans 6 real job sources in parallel." },
-            { title: "Analysis", desc: "Extracts requirements, scores match." },
-            { title: "Resume", desc: "ATS-optimized resume per role." },
-            { title: "Cover Letter", desc: "Personalized to company & role." },
-            { title: "Tracking", desc: "Full lifecycle, recruiter events, alerts." },
-          ].map((s, i) => (
-            <div
-              key={s.title}
-              className="rounded-lg border border-border/60 bg-card/40 p-3"
-            >
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary/15 text-[10px] font-semibold text-primary">
-                  {i + 1}
-                </span>
-                Stage
-              </div>
-              <div className="mt-1 text-sm font-medium">{s.title}</div>
-              <div className="mt-0.5 text-xs text-muted-foreground">
-                {s.desc}
-              </div>
-              <CheckCircle2 className="mt-2 h-3.5 w-3.5 text-success/70" />
-            </div>
-          ))}
-        </CardContent>
-      </Card>
+      {/* removed legacy "How Imperium Works" placeholder stage panel */}
     </div>
   );
 }

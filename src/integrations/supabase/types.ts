@@ -106,6 +106,42 @@ export type Database = {
           },
         ]
       }
+      brain_memory: {
+        Row: {
+          created_at: string
+          expires_at: string | null
+          id: string
+          key_hash: string
+          kind: string
+          model: string
+          payload: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          key_hash: string
+          kind: string
+          model?: string
+          payload?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          key_hash?: string
+          kind?: string
+          model?: string
+          payload?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       candidate_profiles: {
         Row: {
           created_at: string
@@ -222,61 +258,94 @@ export type Database = {
       }
       profiles: {
         Row: {
+          achievements: Json
           certifications: Json
           created_at: string
           education: Json
           email: string
           experience: Json
+          github_intel: Json
           github_url: string
           headline: string
           id: string
+          languages: Json
+          linkedin_intel: Json
           linkedin_url: string
           location: string
           name: string
           onboarded: boolean
           phone: string
           portfolio_url: string
+          profile_intel: Json
+          projects: Json
+          salary_expectation: Json
+          seniority: string
           skills: Json
           summary: string
+          target_locations: Json
+          target_role: string
           updated_at: string
+          work_mode: string
         }
         Insert: {
+          achievements?: Json
           certifications?: Json
           created_at?: string
           education?: Json
           email?: string
           experience?: Json
+          github_intel?: Json
           github_url?: string
           headline?: string
           id: string
+          languages?: Json
+          linkedin_intel?: Json
           linkedin_url?: string
           location?: string
           name?: string
           onboarded?: boolean
           phone?: string
           portfolio_url?: string
+          profile_intel?: Json
+          projects?: Json
+          salary_expectation?: Json
+          seniority?: string
           skills?: Json
           summary?: string
+          target_locations?: Json
+          target_role?: string
           updated_at?: string
+          work_mode?: string
         }
         Update: {
+          achievements?: Json
           certifications?: Json
           created_at?: string
           education?: Json
           email?: string
           experience?: Json
+          github_intel?: Json
           github_url?: string
           headline?: string
           id?: string
+          languages?: Json
+          linkedin_intel?: Json
           linkedin_url?: string
           location?: string
           name?: string
           onboarded?: boolean
           phone?: string
           portfolio_url?: string
+          profile_intel?: Json
+          projects?: Json
+          salary_expectation?: Json
+          seniority?: string
           skills?: Json
           summary?: string
+          target_locations?: Json
+          target_role?: string
           updated_at?: string
+          work_mode?: string
         }
         Relationships: []
       }
