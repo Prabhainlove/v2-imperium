@@ -53,8 +53,8 @@ export const getProfile = createServerFn({ method: "GET" }).handler(async () => 
         target_roles: data.headline ? [data.headline] : [],
         preferred_locations: data.location ? [data.location] : [],
         remote_only: false,
-        work_experience: (data.experience as unknown[]) ?? [],
-        education: (data.education as unknown[]) ?? [],
+        work_experience: ((data.experience as Record<string, unknown>[]) ?? []) as Record<string, unknown>[],
+        education: ((data.education as Record<string, unknown>[]) ?? []) as Record<string, unknown>[],
       }
     : null;
 
