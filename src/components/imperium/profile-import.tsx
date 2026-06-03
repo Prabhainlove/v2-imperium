@@ -25,16 +25,17 @@ interface Props {
 /** Merge an imported patch into the current profile (non-destructive for arrays). */
 function mergePatch(current: ImperiumProfile, patch: Patch): Patch {
   const out: Patch = {};
+  const cur = current as unknown as Record<string, unknown>;
   for (const [k, v] of Object.entries(patch) as [keyof Patch, unknown][]) {
     if (v === undefined || v === null) continue;
     if (typeof v === "string") {
       if (!v.trim()) continue;
-      const existing = (current as Record<string, unknown>)[k];
+      const existing = cur[k as string];
       if (typeof existing !== "string" || !existing.trim()) {
         (out as Record<string, unknown>)[k] = v.trim();
       }
     } else if (Array.isArray(v)) {
-      const existing = (current as Record<string, unknown>)[k];
+      const existing = cur[k as string];
       const existingArr = Array.isArray(existing) ? existing : [];
       if (k === "skills" || k === "achievements") {
         const merged = Array.from(
@@ -42,13 +43,13 @@ function mergePatch(current: ImperiumProfile, patch: Patch): Patch {
         );
         (out as Record<string, unknown>)[k] = merged;
       } else {
-        // For complex arrays, only fill when empty.
         if (existingArr.length === 0) (out as Record<string, unknown>)[k] = v;
       }
     }
   }
   return out;
 }
+
 
 function summary(patch: Patch): string[] {
   const bits: string[] = [];
