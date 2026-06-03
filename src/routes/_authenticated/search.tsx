@@ -100,7 +100,7 @@ function SearchPage() {
 
   const profile = useQuery({
     queryKey: ["profile"],
-    queryFn: ({ signal }) => getProfile(signal),
+    queryFn: () => getProfile(),
     retry: false,
   });
 
@@ -124,7 +124,7 @@ function SearchPage() {
     if (!phone && p.phone) setPhone(p.phone);
     if (!location && p.location) setLocation(p.location);
     if (!skills && p.skills?.length) setSkills(p.skills.join(", "));
-    if (!role && p.target_roles?.[0]) setRole(p.target_roles[0]);
+    if (!role && p.target_role) setRole(p.target_role);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile.data]);
 
