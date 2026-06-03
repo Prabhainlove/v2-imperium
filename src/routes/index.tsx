@@ -87,7 +87,7 @@ function LandingPage() {
           </div>
           <div className="grid gap-4 md:grid-cols-3">
             {[
-              { icon: Search, title: "Multi-source job search", body: "RemoteOK, Remotive, Arbeitnow today — Adzuna, Jooble, LinkedIn integrations coming next." },
+              { icon: Search, title: "Multi-source job search", body: "RemoteOK, Remotive, Arbeitnow, LinkedIn, Adzuna/Indeed, Jooble, and Naukri — all live." },
               { icon: FileText, title: "RenderCV-grade resume studio", body: "Live markdown editor, multiple ATS-friendly templates, keyword scoring, PDF export." },
               { icon: Send, title: "Application review center", body: "Nothing is sent without your approval. Inspect, edit, approve or skip every package." },
               { icon: Activity, title: "Full workflow visibility", body: "Watch every step in real time: discover → analyze → optimize → prepare → review." },
@@ -140,7 +140,7 @@ function LandingPage() {
           <div className="space-y-4">
             {[
               ["Does Imperium auto-submit applications?", "No. Imperium prepares the application package and waits for your explicit approval before marking it as applied."],
-              ["Which job sources are supported?", "RemoteOK, Remotive, and Arbeitnow are live. Adzuna, Jooble, and LinkedIn are coming in the next release."],
+              ["Which job sources are supported?", "All seven sources are live: RemoteOK, Remotive, Arbeitnow, LinkedIn, Adzuna/Indeed, Jooble, and Naukri."],
               ["Is my data private?", "Yes. Every record is row-level scoped to your account. Other users cannot see your jobs, resumes, or applications."],
               ["Do I need any API keys?", "No. The Lovable AI gateway is included. You only need to bring your own keys for premium job sources if you opt in."],
             ].map(([q, a]) => (

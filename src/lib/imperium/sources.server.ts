@@ -322,6 +322,41 @@ export async function fetchNaukri(role: string, location: string): Promise<RawJo
   return out;
 }
 
+/* ───────── Jooble (global aggregator; requires API key) ───────── */
+export async function fetchJooble(role: string, location: string): Promise<RawJob[]> {
+  const key = process.env.JOOBLE_API_KEY;
+  if (!key) {
+    throw new Error("JOOBLE_API_KEY not configured — set it in Cloud secrets to enable Jooble results");
+  }
+  const res = await fetch(`https://jooble.org/api/${key}`, {
+    method: "POST",
+    headers: { "User-Agent": UA, "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify({ keywords: role, location: location || "", page: "1" }),
+  });
+  if (!res.ok) throw new Error(`Jooble ${res.status}`);
+  const data = (await res.json()) as { jobs?: Record<string, unknown>[] };
+  const out: RawJob[] = [];
+  for (const o of data.jobs ?? []) {
+    const text = `${o.title ?? ""} ${o.company ?? ""} ${o.location ?? ""} ${o.snippet ?? ""}`;
+    out.push({
+      source: "jooble",
+      external_id: String(o.id ?? o.link ?? Math.random()),
+      url: String(o.link ?? ""),
+      title: String(o.title ?? ""),
+      company: String(o.company ?? "Unknown"),
+      location: String(o.location ?? ""),
+      remote: /remote|work from home|wfh/i.test(text),
+      description: stripHtml(String(o.snippet ?? "")).slice(0, 4000),
+      tech_stack: extractTechStack(text),
+      salary_min: null,
+      salary_max: null,
+      salary_currency: "USD",
+      posted_at: typeof o.updated === "string" ? o.updated : null,
+    });
+  }
+  return out;
+}
+
 export type SourceFetcher = (role: string, location: string) => Promise<RawJob[]>;
 
 export interface SourceDescriptor {
@@ -340,5 +375,8 @@ export const SOURCES: SourceDescriptor[] = [
   { id: "linkedin",  label: "LinkedIn",  fetch: fetchLinkedIn,  requiresKey: false, isAvailable: () => true },
   { id: "indeed",    label: "Indeed (via Adzuna)", fetch: fetchAdzuna, requiresKey: true,
     isAvailable: () => !!process.env.ADZUNA_APP_ID && !!process.env.ADZUNA_APP_KEY },
+  { id: "jooble",    label: "Jooble",    fetch: fetchJooble,    requiresKey: true,
+    isAvailable: () => !!process.env.JOOBLE_API_KEY },
   { id: "naukri",    label: "Naukri",    fetch: fetchNaukri,    requiresKey: false, isAvailable: () => true },
 ];
+

@@ -45,6 +45,7 @@ export const REAL_SOURCES = [
   { id: "arbeitnow", label: "Arbeitnow",           requiresKey: false },
   { id: "linkedin",  label: "LinkedIn",            requiresKey: false },
   { id: "indeed",    label: "Indeed (via Adzuna)", requiresKey: true  },
+  { id: "jooble",    label: "Jooble",              requiresKey: true  },
   { id: "naukri",    label: "Naukri",              requiresKey: false },
 ] as const;
 
