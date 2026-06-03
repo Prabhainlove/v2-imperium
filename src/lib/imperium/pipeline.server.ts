@@ -295,6 +295,7 @@ export async function runPipeline(input: PipelineInput) {
 
     await log(user_id, task_id, "analyze_job", "running", `${s.job.company} — ${s.job.title}`);
     await log(
+      user_id,
       task_id,
       "analyze_job",
       "success",
