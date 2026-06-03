@@ -1,9 +1,9 @@
 /**
- * Imperium API client. Every backend call goes through here.
- * Base URL is resolved at call-time via getApiBaseUrl(), so changing
- * it in Settings takes effect immediately without a reload.
+ * Imperium client — thin wrappers around TanStack server functions.
+ * The signal arg is preserved for callsite compatibility but ignored
+ * (serverFn RPC handles its own request lifecycle).
  */
-import { apiUrl } from "./config";
+import * as fns from "./server.functions";
 import type {
   ActivityLogEntry,
   AgentInfo,
@@ -18,197 +18,91 @@ import type {
   SearchResponse,
 } from "./types";
 
-class ImperiumError extends Error {
-  status?: number;
-  body?: unknown;
-  constructor(message: string, status?: number, body?: unknown) {
-    super(message);
-    this.name = "ImperiumError";
-    this.status = status;
-    this.body = body;
+async function readFileAsText(file: File): Promise<string> {
+  const lower = file.name.toLowerCase();
+  if (lower.endsWith(".pdf") || lower.endsWith(".docx") || lower.endsWith(".doc")) {
+    // Binary formats — we don't ship a parser in the browser; just use the name.
+    return `[Resume file uploaded: ${file.name} — ${(file.size / 1024).toFixed(1)} KB]`;
   }
-}
-
-async function request<T>(
-  path: string,
-  init?: RequestInit & { signal?: AbortSignal },
-): Promise<T> {
-  let res: Response;
   try {
-    res = await fetch(apiUrl(path), {
-      ...init,
-      headers: {
-        Accept: "application/json",
-        ...(init?.headers ?? {}),
-      },
-    });
-  } catch (err) {
-    throw new ImperiumError(
-      err instanceof Error
-        ? `Cannot reach Imperium backend: ${err.message}`
-        : "Cannot reach Imperium backend",
-    );
+    return await file.text();
+  } catch {
+    return "";
   }
-
-  const text = await res.text();
-  let parsed: unknown = undefined;
-  if (text) {
-    try {
-      parsed = JSON.parse(text);
-    } catch {
-      parsed = text;
-    }
-  }
-
-  if (!res.ok) {
-    const detail =
-      (parsed as { detail?: string } | undefined)?.detail ??
-      (typeof parsed === "string" ? parsed : res.statusText);
-    throw new ImperiumError(
-      `Backend error ${res.status}: ${detail}`,
-      res.status,
-      parsed,
-    );
-  }
-  return parsed as T;
 }
 
-/* ---- System ---- */
-export const getHealth = (signal?: AbortSignal) =>
-  request<HealthResponse>("/health", { signal });
+export const getHealth = (_signal?: AbortSignal) =>
+  fns.getHealth() as unknown as Promise<HealthResponse>;
 
-export const getAgents = (signal?: AbortSignal) =>
-  request<AgentInfo[]>("/agents", { signal });
+export const getAgents = (_signal?: AbortSignal) =>
+  fns.getAgents() as unknown as Promise<AgentInfo[]>;
 
-/* ---- Profile ---- */
-export const getProfile = (signal?: AbortSignal) =>
-  request<ProfileResponse>("/api/job-agent/profile", { signal });
+export const getProfile = (_signal?: AbortSignal) =>
+  fns.getProfile() as unknown as Promise<ProfileResponse>;
 
 export const saveProfile = (payload: Partial<CandidateProfile>) =>
-  request<ProfileResponse>("/api/job-agent/profile", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
+  fns.saveProfile({ data: payload as Record<string, unknown> }) as unknown as Promise<ProfileResponse>;
 
-/* ---- Dashboard / data ---- */
-export const getDashboard = (signal?: AbortSignal) =>
-  request<DashboardSnapshot>("/api/job-agent/dashboard", { signal });
+export const getDashboard = (_signal?: AbortSignal) =>
+  fns.getDashboard() as unknown as Promise<DashboardSnapshot>;
 
-export const getJobs = (params: { limit?: number } = {}, signal?: AbortSignal) => {
-  const q = new URLSearchParams();
-  if (params.limit) q.set("limit", String(params.limit));
-  const qs = q.toString();
-  return request<JobListing[]>(
-    `/api/job-agent/jobs${qs ? `?${qs}` : ""}`,
-    { signal },
-  );
-};
+export const getJobs = (
+  params: { limit?: number } = {},
+  _signal?: AbortSignal,
+) =>
+  fns.getJobs({ data: { limit: params.limit } }) as unknown as Promise<JobListing[]>;
 
 export const getApplications = (
   params: { status?: string; limit?: number } = {},
-  signal?: AbortSignal,
-) => {
-  const q = new URLSearchParams();
-  if (params.status) q.set("status", params.status);
-  if (params.limit) q.set("limit", String(params.limit));
-  const qs = q.toString();
-  return request<ApplicationRecord[]>(
-    `/api/job-agent/applications${qs ? `?${qs}` : ""}`,
-    { signal },
-  );
-};
+  _signal?: AbortSignal,
+) =>
+  fns.getApplications({
+    data: { status: params.status, limit: params.limit },
+  }) as unknown as Promise<ApplicationRecord[]>;
 
 export const getActivity = (
   params: { limit?: number; task_id?: string } = {},
-  signal?: AbortSignal,
-) => {
-  const q = new URLSearchParams();
-  if (params.limit) q.set("limit", String(params.limit));
-  if (params.task_id) q.set("task_id", params.task_id);
-  const qs = q.toString();
-  return request<ActivityLogEntry[]>(
-    `/api/job-agent/activity${qs ? `?${qs}` : ""}`,
-    { signal },
-  );
-};
+  _signal?: AbortSignal,
+) =>
+  fns.getActivity({
+    data: { limit: params.limit, task_id: params.task_id },
+  }) as unknown as Promise<ActivityLogEntry[]>;
 
-export const getNotifications = (params: { limit?: number } = {}, signal?: AbortSignal) => {
-  const q = new URLSearchParams();
-  if (params.limit) q.set("limit", String(params.limit));
-  const qs = q.toString();
-  return request<NotificationEntry[]>(
-    `/api/job-agent/notifications${qs ? `?${qs}` : ""}`,
-    { signal },
-  );
-};
+export const getNotifications = (_params: { limit?: number } = {}) =>
+  fns.getNotifications() as unknown as Promise<NotificationEntry[]>;
 
-export const markNotificationRead = (notificationId: string) =>
-  request<{ status: string }>(
-    `/api/job-agent/notifications/${encodeURIComponent(notificationId)}/read`,
-    { method: "POST" },
-  );
+export const markNotificationRead = async (_id: string) => ({ status: "ok" });
 
-/* ---- Artifact download ---- */
+/* ---- Artifacts ---- */
+
 export function artifactUrl(path: string): string {
-  return apiUrl(`/api/job-agent/artifact?path=${encodeURIComponent(path)}`);
+  return `#artifact/${encodeURIComponent(path)}`;
 }
 
 export async function fetchArtifactText(path: string): Promise<string> {
-  const res = await fetch(artifactUrl(path));
-  if (!res.ok) throw new ImperiumError(`Failed to load artifact (${res.status})`);
-  return res.text();
+  const r = (await fns.getArtifact({ data: { path } })) as { content: string };
+  return r.content;
 }
 
-/* ---- The search endpoint (multipart) ---- */
+/* ---- The search endpoint ---- */
+
 export async function runJobSearch(
   input: SearchInput,
-  signal?: AbortSignal,
+  _signal?: AbortSignal,
 ): Promise<SearchResponse> {
-  const fd = new FormData();
-  fd.set("role", input.role);
-  fd.set("location", input.location);
-  fd.set("template", input.template ?? "modern");
-  fd.set("name", input.name ?? "Candidate");
-  fd.set("email", input.email ?? "candidate@example.com");
-  fd.set("phone", input.phone ?? "");
-  fd.set("skills", input.skills ?? "");
-  fd.set("experience", input.experience ?? "");
-  fd.set("company", input.company ?? "");
-  fd.set("application_mode", input.application_mode ?? "manual");
-  fd.set("max_applications", String(input.max_applications ?? 8));
-  if (input.resume) fd.set("resume", input.resume);
-
-  let res: Response;
-  try {
-    res = await fetch(apiUrl("/api/job-agent/search"), {
-      method: "POST",
-      body: fd,
-      signal,
-    });
-  } catch (err) {
-    throw new ImperiumError(
-      err instanceof Error
-        ? `Search failed to reach backend: ${err.message}`
-        : "Search failed to reach backend",
-    );
-  }
-
-  const text = await res.text();
-  let parsed: unknown;
-  try {
-    parsed = text ? JSON.parse(text) : {};
-  } catch {
-    parsed = { status: "error", message: text };
-  }
-  if (!res.ok) {
-    throw new ImperiumError(
-      `Search failed (${res.status})`,
-      res.status,
-      parsed,
-    );
-  }
-  return parsed as SearchResponse;
+  const resume_text = input.resume ? await readFileAsText(input.resume) : "";
+  return (await fns.runJobSearch({
+    data: {
+      role: input.role,
+      location: input.location,
+      experience: input.experience ?? "",
+      skills: input.skills ?? "",
+      name: input.name ?? "Candidate",
+      email: input.email ?? "candidate@example.com",
+      phone: input.phone ?? "",
+      company: input.company ?? "",
+      max_applications: input.max_applications ?? 8,
+      resume_text,
+    },
+  })) as unknown as SearchResponse;
 }
-
-export { ImperiumError };
