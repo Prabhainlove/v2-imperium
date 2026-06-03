@@ -280,6 +280,57 @@ export type Database = {
         }
         Relationships: []
       }
+      resume_documents: {
+        Row: {
+          content_md: string
+          created_at: string
+          template: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          content_md?: string
+          created_at?: string
+          template?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          content_md?: string
+          created_at?: string
+          template?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      resume_versions: {
+        Row: {
+          content_md: string
+          created_at: string
+          id: string
+          label: string
+          template: string
+          user_id: string
+        }
+        Insert: {
+          content_md?: string
+          created_at?: string
+          id?: string
+          label?: string
+          template?: string
+          user_id: string
+        }
+        Update: {
+          content_md?: string
+          created_at?: string
+          id?: string
+          label?: string
+          template?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
