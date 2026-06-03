@@ -150,6 +150,8 @@ function ResumeStudioPage() {
         }
       />
 
+      <MasterResumeStudio userId={user.id} />
+
       <div className="grid gap-6 lg:grid-cols-[380px_1fr]">
         {/* LEFT — profile */}
         <Card className="h-fit">
