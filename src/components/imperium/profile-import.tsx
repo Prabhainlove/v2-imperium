@@ -78,7 +78,30 @@ export function ProfileImportCard({ current, onApply }: Props) {
     mutationFn: async (file: File) => {
       setParsing(true);
       try {
-        const text = await extractTextFromFile(file);
+        const isPdf = file.name.toLowerCase().endsWith(".pdf") || file.type === "application/pdf";
+        let text = "";
+        try {
+          text = await extractTextFromFile(file);
+        } catch (err) {
+          // For PDFs, fall back to server OCR below. For other types, surface the error.
+          if (!isPdf) throw err;
+          console.warn("Local PDF parse failed, falling back to server OCR:", err);
+        }
+        if (text && text.length >= 200) {
+          return importProfileFromText(text);
+        }
+        if (isPdf) {
+          // Scanned / image-based PDF — send to server for Gemini OCR.
+          const buf = await file.arrayBuffer();
+          const bytes = new Uint8Array(buf);
+          let binary = "";
+          const chunk = 0x8000;
+          for (let i = 0; i < bytes.length; i += chunk) {
+            binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+          }
+          const base64 = btoa(binary);
+          return importProfileFromPdf(base64);
+        }
         if (!text || text.length < 40) {
           throw new Error("Couldn't read text from that file. Try a different export or paste it manually.");
         }
