@@ -18,7 +18,8 @@ import { StatCard } from "@/components/imperium/stat-card";
 import { ActivityFeed } from "@/components/imperium/activity-feed";
 import { StatusBadge } from "@/components/imperium/status-badge";
 import { MatchScore } from "@/components/imperium/match-score";
-import { getDashboard, getApplications, getJobs } from "@/lib/imperium/client";
+import { ExecutionTimeline } from "@/components/imperium/execution-timeline";
+import { getDashboard, getApplications, getJobs, getActivity } from "@/lib/imperium/client";
 import { formatRelativeTime } from "@/lib/imperium/format";
 import { getApiBaseUrl } from "@/lib/imperium/config";
 
