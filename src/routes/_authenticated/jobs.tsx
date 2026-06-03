@@ -1,13 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { Briefcase, ExternalLink, Filter, MapPin, Search } from "lucide-react";
+import { Brain, Briefcase, ExternalLink, Filter, MapPin, Search } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/imperium/page-header";
 import { MatchScore } from "@/components/imperium/match-score";
+import { JobIntelligencePanel } from "@/components/imperium/job-intelligence";
 import { getJobs } from "@/lib/imperium/client";
 import {
   formatRelativeTime,
@@ -38,6 +39,8 @@ function JobsPage() {
     retry: false,
     refetchOnWindowFocus: false,
   });
+
+  const [expanded, setExpanded] = useState<string | null>(null);
 
   const [q, setQ] = useState("");
   const [source, setSource] = useState<string | null>(null);
@@ -130,82 +133,99 @@ function JobsPage() {
         <EmptyState text="No jobs to show. Launch a search to populate this view." />
       ) : (
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {filtered.map((j) => (
-            <Card
-              key={j.listing_id}
-              className="group overflow-hidden border-border/60 transition-all hover:border-primary/40 hover:shadow-glow"
-            >
-              <CardContent className="space-y-3 p-4">
-                <div className="flex items-start gap-3">
-                  <MatchScore score={j.match_score} size="sm" />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-start justify-between gap-2">
-                      <h3 className="line-clamp-2 text-sm font-semibold leading-snug">
-                        {j.title}
-                      </h3>
-                      {j.url && (
-                        <a
-                          href={j.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="shrink-0 text-muted-foreground hover:text-primary"
-                        >
-                          <ExternalLink className="h-3.5 w-3.5" />
-                        </a>
-                      )}
-                    </div>
-                    <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
-                      <span className="inline-flex items-center gap-1">
-                        <Briefcase className="h-3 w-3" /> {j.company}
-                      </span>
-                      {j.location && (
+          {filtered.map((j) => {
+            const isOpen = expanded === j.listing_id;
+            return (
+              <Card
+                key={j.listing_id}
+                className={`group overflow-hidden border-border/60 transition-all hover:border-primary/40 hover:shadow-glow ${
+                  isOpen ? "border-primary/40 ring-1 ring-primary/20" : ""
+                }`}
+              >
+                <CardContent className="space-y-3 p-4">
+                  <div className="flex items-start gap-3">
+                    <MatchScore score={j.match_score} size="sm" />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-start justify-between gap-2">
+                        <h3 className="line-clamp-2 text-sm font-semibold leading-snug">
+                          {j.title}
+                        </h3>
+                        {j.url && (
+                          <a
+                            href={j.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="shrink-0 text-muted-foreground hover:text-primary"
+                          >
+                            <ExternalLink className="h-3.5 w-3.5" />
+                          </a>
+                        )}
+                      </div>
+                      <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
                         <span className="inline-flex items-center gap-1">
-                          <MapPin className="h-3 w-3" /> {j.location}
+                          <Briefcase className="h-3 w-3" /> {j.company}
+                        </span>
+                        {j.location && (
+                          <span className="inline-flex items-center gap-1">
+                            <MapPin className="h-3 w-3" /> {j.location}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <Badge variant="secondary" className="text-[10px]">
+                      {j.source}
+                    </Badge>
+                    {(j.salary_min || j.salary_max) && (
+                      <Badge variant="outline" className="text-[10px]">
+                        {formatSalary(j.salary_min, j.salary_max, j.salary_currency)}
+                      </Badge>
+                    )}
+                    {j.experience_years != null && (
+                      <Badge variant="outline" className="text-[10px]">
+                        {j.experience_years}+ yrs
+                      </Badge>
+                    )}
+                    <span className="ml-auto text-[10px] text-muted-foreground">
+                      {formatRelativeTime(j.discovered_at)}
+                    </span>
+                  </div>
+
+                  {(j.required_skills?.length ?? 0) > 0 && (
+                    <div className="flex flex-wrap gap-1">
+                      {j.required_skills!.slice(0, 7).map((s) => (
+                        <span
+                          key={s}
+                          className="rounded bg-muted/60 px-1.5 py-0.5 text-[10px] text-muted-foreground"
+                        >
+                          {s}
+                        </span>
+                      ))}
+                      {j.required_skills!.length > 7 && (
+                        <span className="text-[10px] text-muted-foreground">
+                          +{j.required_skills!.length - 7}
                         </span>
                       )}
                     </div>
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-1.5">
-                  <Badge variant="secondary" className="text-[10px]">
-                    {j.source}
-                  </Badge>
-                  {(j.salary_min || j.salary_max) && (
-                    <Badge variant="outline" className="text-[10px]">
-                      {formatSalary(j.salary_min, j.salary_max, j.salary_currency)}
-                    </Badge>
                   )}
-                  {j.experience_years != null && (
-                    <Badge variant="outline" className="text-[10px]">
-                      {j.experience_years}+ yrs
-                    </Badge>
-                  )}
-                  <span className="ml-auto text-[10px] text-muted-foreground">
-                    {formatRelativeTime(j.discovered_at)}
-                  </span>
-                </div>
 
-                {(j.required_skills?.length ?? 0) > 0 && (
-                  <div className="flex flex-wrap gap-1">
-                    {j.required_skills!.slice(0, 7).map((s) => (
-                      <span
-                        key={s}
-                        className="rounded bg-muted/60 px-1.5 py-0.5 text-[10px] text-muted-foreground"
-                      >
-                        {s}
-                      </span>
-                    ))}
-                    {j.required_skills!.length > 7 && (
-                      <span className="text-[10px] text-muted-foreground">
-                        +{j.required_skills!.length - 7}
-                      </span>
-                    )}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          ))}
+                  <Button
+                    size="sm"
+                    variant={isOpen ? "secondary" : "outline"}
+                    className="w-full"
+                    onClick={() => setExpanded(isOpen ? null : j.listing_id)}
+                  >
+                    <Brain className="mr-1.5 h-3.5 w-3.5" />
+                    {isOpen ? "Hide Brain analysis" : "Ask Brain"}
+                  </Button>
+
+                  {isOpen && <JobIntelligencePanel listingId={j.listing_id} />}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
     </div>

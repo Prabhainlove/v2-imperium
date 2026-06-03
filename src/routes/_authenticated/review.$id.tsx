@@ -22,6 +22,7 @@ import { PageHeader } from "@/components/imperium/page-header";
 import { StatusBadge } from "@/components/imperium/status-badge";
 import { MatchScore } from "@/components/imperium/match-score";
 import { ActivityFeed } from "@/components/imperium/activity-feed";
+import { ApplicationReadinessPanel } from "@/components/imperium/application-readiness";
 import {
   approveApplication,
   getActivity,
@@ -203,6 +204,8 @@ function ReviewPage() {
           )}
         </CardContent>
       </Card>
+
+      <ApplicationReadinessPanel applicationId={id} />
 
       <div className="grid gap-4 lg:grid-cols-[1fr_1fr]">
         {/* Application fields */}

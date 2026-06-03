@@ -476,6 +476,134 @@ export const renderApplicationResume = createServerFn({ method: "POST" })
     };
   });
 
+/* ---------- Brain: optimize master resume against a job ---------- */
+const OptimizeMasterInput = z.object({
+  resume_md: z.string().min(1),
+  job_description: z.string().min(1),
+  job_title: z.string().default("Target Role"),
+  company: z.string().default("Target Company"),
+  template: z.enum(["classic", "modern", "compact"]).default("classic"),
+});
+
+export const optimizeMasterResume = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => OptimizeMasterInput.parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("name, email, phone, summary, skills, experience")
+      .eq("id", userId)
+      .maybeSingle();
+    const { optimizeResume } = await import("./brain/resume-optimizer.server");
+    const { extractKeywords } = await import("./resume-render");
+    const jobKeywords = extractKeywords(data.job_description, 20);
+    const candSkills = ((profile?.skills as string[] | null) ?? []) as string[];
+    const matched = candSkills.filter((s) =>
+      data.job_description.toLowerCase().includes(s.toLowerCase()),
+    );
+    const missing = jobKeywords.filter(
+      (k) => !candSkills.some((s) => s.toLowerCase() === k.toLowerCase()),
+    );
+    return optimizeResume({
+      candidate_name: (profile?.name as string) || "Candidate",
+      candidate_email: (profile?.email as string) || "",
+      candidate_phone: (profile?.phone as string) || "",
+      candidate_summary: (profile?.summary as string) || undefined,
+      candidate_skills: candSkills,
+      candidate_experience: `${((profile?.experience as unknown[] | null) ?? []).length} role(s)`,
+      job_title: data.job_title,
+      company: data.company,
+      job_description: data.job_description,
+      job_tech_stack: jobKeywords,
+      matched_skills: matched,
+      missing_skills: missing.slice(0, 10),
+      current_resume_md: data.resume_md,
+      template: data.template,
+    });
+  });
+
+/* ---------- Brain: per-listing intelligence ---------- */
+export const analyzeJobListing = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => IdInput.parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const [{ data: listing }, { data: profile }] = await Promise.all([
+      supabase.from("job_listings").select("*").eq("id", data.id).maybeSingle(),
+      supabase.from("profiles").select("headline, skills, experience, target_role").eq("id", userId).maybeSingle(),
+    ]);
+    if (!listing) throw new Error("Listing not found");
+    const { analyzeJob } = await import("./brain/job-analysis.server");
+    const skills = ((profile?.skills as string[] | null) ?? []) as string[];
+    const expCount = ((profile?.experience as unknown[] | null) ?? []).length;
+    return analyzeJob({
+      title: (listing.title as string) || "",
+      company: (listing.company as string) || "",
+      description: (listing.description as string) || "",
+      tech_stack: ((listing.tech_stack as string[] | null) ?? []) as string[],
+      location: (listing.location as string) || "",
+      remote: Boolean(listing.remote),
+      candidate_skills: skills,
+      candidate_role: (profile?.target_role as string) || (profile?.headline as string) || "Candidate",
+      candidate_experience: `${expCount} role(s)`,
+    });
+  });
+
+/* ---------- Brain: application readiness ---------- */
+export const evaluateApplication = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => IdInput.parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: app } = await supabase
+      .from("applications")
+      .select("*")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (!app) throw new Error("Application not found");
+    const { data: listing } = await supabase
+      .from("job_listings")
+      .select("*")
+      .eq("id", app.listing_id as string)
+      .maybeSingle();
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("headline, skills, experience, target_role")
+      .eq("id", userId)
+      .maybeSingle();
+    const { analyzeJob } = await import("./brain/job-analysis.server");
+    const { evaluateApplicationReadiness } = await import("./brain/application-engine.server");
+    const { analyzeAts } = await import("./rendercv.server");
+
+    const skills = ((profile?.skills as string[] | null) ?? []) as string[];
+    const expCount = ((profile?.experience as unknown[] | null) ?? []).length;
+    const job_score = await analyzeJob({
+      title: (listing?.title as string) || (app.job_title as string),
+      company: (listing?.company as string) || (app.company as string),
+      description: (listing?.description as string) || "",
+      tech_stack: ((listing?.tech_stack as string[] | null) ?? []) as string[],
+      location: (listing?.location as string) || "",
+      remote: Boolean(listing?.remote),
+      candidate_skills: skills,
+      candidate_role: (profile?.target_role as string) || (profile?.headline as string) || "Candidate",
+      candidate_experience: `${expCount} role(s)`,
+    });
+    const ats = analyzeAts(
+      (app.resume_md as string) || "",
+      ((listing?.tech_stack as string[] | null) ?? []).slice(0, 20),
+    );
+    const readiness = await evaluateApplicationReadiness({
+      job_score,
+      resume_ats_score: ats.score,
+      resume_excerpt: (app.resume_md as string) || "",
+      cover_letter_excerpt: (app.cover_letter_md as string) || "",
+      job_title: (app.job_title as string) || "",
+      company: (app.company as string) || "",
+    });
+    return { job_score, ats, readiness };
+  });
+
 /* ---------- The pipeline trigger ---------- */
 const RunSearchInput = z.object({
   role: z.string().min(1),
