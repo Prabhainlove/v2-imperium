@@ -35,11 +35,15 @@ const PROFILE_V2_COLUMNS = [
   "onboarded",
 ].join(",");
 
+type JsonValue = string | number | boolean | null | JsonValue[] | { [k: string]: JsonValue };
+
 function rowToProfile(userId: string, data: Record<string, unknown> | null) {
   if (!data) return null;
-  const arr = <T = unknown>(v: unknown): T[] => (Array.isArray(v) ? (v as T[]) : []);
-  const obj = (v: unknown): Record<string, unknown> =>
-    v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : {};
+  const arr = <T = JsonValue>(v: unknown): T[] => (Array.isArray(v) ? (v as T[]) : []);
+  const obj = (v: unknown): JsonValue =>
+    v && typeof v === "object" && !Array.isArray(v)
+      ? (JSON.parse(JSON.stringify(v)) as JsonValue)
+      : ({} as JsonValue);
   return {
     id: userId,
     name: (data.name as string) ?? "",
