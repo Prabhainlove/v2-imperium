@@ -508,8 +508,9 @@ async def get_artifact(path: str) -> FileResponse:
 
 @app.post("/api/job-agent/search", tags=["Job Agent"])
 async def job_agent_search(
-    role: str = Form(...),
-    location: str = Form(...),
+    role: str | None = Form(None),
+    query: str | None = Form(None),
+    location: str = Form("Remote"),
     resume: UploadFile | None = File(None),
     template: str = Form("modern"),
     name: str = Form("Candidate"),
@@ -520,10 +521,14 @@ async def job_agent_search(
     company: str = Form(""),
     application_mode: str = Form("manual"),
     max_applications: int = Form(8),
+    max_results: int = Form(20),
+    auto_apply: str = Form("false"),
+    min_match_threshold: float = Form(0.35),
 ) -> dict[str, Any]:
     """
     Core endpoint: search for jobs and build application packages.
 
+    - Accepts `role` or `query` for the target job title (frontend compatibility).
     - Resume upload is optional; profile fields are used as fallback.
     - Application mode defaults to 'manual' (safe — no real submission).
     - Returns matches with links to generated resume + cover letter.
@@ -531,8 +536,14 @@ async def job_agent_search(
     if not kernel:
         raise HTTPException(status_code=503, detail="Kernel not initialized")
 
+    # Accept `query` as alias for `role`
+    role = (role or query or "").strip()
+    if not role:
+        raise HTTPException(status_code=422, detail="Field 'role' (or 'query') is required")
+
     temp_dir: Path | None = None
-    task_id = f"web-search-{_utc_now()}"
+    # URL-safe task_id (no ':', '+' characters that break query-string round-trip)
+    task_id = f"web-search-{uuid4().hex[:12]}"
 
     # Log activity start
     db = _job_db()
@@ -619,14 +630,16 @@ async def job_agent_search(
         from agents.job_agent.job_agent import JobAgent
 
         job_agent = JobAgent(workspace_root=IMPERIUM_ROOT)
+        auto_apply_bool = str(auto_apply).strip().lower() in ("1", "true", "yes", "on")
         result = await job_agent.execute({
             "task_id": task_id,
             "command": "run_cycle",
             "candidate_profile": profile_data,
-            "auto_apply": False,
-            "manual_review": True,
+            "auto_apply": auto_apply_bool,
+            "manual_review": not auto_apply_bool,
             "application_mode": application_mode,
             "max_applications_per_cycle": max(1, min(int(max_applications), 20)),
+            "min_match_threshold": max(0.0, min(1.0, float(min_match_threshold))),
         })
 
         if result.get("status") != "success":

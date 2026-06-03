@@ -415,28 +415,43 @@ class PDFResumeGenerator:
         story.append(Paragraph(skills_text, styles["Normal"]))
         story.append(Spacer(1, 0.15 * inch))
 
+        def _attr(obj, key, default=""):
+            if isinstance(obj, dict):
+                return obj.get(key, default)
+            return getattr(obj, key, default)
+
         if profile.work_experience:
             story.append(Paragraph("WORK EXPERIENCE", heading_style))
             for exp in profile.work_experience[:3]:
-                exp_title = f"<b>{exp.get('title', 'Position')}</b> | {exp.get('company', 'Company')}"
+                title = _attr(exp, "title", "Position")
+                company = _attr(exp, "company", "Company")
+                exp_title = f"<b>{title}</b> | {company}"
                 story.append(Paragraph(exp_title, styles["Normal"]))
 
-                duration = exp.get("duration", "")
+                start = _attr(exp, "start_date", "")
+                end = _attr(exp, "end_date", "")
+                duration = _attr(exp, "duration", "") or " – ".join(x for x in (start, end) if x)
                 if duration:
                     story.append(Paragraph(f"<i>{duration}</i>", styles["Normal"]))
 
-                desc = exp.get("description", "")
+                achievements = _attr(exp, "achievements", []) or []
+                desc = _attr(exp, "description", "")
                 if desc:
                     story.append(Paragraph(f"• {desc}", styles["Normal"]))
+                for ach in achievements[:5]:
+                    story.append(Paragraph(f"• {ach}", styles["Normal"]))
 
                 story.append(Spacer(1, 0.1 * inch))
 
         if profile.education:
             story.append(Paragraph("EDUCATION", heading_style))
             for edu in profile.education:
-                edu_text = f"<b>{edu.get('degree', 'Degree')}</b> | {edu.get('institution', 'Institution')}"
-                if edu.get("year"):
-                    edu_text += f" | {edu['year']}"
+                degree = _attr(edu, "degree", "Degree")
+                institution = _attr(edu, "institution", "Institution")
+                edu_text = f"<b>{degree}</b> | {institution}"
+                year = _attr(edu, "year", "") or _attr(edu, "end_date", "")
+                if year:
+                    edu_text += f" | {year}"
                 story.append(Paragraph(edu_text, styles["Normal"]))
                 story.append(Spacer(1, 0.05 * inch))
 
@@ -444,9 +459,9 @@ class PDFResumeGenerator:
             story.append(Spacer(1, 0.1 * inch))
             story.append(Paragraph("KEY PROJECTS", heading_style))
             for proj in profile.projects[:3]:
-                proj_title = f"<b>{proj.get('name', 'Project')}</b>"
+                proj_title = f"<b>{_attr(proj, 'name', 'Project')}</b>"
                 story.append(Paragraph(proj_title, styles["Normal"]))
-                proj_desc = proj.get("description", "")
+                proj_desc = _attr(proj, "description", "")
                 if proj_desc:
                     story.append(Paragraph(f"• {proj_desc}", styles["Normal"]))
                 story.append(Spacer(1, 0.05 * inch))
