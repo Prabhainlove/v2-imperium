@@ -74,6 +74,29 @@ export const getProfileIntelligence = () =>
 export const getCareerIntelligence = () =>
   fns.getCareerIntelligence() as unknown as Promise<import("./brain/types").CareerInsight>;
 
+export const optimizeMasterResume = (payload: {
+  resume_md: string;
+  job_description: string;
+  job_title?: string;
+  company?: string;
+  template?: "classic" | "modern" | "compact";
+}) =>
+  fns.optimizeMasterResume({ data: payload }) as unknown as Promise<
+    import("./brain/types").ResumeOptimization
+  >;
+
+export const analyzeJobListing = (id: string) =>
+  fns.analyzeJobListing({ data: { id } }) as unknown as Promise<
+    import("./brain/types").JobScore
+  >;
+
+export const evaluateApplication = (id: string) =>
+  fns.evaluateApplication({ data: { id } }) as unknown as Promise<{
+    job_score: import("./brain/types").JobScore;
+    ats: import("./types").AtsAnalysis;
+    readiness: import("./brain/types").ApplicationReadiness;
+  }>;
+
 export function artifactUrl(path: string): string {
   return `#artifact/${encodeURIComponent(path)}`;
 }
