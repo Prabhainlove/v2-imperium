@@ -178,6 +178,16 @@ export const importProfileFromLinkedin = createServerFn({ method: "POST" })
     return extractProfileFromLinkedinUrl(data.url);
   });
 
+const ImportPdfInput = z.object({ base64: z.string().min(100).max(12_000_000) });
+
+export const importProfileFromPdf = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) => ImportPdfInput.parse(i))
+  .handler(async ({ data }) => {
+    const { extractProfileFromPdfBase64 } = await import("./brain/profile-import.server");
+    return extractProfileFromPdfBase64(data.base64);
+  });
+
 
 /* ---------- Jobs ---------- */
 const ListInput = z.object({
