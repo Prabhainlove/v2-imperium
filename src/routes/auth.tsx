@@ -49,12 +49,6 @@ function AuthPage() {
   const [busy, setBusy] = useState(false);
   const [resetSending, setResetSending] = useState(false);
 
-  // OTP verification step
-  const [pendingEmail, setPendingEmail] = useState<string | null>(null);
-  const [otp, setOtp] = useState("");
-  const [resendCooldown, setResendCooldown] = useState(0);
-  const [resending, setResending] = useState(false);
-
   // If already signed in, bounce to dashboard.
   useEffect(() => {
     let cancelled = false;
@@ -70,12 +64,6 @@ function AuthPage() {
     };
   }, [navigate]);
 
-  // Cooldown timer for resend OTP
-  useEffect(() => {
-    if (resendCooldown <= 0) return;
-    const t = setInterval(() => setResendCooldown((s) => Math.max(0, s - 1)), 1000);
-    return () => clearInterval(t);
-  }, [resendCooldown]);
 
   const pwChecks = useMemo(() => checkPassword(password), [password]);
   const pwOk = pwChecks.len && pwChecks.upper && pwChecks.lower && pwChecks.num;
