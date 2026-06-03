@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Loader2, Eye, EyeOff, Check, X, ArrowLeft } from "lucide-react";
+import { Loader2, Eye, EyeOff, Check, X } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
+
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
@@ -49,12 +49,6 @@ function AuthPage() {
   const [busy, setBusy] = useState(false);
   const [resetSending, setResetSending] = useState(false);
 
-  // OTP verification step
-  const [pendingEmail, setPendingEmail] = useState<string | null>(null);
-  const [otp, setOtp] = useState("");
-  const [resendCooldown, setResendCooldown] = useState(0);
-  const [resending, setResending] = useState(false);
-
   // If already signed in, bounce to dashboard.
   useEffect(() => {
     let cancelled = false;
@@ -70,12 +64,6 @@ function AuthPage() {
     };
   }, [navigate]);
 
-  // Cooldown timer for resend OTP
-  useEffect(() => {
-    if (resendCooldown <= 0) return;
-    const t = setInterval(() => setResendCooldown((s) => Math.max(0, s - 1)), 1000);
-    return () => clearInterval(t);
-  }, [resendCooldown]);
 
   const pwChecks = useMemo(() => checkPassword(password), [password]);
   const pwOk = pwChecks.len && pwChecks.upper && pwChecks.lower && pwChecks.num;
@@ -93,37 +81,15 @@ function AuthPage() {
         data: { name },
       },
     });
+    if (error) {
+      setBusy(false);
+      return toast.error(error.message);
+    }
+    // Email confirmation is disabled — sign the user in immediately.
+    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
     setBusy(false);
-    if (error) return toast.error(error.message);
-    setPendingEmail(email);
-    setResendCooldown(60);
-    toast.success("Verification code sent", { description: `Enter the 6-digit code we emailed to ${email}.` });
-  };
-
-  const verifyOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!pendingEmail) return;
-    if (otp.length !== 6) return toast.error("Enter the full 6-digit code");
-    setBusy(true);
-    const { error } = await supabase.auth.verifyOtp({
-      email: pendingEmail,
-      token: otp,
-      type: "signup",
-    });
-    setBusy(false);
-    if (error) return toast.error(error.message);
-    toast.success("Email verified", { description: "Welcome to Imperium." });
-    // onAuthStateChange listener will redirect to /dashboard → onboarding gate handles next step
-  };
-
-  const resendOtp = async () => {
-    if (!pendingEmail || resendCooldown > 0) return;
-    setResending(true);
-    const { error } = await supabase.auth.resend({ type: "signup", email: pendingEmail });
-    setResending(false);
-    if (error) return toast.error(error.message);
-    setResendCooldown(60);
-    toast.success("Code resent");
+    if (signInError) return toast.error(signInError.message);
+    toast.success("Account created", { description: "Welcome to Imperium." });
   };
 
   const signIn = async (e: React.FormEvent) => {
@@ -161,51 +127,8 @@ function AuthPage() {
         </Link>
 
         <Card className="p-6">
-          {pendingEmail ? (
-            <div className="space-y-5">
-              <button
-                type="button"
-                onClick={() => { setPendingEmail(null); setOtp(""); }}
-                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
-              >
-                <ArrowLeft className="h-3 w-3" /> Back
-              </button>
-              <div className="space-y-1.5 text-center">
-                <h2 className="imp-display text-base text-foreground">Verify your email</h2>
-                <p className="text-xs text-muted-foreground">
-                  We sent a 6-digit code to <span className="font-medium text-foreground">{pendingEmail}</span>
-                </p>
-              </div>
-              <form onSubmit={verifyOtp} className="space-y-4">
-                <div className="flex justify-center">
-                  <InputOTP maxLength={6} value={otp} onChange={setOtp}>
-                    <InputOTPGroup>
-                      <InputOTPSlot index={0} />
-                      <InputOTPSlot index={1} />
-                      <InputOTPSlot index={2} />
-                      <InputOTPSlot index={3} />
-                      <InputOTPSlot index={4} />
-                      <InputOTPSlot index={5} />
-                    </InputOTPGroup>
-                  </InputOTP>
-                </div>
-                <Button type="submit" disabled={busy || otp.length !== 6} className="w-full">
-                  {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Verify & continue"}
-                </Button>
-              </form>
-              <div className="text-center text-xs text-muted-foreground">
-                Didn't get it?{" "}
-                <button
-                  type="button"
-                  onClick={resendOtp}
-                  disabled={resendCooldown > 0 || resending}
-                  className="font-medium text-foreground underline-offset-2 hover:underline disabled:opacity-50 disabled:no-underline"
-                >
-                  {resending ? "Sending…" : resendCooldown > 0 ? `Resend in ${resendCooldown}s` : "Resend code"}
-                </button>
-              </div>
-            </div>
-          ) : (
+          {(
+
             <Tabs defaultValue="signin">
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="signin">Sign in</TabsTrigger>
