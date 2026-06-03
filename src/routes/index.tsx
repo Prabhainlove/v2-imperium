@@ -55,8 +55,6 @@ function DashboardPage() {
 
   const jobs = useQuery({
     queryKey: ["jobs", { limit: 5 }],
-  const jobs = useQuery({
-    queryKey: ["jobs", { limit: 5 }],
     queryFn: ({ signal }) => getJobs({ limit: 5 }, signal),
     retry: false,
   });
