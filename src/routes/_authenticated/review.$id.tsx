@@ -205,6 +205,8 @@ function ReviewPage() {
         </CardContent>
       </Card>
 
+      <ApplicationReadinessPanel applicationId={id} />
+
       <div className="grid gap-4 lg:grid-cols-[1fr_1fr]">
         {/* Application fields */}
         <Card>
