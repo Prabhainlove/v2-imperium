@@ -22,6 +22,7 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { PageHeader } from "@/components/imperium/page-header";
+import { MasterResumeStudio } from "@/components/imperium/master-resume-studio";
 import {
   getApplications,
   getProfile,
