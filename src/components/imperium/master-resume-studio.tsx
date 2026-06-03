@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
   Clock,
@@ -9,9 +9,16 @@ import {
   Loader2,
   Printer,
   Save,
+  Sparkles,
   Target,
   Trash2,
+  Wand2,
 } from "lucide-react";
+import CodeMirror from "@uiw/react-codemirror";
+import { markdown } from "@codemirror/lang-markdown";
+import { oneDark } from "@codemirror/theme-one-dark";
+import { EditorView } from "@codemirror/view";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -32,6 +39,7 @@ import {
   renderResumeHtml,
   type ResumeTemplate,
 } from "@/lib/imperium/resume-render";
+import { optimizeMasterResume } from "@/lib/imperium/client";
 
 const STARTER = `# Your Name
 your.email@example.com · +00 000 0000 · City, Country
@@ -62,12 +70,20 @@ interface Version {
   created_at: string;
 }
 
+const editorTheme = EditorView.theme({
+  "&": { fontSize: "12px", height: "560px" },
+  ".cm-scroller": { fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" },
+  ".cm-content": { padding: "10px 8px" },
+});
+
 export function MasterResumeStudio({ userId: propUserId }: { userId?: string } = {}) {
   const qc = useQueryClient();
   const [userId, setUserId] = useState<string | null>(propUserId ?? null);
   const [md, setMd] = useState<string>("");
   const [template, setTemplate] = useState<ResumeTemplate>("classic");
   const [jobDesc, setJobDesc] = useState<string>("");
+  const [jobTitle, setJobTitle] = useState<string>("");
+  const [company, setCompany] = useState<string>("");
   const [saving, setSaving] = useState(false);
   const [snapshotting, setSnapshotting] = useState(false);
   const [loaded, setLoaded] = useState(false);
@@ -128,6 +144,24 @@ export function MasterResumeStudio({ userId: propUserId }: { userId?: string } =
     [md, jobDesc],
   );
 
+  const optimize = useMutation({
+    mutationFn: () =>
+      optimizeMasterResume({
+        resume_md: md,
+        job_description: jobDesc,
+        job_title: jobTitle || "Target Role",
+        company: company || "Target Company",
+        template: template === "elegant" || template === "minimal" ? "classic" : template,
+      }),
+    onSuccess: (r) => {
+      setMd(r.optimized_md);
+      toast.success(
+        `Brain optimized · ATS ${r.ats_score_before} → ${r.ats_score_after}`,
+      );
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const save = async () => {
     if (!userId) return;
     setSaving(true);
@@ -145,7 +179,7 @@ export function MasterResumeStudio({ userId: propUserId }: { userId?: string } =
 
   const snapshot = async () => {
     if (!userId) return;
-    const label = window.prompt("Version label (optional)", `v${versions.data?.length ?? 0 + 1}`) ?? "";
+    const label = window.prompt("Version label (optional)", `v${(versions.data?.length ?? 0) + 1}`) ?? "";
     setSnapshotting(true);
     const { error } = await supabase
       .from("resume_versions")
@@ -264,21 +298,31 @@ export function MasterResumeStudio({ userId: propUserId }: { userId?: string } =
         <Tabs defaultValue="edit">
           <TabsList className="grid w-full grid-cols-3 sm:w-auto sm:inline-flex">
             <TabsTrigger value="edit">Edit + Preview</TabsTrigger>
-            <TabsTrigger value="ats">ATS &amp; Readability</TabsTrigger>
+            <TabsTrigger value="ats">ATS &amp; Target Job</TabsTrigger>
             <TabsTrigger value="history">History ({versions.data?.length ?? 0})</TabsTrigger>
           </TabsList>
 
           <TabsContent value="edit" className="mt-3">
             <div className="grid gap-3 lg:grid-cols-2">
               <div>
-                <div className="mb-1 text-[11px] uppercase tracking-wider text-muted-foreground">Markdown</div>
-                <Textarea
-                  value={md}
-                  onChange={(e) => setMd(e.target.value)}
-                  rows={26}
-                  spellCheck={false}
-                  className="resize-none font-mono text-[12px] leading-relaxed"
-                />
+                <div className="mb-1 text-[11px] uppercase tracking-wider text-muted-foreground">
+                  Markdown editor
+                </div>
+                <div className="overflow-hidden rounded-md border border-border/60">
+                  <CodeMirror
+                    value={md}
+                    height="560px"
+                    theme={oneDark}
+                    extensions={[markdown(), editorTheme, EditorView.lineWrapping]}
+                    onChange={(v) => setMd(v)}
+                    basicSetup={{
+                      lineNumbers: true,
+                      foldGutter: true,
+                      highlightActiveLine: true,
+                      bracketMatching: true,
+                    }}
+                  />
+                </div>
               </div>
               <div>
                 <div className="mb-1 text-[11px] uppercase tracking-wider text-muted-foreground">
@@ -332,10 +376,24 @@ export function MasterResumeStudio({ userId: propUserId }: { userId?: string } =
 
             <Separator />
 
-            <div className="space-y-2">
+            <div className="space-y-3">
               <div className="flex items-center gap-2">
                 <Target className="h-4 w-4 text-primary" />
                 <span className="text-sm font-medium">Target a job description</span>
+              </div>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <input
+                  className="rounded-md border border-border/60 bg-background px-3 py-1.5 text-sm"
+                  placeholder="Job title (optional)"
+                  value={jobTitle}
+                  onChange={(e) => setJobTitle(e.target.value)}
+                />
+                <input
+                  className="rounded-md border border-border/60 bg-background px-3 py-1.5 text-sm"
+                  placeholder="Company (optional)"
+                  value={company}
+                  onChange={(e) => setCompany(e.target.value)}
+                />
               </div>
               <Textarea
                 value={jobDesc}
@@ -344,6 +402,26 @@ export function MasterResumeStudio({ userId: propUserId }: { userId?: string } =
                 placeholder="Paste a job description to score keyword coverage against this resume."
                 className="text-sm"
               />
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  size="sm"
+                  onClick={() => optimize.mutate()}
+                  disabled={!jobDesc.trim() || optimize.isPending}
+                  className="bg-gradient-primary text-primary-foreground hover:opacity-95"
+                >
+                  {optimize.isPending ? (
+                    <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Wand2 className="mr-1.5 h-3.5 w-3.5" />
+                  )}
+                  Brain: Optimize for this job
+                </Button>
+                {optimize.data && (
+                  <Badge variant="outline" className="border-success/30 bg-success/10 text-success">
+                    ATS {optimize.data.ats_score_before} → {optimize.data.ats_score_after}
+                  </Badge>
+                )}
+              </div>
               {ats && (
                 <div className="rounded-md border border-border/60 p-3">
                   <div className="mb-2 flex items-center justify-between">
@@ -367,6 +445,36 @@ export function MasterResumeStudio({ userId: propUserId }: { userId?: string } =
                     <KwBlock title="Matched" items={ats.matched} tone="success" />
                     <KwBlock title="Missing" items={ats.missing} tone="warning" />
                   </div>
+                </div>
+              )}
+              {optimize.data && (
+                <div className="rounded-md border border-primary/30 bg-primary/5 p-3">
+                  <div className="mb-1 flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-primary">
+                    <Sparkles className="h-3 w-3" /> Brain edits
+                  </div>
+                  <p className="mb-2 text-xs text-muted-foreground">{optimize.data.reasoning}</p>
+                  {optimize.data.improvements.length > 0 && (
+                    <ul className="space-y-0.5 text-xs">
+                      {optimize.data.improvements.map((i, idx) => (
+                        <li key={idx} className="flex gap-2">
+                          <span className="text-success">✓</span>
+                          <span>{i}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {optimize.data.added_keywords.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      {optimize.data.added_keywords.map((k) => (
+                        <span
+                          key={k}
+                          className="rounded border border-success/30 bg-success/10 px-1.5 py-0.5 text-[10px] text-success"
+                        >
+                          + {k}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
