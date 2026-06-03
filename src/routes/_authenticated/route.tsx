@@ -7,10 +7,20 @@ import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
-  beforeLoad: async () => {
+  beforeLoad: async ({ location }) => {
     const { data, error } = await supabase.auth.getUser();
     if (error || !data.user) {
       throw redirect({ to: "/auth" });
+    }
+    if (location.pathname !== "/onboarding") {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("onboarded")
+        .eq("id", data.user.id)
+        .maybeSingle();
+      if (!profile?.onboarded) {
+        throw redirect({ to: "/onboarding" });
+      }
     }
     return { user: data.user };
   },
