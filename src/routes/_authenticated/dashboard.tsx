@@ -23,7 +23,7 @@ import { getDashboard, getApplications, getJobs, getActivity } from "@/lib/imper
 import { formatRelativeTime } from "@/lib/imperium/format";
 import { getApiBaseUrl } from "@/lib/imperium/config";
 
-export const Route = createFileRoute("/")({
+export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
     meta: [
       { title: "Dashboard — Imperium" },
