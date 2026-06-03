@@ -176,7 +176,7 @@ function fallbackCover(input: PipelineInput, job: RawJob): string {
 
 export async function runPipeline(input: PipelineInput) {
   const started = Date.now();
-  const { task_id } = input;
+  const { task_id, user_id } = input;
 
   await log(user_id, task_id, "search_started", "ok", `role=${input.role} location=${input.location} max_apps=${input.max_applications}`);
 
@@ -189,6 +189,7 @@ export async function runPipeline(input: PipelineInput) {
       if (!src.isAvailable()) {
         per_source[src.id] = { count: 0, status: "skipped" };
         await log(
+          user_id,
           task_id,
           `discover_${src.id}`,
           "skipped",
