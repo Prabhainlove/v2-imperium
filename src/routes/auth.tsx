@@ -93,37 +93,15 @@ function AuthPage() {
         data: { name },
       },
     });
+    if (error) {
+      setBusy(false);
+      return toast.error(error.message);
+    }
+    // Email confirmation is disabled — sign the user in immediately.
+    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
     setBusy(false);
-    if (error) return toast.error(error.message);
-    setPendingEmail(email);
-    setResendCooldown(60);
-    toast.success("Verification code sent", { description: `Enter the 6-digit code we emailed to ${email}.` });
-  };
-
-  const verifyOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!pendingEmail) return;
-    if (otp.length !== 6) return toast.error("Enter the full 6-digit code");
-    setBusy(true);
-    const { error } = await supabase.auth.verifyOtp({
-      email: pendingEmail,
-      token: otp,
-      type: "signup",
-    });
-    setBusy(false);
-    if (error) return toast.error(error.message);
-    toast.success("Email verified", { description: "Welcome to Imperium." });
-    // onAuthStateChange listener will redirect to /dashboard → onboarding gate handles next step
-  };
-
-  const resendOtp = async () => {
-    if (!pendingEmail || resendCooldown > 0) return;
-    setResending(true);
-    const { error } = await supabase.auth.resend({ type: "signup", email: pendingEmail });
-    setResending(false);
-    if (error) return toast.error(error.message);
-    setResendCooldown(60);
-    toast.success("Code resent");
+    if (signInError) return toast.error(signInError.message);
+    toast.success("Account created", { description: "Welcome to Imperium." });
   };
 
   const signIn = async (e: React.FormEvent) => {
