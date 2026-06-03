@@ -66,6 +66,13 @@ function DashboardPage() {
     retry: false,
   });
 
+  const brain = useQuery({
+    queryKey: ["brain-career"],
+    queryFn: () => getCareerIntelligence(),
+    retry: false,
+    staleTime: 5 * 60_000,
+  });
+
   const metrics = (dashboard.data?.metrics ?? {}) as Record<string, number>;
   const recentApps = dashboard.data?.recent_applications ?? apps.data ?? [];
   const activity = dashboard.data?.activity ?? [];
