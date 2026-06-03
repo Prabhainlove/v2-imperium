@@ -36,6 +36,17 @@ export const saveProfile = (payload: Partial<ImperiumProfile>) =>
 export const refreshGithubIntel = (url?: string) =>
   fns.refreshGithubIntel({ data: { url } }) as unknown as Promise<GithubIntel>;
 
+export type ImportedProfileResult = {
+  patch: Partial<ImperiumProfile>;
+  model: string;
+  source_chars?: number;
+};
+export const importProfileFromText = (text: string) =>
+  fns.importProfileFromText({ data: { text } }) as unknown as Promise<ImportedProfileResult>;
+export const importProfileFromLinkedin = (url: string) =>
+  fns.importProfileFromLinkedin({ data: { url } }) as unknown as Promise<ImportedProfileResult>;
+
+
 export const getDashboard = (_signal?: AbortSignal) =>
   fns.getDashboard() as unknown as Promise<DashboardSnapshot>;
 export const getJobs = (params: { limit?: number } = {}, _signal?: AbortSignal) =>
