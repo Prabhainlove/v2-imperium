@@ -239,35 +239,7 @@ export async function runPipeline(input: PipelineInput) {
   scored.sort((a, b) => b.overall - a.overall);
   await log(user_id, task_id, "jobs_ranked", "success", `Top score ${scored[0]?.overall.toFixed(2) ?? "n/a"} across ${scored.length} jobs`);
 
-  // --- Persist all jobs ---
-  if (scored.length) {
-    const rows = scored.map((s) => ({
-      source: s.job.source,
-      external_id: s.job.external_id,
-      url: s.job.url,
-      title: s.job.title,
-      company: s.job.company,
-      location: s.job.location,
-      remote: s.job.remote,
-      salary_min: s.job.salary_min,
-      salary_max: s.job.salary_max,
-      salary_currency: s.job.salary_currency,
-      tech_stack: s.job.tech_stack,
-      description: s.job.description,
-      posted_at: s.job.posted_at,
-      match_score: Number(s.overall.toFixed(3)),
-      status: "discovered",
-      task_id,
-      user_id,
-    }));
-    const { error } = await supabaseAdmin
-      .from("job_listings")
-      .upsert(rows, { onConflict: "source,external_id" });
-    if (error) await log(user_id, task_id, "persist_jobs", "failed", error.message);
-    else await log(user_id, task_id, "persist_jobs", "success", `${rows.length} jobs saved`);
-  }
-
-  // --- Shortlist ---
+  // --- Shortlist (search results are EPHEMERAL — only shortlisted jobs touch the DB) ---
   const shortlist = scored.filter((s) => s.overall >= 0.3).slice(0, input.max_applications);
   await log(user_id, task_id, "shortlist", "success", `${shortlist.length} qualified (≥0.30) selected for application prep`);
 
@@ -288,17 +260,47 @@ export async function runPipeline(input: PipelineInput) {
   }> = [];
 
   for (const s of shortlist) {
-    const { data: listingRow, error: lookupErr } = await supabaseAdmin
+    // Insert (or fetch) the listing row ONLY for shortlisted jobs we'll build an application for.
+    const { data: existingRow } = await supabaseAdmin
       .from("job_listings")
       .select("id")
       .eq("source", s.job.source)
       .eq("external_id", s.job.external_id)
+      .eq("user_id", user_id)
       .maybeSingle();
-    if (lookupErr || !listingRow) {
-      await log(user_id, task_id, "lookup_listing", "failed", `${s.job.company} — ${s.job.title}`);
-      continue;
+    let listing_id: string;
+    if (existingRow?.id) {
+      listing_id = existingRow.id as string;
+    } else {
+      const { data: insertedListing, error: insertErr } = await supabaseAdmin
+        .from("job_listings")
+        .insert({
+          source: s.job.source,
+          external_id: s.job.external_id,
+          url: s.job.url,
+          title: s.job.title,
+          company: s.job.company,
+          location: s.job.location,
+          remote: s.job.remote,
+          salary_min: s.job.salary_min,
+          salary_max: s.job.salary_max,
+          salary_currency: s.job.salary_currency,
+          tech_stack: s.job.tech_stack,
+          description: s.job.description,
+          posted_at: s.job.posted_at,
+          match_score: Number(s.overall.toFixed(3)),
+          status: "shortlisted",
+          task_id,
+          user_id,
+        })
+        .select("id")
+        .single();
+      if (insertErr || !insertedListing) {
+        await log(user_id, task_id, "lookup_listing", "failed", `${s.job.company} — ${s.job.title}`);
+        continue;
+      }
+      listing_id = insertedListing.id as string;
     }
-    const listing_id = listingRow.id as string;
 
     await log(user_id, task_id, "brain_analyze_job", "running", `Brain analysing ${s.job.company} — ${s.job.title}…`);
     const brainScore = await analyzeJob({
@@ -424,7 +426,9 @@ export async function runPipeline(input: PipelineInput) {
         listing_id,
         company: s.job.company,
         job_title: s.job.title,
-        status: "Pending Review",
+        source: s.job.source,
+        url: s.job.url,
+        status: "Preparing",
         match_score: Number(s.overall.toFixed(3)),
         resume_md,
         cover_letter_md: cover_md,
@@ -437,6 +441,16 @@ export async function runPipeline(input: PipelineInput) {
     if (appErr) {
       await log(user_id, task_id, "prepare_application", "failed", appErr.message);
       continue;
+    }
+    if (inserted?.id) {
+      await supabaseAdmin.from("application_timeline").insert({
+        user_id,
+        application_id: inserted.id as string,
+        event_type: "created",
+        from_status: "",
+        to_status: "Preparing",
+        note: `Application package prepared for ${s.job.company} — ${s.job.title}`,
+      });
     }
     await log(user_id, task_id, "prepare_application", "success", `Package ready for ${s.job.company} — awaiting user approval`);
 
@@ -530,6 +544,7 @@ export async function simulateSubmission(applicationId: string, user_id: string)
     await log(user_id, task_id, action, "success", detail);
   }
 
+  const prevStatus = (app.status as string) || "Preparing";
   await supabaseAdmin
     .from("applications")
     .update({
@@ -538,6 +553,15 @@ export async function simulateSubmission(applicationId: string, user_id: string)
       updated_at: new Date().toISOString(),
     })
     .eq("id", applicationId);
+
+  await supabaseAdmin.from("application_timeline").insert({
+    user_id,
+    application_id: applicationId,
+    event_type: "status_change",
+    from_status: prevStatus,
+    to_status: "Applied",
+    note: `Submitted to ${app.company}`,
+  });
 
   await log(
     user_id,
@@ -553,22 +577,31 @@ export async function simulateSubmission(applicationId: string, user_id: string)
 export async function skipApplication(applicationId: string, user_id: string) {
   const { data: app, error } = await supabaseAdmin
     .from("applications")
-    .select("task_id, company, job_title")
+    .select("task_id, company, job_title, status")
     .eq("id", applicationId)
     .eq("user_id", user_id)
     .maybeSingle();
   if (error || !app) throw new Error("Application not found");
+  const prevStatus = (app.status as string) || "Preparing";
   await supabaseAdmin
     .from("applications")
-    .update({ status: "Skipped", updated_at: new Date().toISOString() })
+    .update({ status: "Withdrawn", updated_at: new Date().toISOString() })
     .eq("id", applicationId)
     .eq("user_id", user_id);
+  await supabaseAdmin.from("application_timeline").insert({
+    user_id,
+    application_id: applicationId,
+    event_type: "status_change",
+    from_status: prevStatus,
+    to_status: "Withdrawn",
+    note: `User withdrew application for ${app.company} — ${app.job_title}`,
+  });
   await log(
     user_id,
     (app.task_id as string) || "skip",
     "user_skip",
     "ok",
-    `User skipped ${app.company} — ${app.job_title}`,
+    `User withdrew ${app.company} — ${app.job_title}`,
   );
   return { ok: true };
 }

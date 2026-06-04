@@ -70,33 +70,78 @@ export interface JobListing {
 }
 
 export type ApplicationStatus =
-  | "Pending Review"
+  | "Saved"
+  | "Preparing"
   | "Applied"
-  | "Under Review"
-  | "Interview Scheduled"
+  | "Assessment"
+  | "Interview"
+  | "Offer"
   | "Rejected"
-  | "Offer Received"
-  | "Skipped"
-  | "Manual Review";
+  | "Withdrawn";
+
+export const APPLICATION_STATUSES: ApplicationStatus[] = [
+  "Saved",
+  "Preparing",
+  "Applied",
+  "Assessment",
+  "Interview",
+  "Offer",
+  "Rejected",
+  "Withdrawn",
+];
 
 export interface ApplicationRecord {
   application_id: string;
   listing_id: string;
   company: string;
   job_title: string;
+  source?: string;
+  url?: string;
   date_applied?: string;
   status: ApplicationStatus | string;
   match_score?: number;
   resume_path?: string | null;
   cover_letter_path?: string | null;
+  resume_version?: string;
+  cover_letter_version?: string;
   last_updated?: string;
   notes?: string | null;
+  interview_notes?: string;
+  recruiter_notes?: string;
+  next_action?: string;
+  next_action_at?: string | null;
   matched_skills?: string[];
   missing_skills?: string[];
   salary_match?: number;
   experience_match?: number;
   location_match?: number;
   application_fields?: Record<string, string>;
+}
+
+export interface ApplicationTimelineEntry {
+  id: string;
+  application_id: string;
+  event_type: string;
+  from_status: string;
+  to_status: string;
+  note: string;
+  created_at: string;
+}
+
+export interface InterviewRecord {
+  id: string;
+  application_id: string | null;
+  company: string;
+  position: string;
+  stage: string;
+  interview_at: string | null;
+  location: string;
+  recruiter: string;
+  notes: string;
+  feedback: string;
+  outcome: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface ActivityLogEntry {
