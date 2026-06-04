@@ -138,3 +138,84 @@ export async function runJobSearch(
     },
   })) as unknown as SearchResponse;
 }
+
+/* ---------- Phase A: status pipeline, timeline, saved jobs, interviews ---------- */
+import type {
+  ApplicationStatus,
+  ApplicationTimelineEntry,
+  InterviewRecord,
+} from "./types";
+
+export const updateApplicationStatus = (id: string, status: ApplicationStatus, note?: string) =>
+  fns.updateApplicationStatus({ data: { id, status, note } }) as unknown as Promise<{ ok: boolean }>;
+
+export const updateApplicationFields = (
+  id: string,
+  patch: {
+    interview_notes?: string;
+    recruiter_notes?: string;
+    next_action?: string;
+    next_action_at?: string | null;
+    resume_version?: string;
+    cover_letter_version?: string;
+  },
+) =>
+  fns.updateApplicationFields({ data: { id, ...patch } }) as unknown as Promise<{ ok: boolean }>;
+
+export const getApplicationTimeline = (id: string) =>
+  fns.getApplicationTimeline({ data: { id } }) as unknown as Promise<ApplicationTimelineEntry[]>;
+
+export const saveJobListing = (payload: {
+  source: string;
+  external_id: string;
+  url?: string;
+  title: string;
+  company: string;
+  location?: string;
+  remote?: boolean;
+  description?: string;
+  tech_stack?: string[];
+  match_score?: number;
+  bookmarked?: boolean;
+}) =>
+  fns.saveJobListing({ data: payload as Record<string, unknown> }) as unknown as Promise<{
+    ok: boolean;
+    id: string;
+  }>;
+
+export const unsaveJobListing = (id: string) =>
+  fns.unsaveJobListing({ data: { id } }) as unknown as Promise<{ ok: boolean }>;
+
+export const getSavedJobs = () => fns.getSavedJobs() as unknown as Promise<JobListing[]>;
+
+export type InterviewInput = {
+  id?: string;
+  application_id?: string | null;
+  company: string;
+  position?: string;
+  stage?:
+    | "Screening"
+    | "Technical"
+    | "Managerial"
+    | "Final Round"
+    | "Offer"
+    | "Rejected";
+  interview_at?: string | null;
+  location?: string;
+  recruiter?: string;
+  notes?: string;
+  feedback?: string;
+  outcome?: string;
+};
+
+export const upsertInterview = (payload: InterviewInput) =>
+  fns.upsertInterview({ data: payload as Record<string, unknown> }) as unknown as Promise<{
+    ok: boolean;
+    id: string;
+  }>;
+
+export const getInterviews = () =>
+  fns.getInterviews() as unknown as Promise<InterviewRecord[]>;
+
+export const deleteInterview = (id: string) =>
+  fns.deleteInterview({ data: { id } }) as unknown as Promise<{ ok: boolean }>;
