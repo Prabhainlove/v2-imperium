@@ -2,6 +2,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { motion, useScroll, useTransform, useSpring, useInView } from "motion/react";
 import { supabase } from "@/integrations/supabase/client";
+import { SplineScene } from "@/components/ui/splite";
+import { Spotlight } from "@/components/ui/spotlight";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -141,6 +143,9 @@ function SectionHero({ cta, ctaLabel }: { cta: string; ctaLabel: string }) {
         <span className="block text-white/40">One transparent pipeline.</span>
       </div>
 
+      {/* aceternity spotlight wash */}
+      <Spotlight className="-top-40 left-0 md:-top-20 md:left-60" fill="#ff6b3d" />
+
       {/* central 3D-feel artwork */}
       <div className="imp-stage-center">
         <HeroArtifact />
@@ -168,6 +173,13 @@ function HeroArtifact() {
       <div className="imp-artifact-card">
         {/* glow */}
         <div className="imp-artifact-glow" aria-hidden />
+        {/* 3D Spline scene */}
+        <div className="absolute inset-0 z-0">
+          <SplineScene
+            scene="https://prod.spline.design/kZDDjO5HuC9GJUM2/scene.splinecode"
+            className="h-full w-full"
+          />
+        </div>
         {/* terminal-ish content */}
         <div className="relative z-10 flex h-full flex-col">
           <div className="flex items-center justify-between px-5 pt-4 text-[10px] uppercase tracking-[0.3em] text-white/60">
@@ -183,18 +195,6 @@ function HeroArtifact() {
               Senior&nbsp;Frontend
               <span className="block text-[color:var(--imp-ember)]">Engineer · Remote</span>
             </div>
-          </div>
-          <div className="mt-5 grid grid-cols-3 gap-3 px-5 text-[10px] uppercase tracking-[0.25em] text-white/55">
-            {[
-              ["Sources", "7"],
-              ["Matches", "128"],
-              ["Score", "94"],
-            ].map(([k, v]) => (
-              <div key={k} className="rounded-md border border-white/10 bg-white/[0.03] px-3 py-2">
-                <div className="text-white/45">{k}</div>
-                <div className="mt-1 font-display text-base text-white normal-case tracking-tight">{v}</div>
-              </div>
-            ))}
           </div>
           <div className="mt-auto space-y-2 px-5 pb-5">
             {[

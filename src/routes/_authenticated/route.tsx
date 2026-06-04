@@ -3,6 +3,8 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/imperium/app-sidebar";
 import { HealthBadge } from "@/components/imperium/health-badge";
 import { ThemeToggle } from "@/components/imperium/theme-toggle";
+import { Spotlight } from "@/components/ui/spotlight";
+import { SpotlightCursor } from "@/components/ui/spotlight-cursor";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/_authenticated")({
@@ -45,8 +47,12 @@ function AuthenticatedLayout() {
               <ThemeToggle />
             </div>
           </header>
-          <main className="imp-shell-main flex-1">
-            <Outlet />
+          <main className="imp-shell-main relative flex-1 overflow-hidden">
+            <Spotlight className="-top-40 left-0 md:-top-20 md:left-60" fill="#ff6b3d" />
+            <SpotlightCursor className="z-0" size={300} />
+            <div className="relative z-10">
+              <Outlet />
+            </div>
           </main>
         </div>
       </div>
