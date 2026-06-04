@@ -13,6 +13,7 @@ import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedSkillsRouteImport } from './routes/_authenticated/skills'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedSearchRouteImport } from './routes/_authenticated/search'
 import { Route as AuthenticatedResumeRouteImport } from './routes/_authenticated/resume'
@@ -43,6 +44,11 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedSkillsRoute = AuthenticatedSkillsRouteImport.update({
+  id: '/skills',
+  path: '/skills',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
   id: '/settings',
@@ -116,6 +122,7 @@ export interface FileRoutesByFullPath {
   '/resume': typeof AuthenticatedResumeRoute
   '/search': typeof AuthenticatedSearchRoute
   '/settings': typeof AuthenticatedSettingsRoute
+  '/skills': typeof AuthenticatedSkillsRoute
   '/review/$id': typeof AuthenticatedReviewIdRoute
 }
 export interface FileRoutesByTo {
@@ -132,6 +139,7 @@ export interface FileRoutesByTo {
   '/resume': typeof AuthenticatedResumeRoute
   '/search': typeof AuthenticatedSearchRoute
   '/settings': typeof AuthenticatedSettingsRoute
+  '/skills': typeof AuthenticatedSkillsRoute
   '/review/$id': typeof AuthenticatedReviewIdRoute
 }
 export interface FileRoutesById {
@@ -150,6 +158,7 @@ export interface FileRoutesById {
   '/_authenticated/resume': typeof AuthenticatedResumeRoute
   '/_authenticated/search': typeof AuthenticatedSearchRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
+  '/_authenticated/skills': typeof AuthenticatedSkillsRoute
   '/_authenticated/review/$id': typeof AuthenticatedReviewIdRoute
 }
 export interface FileRouteTypes {
@@ -168,6 +177,7 @@ export interface FileRouteTypes {
     | '/resume'
     | '/search'
     | '/settings'
+    | '/skills'
     | '/review/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -184,6 +194,7 @@ export interface FileRouteTypes {
     | '/resume'
     | '/search'
     | '/settings'
+    | '/skills'
     | '/review/$id'
   id:
     | '__root__'
@@ -201,6 +212,7 @@ export interface FileRouteTypes {
     | '/_authenticated/resume'
     | '/_authenticated/search'
     | '/_authenticated/settings'
+    | '/_authenticated/skills'
     | '/_authenticated/review/$id'
   fileRoutesById: FileRoutesById
 }
@@ -240,6 +252,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/skills': {
+      id: '/_authenticated/skills'
+      path: '/skills'
+      fullPath: '/skills'
+      preLoaderRoute: typeof AuthenticatedSkillsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/settings': {
       id: '/_authenticated/settings'
@@ -332,6 +351,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedResumeRoute: typeof AuthenticatedResumeRoute
   AuthenticatedSearchRoute: typeof AuthenticatedSearchRoute
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
+  AuthenticatedSkillsRoute: typeof AuthenticatedSkillsRoute
   AuthenticatedReviewIdRoute: typeof AuthenticatedReviewIdRoute
 }
 
@@ -346,6 +366,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedResumeRoute: AuthenticatedResumeRoute,
   AuthenticatedSearchRoute: AuthenticatedSearchRoute,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
+  AuthenticatedSkillsRoute: AuthenticatedSkillsRoute,
   AuthenticatedReviewIdRoute: AuthenticatedReviewIdRoute,
 }
 
@@ -361,3 +382,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
