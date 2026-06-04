@@ -765,7 +765,7 @@ export const updateApplicationStatus = createServerFn({ method: "POST" })
     if (data.status === "Applied") patch.applied_at = new Date().toISOString();
     const { error: updErr } = await supabase
       .from("applications")
-      .update(patch)
+      .update(patch as never)
       .eq("id", data.id);
     if (updErr) throw new Error(updErr.message);
     await supabase.from("application_timeline").insert({
