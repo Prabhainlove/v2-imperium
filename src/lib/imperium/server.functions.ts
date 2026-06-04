@@ -728,3 +728,279 @@ export const runJobSearch = createServerFn({ method: "POST" })
       skipped: [],
     };
   });
+
+/* ---------- Application status updates + timeline ---------- */
+const UpdateStatusInput = z.object({
+  id: z.string().min(1),
+  status: z.enum([
+    "Saved",
+    "Preparing",
+    "Applied",
+    "Assessment",
+    "Interview",
+    "Offer",
+    "Rejected",
+    "Withdrawn",
+  ]),
+  note: z.string().max(2000).optional(),
+});
+
+export const updateApplicationStatus = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => UpdateStatusInput.parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: app, error: readErr } = await supabase
+      .from("applications")
+      .select("status")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (readErr) throw new Error(readErr.message);
+    if (!app) throw new Error("Application not found");
+    const prev = (app.status as string) || "";
+    const patch: Record<string, unknown> = {
+      status: data.status,
+      updated_at: new Date().toISOString(),
+    };
+    if (data.status === "Applied") patch.applied_at = new Date().toISOString();
+    const { error: updErr } = await supabase
+      .from("applications")
+      .update(patch)
+      .eq("id", data.id);
+    if (updErr) throw new Error(updErr.message);
+    await supabase.from("application_timeline").insert({
+      user_id: userId,
+      application_id: data.id,
+      event_type: "status_change",
+      from_status: prev,
+      to_status: data.status,
+      note: data.note ?? "",
+    });
+    return { ok: true };
+  });
+
+const UpdateAppFieldsInput = z.object({
+  id: z.string().min(1),
+  interview_notes: z.string().max(20000).optional(),
+  recruiter_notes: z.string().max(20000).optional(),
+  next_action: z.string().max(500).optional(),
+  next_action_at: z.string().nullable().optional(),
+  resume_version: z.string().max(120).optional(),
+  cover_letter_version: z.string().max(120).optional(),
+});
+
+export const updateApplicationFields = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => UpdateAppFieldsInput.parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+    const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
+    for (const k of [
+      "interview_notes",
+      "recruiter_notes",
+      "next_action",
+      "next_action_at",
+      "resume_version",
+      "cover_letter_version",
+    ] as const) {
+      const v = (data as Record<string, unknown>)[k];
+      if (v !== undefined) patch[k] = v;
+    }
+    const { error } = await supabase.from("applications").update(patch).eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const getApplicationTimeline = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => IdInput.parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+    const { data: rows, error } = await supabase
+      .from("application_timeline")
+      .select("*")
+      .eq("application_id", data.id)
+      .order("created_at", { ascending: true });
+    if (error) throw new Error(error.message);
+    return (rows ?? []).map((r) => ({
+      id: r.id as string,
+      application_id: r.application_id as string,
+      event_type: r.event_type as string,
+      from_status: (r.from_status as string) ?? "",
+      to_status: (r.to_status as string) ?? "",
+      note: (r.note as string) ?? "",
+      created_at: r.created_at as string,
+    }));
+  });
+
+/* ---------- Saved jobs (curated list — survives searches) ---------- */
+const SaveJobInput = z.object({
+  source: z.string().min(1),
+  external_id: z.string().min(1),
+  url: z.string().default(""),
+  title: z.string().min(1),
+  company: z.string().min(1),
+  location: z.string().default(""),
+  remote: z.boolean().default(false),
+  description: z.string().default(""),
+  tech_stack: z.array(z.string()).default([]),
+  match_score: z.number().min(0).max(1).default(0),
+  bookmarked: z.boolean().default(false),
+});
+
+export const saveJobListing = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => SaveJobInput.parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: existing } = await supabase
+      .from("job_listings")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("source", data.source)
+      .eq("external_id", data.external_id)
+      .maybeSingle();
+    if (existing?.id) {
+      await supabase
+        .from("job_listings")
+        .update({ saved: true, bookmarked: data.bookmarked })
+        .eq("id", existing.id);
+      return { ok: true, id: existing.id as string };
+    }
+    const { data: inserted, error } = await supabase
+      .from("job_listings")
+      .insert({
+        ...data,
+        user_id: userId,
+        saved: true,
+        status: "saved",
+      })
+      .select("id")
+      .single();
+    if (error || !inserted) throw new Error(error?.message ?? "Failed to save job");
+    return { ok: true, id: inserted.id as string };
+  });
+
+export const unsaveJobListing = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => IdInput.parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+    const { error } = await supabase
+      .from("job_listings")
+      .update({ saved: false, bookmarked: false })
+      .eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const getSavedJobs = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase } = context;
+    const { data: rows, error } = await supabase
+      .from("job_listings")
+      .select("*")
+      .or("saved.eq.true,bookmarked.eq.true")
+      .order("discovered_at", { ascending: false });
+    if (error) throw new Error(error.message);
+    return (rows ?? []).map((r) => ({
+      listing_id: r.id as string,
+      source: r.source as string,
+      url: (r.url as string) ?? "",
+      title: r.title as string,
+      company: r.company as string,
+      location: (r.location as string) ?? "",
+      remote: Boolean(r.remote),
+      description: (r.description as string) ?? "",
+      technology_stack: (r.tech_stack as string[] | null) ?? [],
+      match_score: Number(r.match_score ?? 0),
+      saved: Boolean(r.saved),
+      bookmarked: Boolean(r.bookmarked),
+      discovered_at: r.discovered_at as string,
+    }));
+  });
+
+/* ---------- Interviews ---------- */
+const InterviewInput = z.object({
+  id: z.string().optional(),
+  application_id: z.string().nullable().optional(),
+  company: z.string().min(1).max(200),
+  position: z.string().max(200).default(""),
+  stage: z.enum(["Screening", "Technical", "Managerial", "Final Round", "Offer", "Rejected"]).default("Screening"),
+  interview_at: z.string().nullable().optional(),
+  location: z.string().max(200).default(""),
+  recruiter: z.string().max(200).default(""),
+  notes: z.string().max(20000).default(""),
+  feedback: z.string().max(20000).default(""),
+  outcome: z.string().max(500).default(""),
+});
+
+export const upsertInterview = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => InterviewInput.parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const payload: Record<string, unknown> = {
+      user_id: userId,
+      application_id: data.application_id ?? null,
+      company: data.company,
+      position: data.position,
+      stage: data.stage,
+      interview_at: data.interview_at ?? null,
+      location: data.location,
+      recruiter: data.recruiter,
+      notes: data.notes,
+      feedback: data.feedback,
+      outcome: data.outcome,
+    };
+    if (data.id) {
+      const { error } = await supabase.from("interviews").update(payload).eq("id", data.id);
+      if (error) throw new Error(error.message);
+      return { ok: true, id: data.id };
+    }
+    const { data: inserted, error } = await supabase
+      .from("interviews")
+      .insert(payload)
+      .select("id")
+      .single();
+    if (error || !inserted) throw new Error(error?.message ?? "Failed to create interview");
+    return { ok: true, id: inserted.id as string };
+  });
+
+export const getInterviews = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase } = context;
+    const { data: rows, error } = await supabase
+      .from("interviews")
+      .select("*")
+      .order("interview_at", { ascending: true, nullsFirst: false })
+      .order("created_at", { ascending: false });
+    if (error) throw new Error(error.message);
+    return (rows ?? []).map((r) => ({
+      id: r.id as string,
+      application_id: (r.application_id as string | null) ?? null,
+      company: r.company as string,
+      position: (r.position as string) ?? "",
+      stage: (r.stage as string) ?? "Screening",
+      interview_at: (r.interview_at as string | null) ?? null,
+      location: (r.location as string) ?? "",
+      recruiter: (r.recruiter as string) ?? "",
+      notes: (r.notes as string) ?? "",
+      feedback: (r.feedback as string) ?? "",
+      outcome: (r.outcome as string) ?? "",
+      created_at: r.created_at as string,
+      updated_at: r.updated_at as string,
+    }));
+  });
+
+export const deleteInterview = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => IdInput.parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+    const { error } = await supabase.from("interviews").delete().eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
