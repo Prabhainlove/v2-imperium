@@ -163,6 +163,122 @@ export type Database = {
           },
         ]
       }
+      automation_events: {
+        Row: {
+          action: string
+          created_at: string
+          detail: string
+          id: number
+          level: string
+          run_id: string
+          step: string
+          url: string
+          user_id: string
+        }
+        Insert: {
+          action?: string
+          created_at?: string
+          detail?: string
+          id?: number
+          level?: string
+          run_id: string
+          step?: string
+          url?: string
+          user_id: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          detail?: string
+          id?: number
+          level?: string
+          run_id?: string
+          step?: string
+          url?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automation_events_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "automation_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      automation_runs: {
+        Row: {
+          agent_token: string
+          application_id: string | null
+          approval_required: boolean
+          approved: boolean | null
+          company: string
+          cover_letter_text: string | null
+          created_at: string
+          current_action: string
+          current_step: string
+          current_url: string
+          error: string | null
+          id: string
+          job_title: string
+          job_url: string
+          progress: number
+          resume_text: string | null
+          screenshot_b64: string | null
+          status: string
+          summary: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          agent_token?: string
+          application_id?: string | null
+          approval_required?: boolean
+          approved?: boolean | null
+          company?: string
+          cover_letter_text?: string | null
+          created_at?: string
+          current_action?: string
+          current_step?: string
+          current_url?: string
+          error?: string | null
+          id?: string
+          job_title?: string
+          job_url?: string
+          progress?: number
+          resume_text?: string | null
+          screenshot_b64?: string | null
+          status?: string
+          summary?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          agent_token?: string
+          application_id?: string | null
+          approval_required?: boolean
+          approved?: boolean | null
+          company?: string
+          cover_letter_text?: string | null
+          created_at?: string
+          current_action?: string
+          current_step?: string
+          current_url?: string
+          error?: string | null
+          id?: string
+          job_title?: string
+          job_url?: string
+          progress?: number
+          resume_text?: string | null
+          screenshot_b64?: string | null
+          status?: string
+          summary?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       brain_memory: {
         Row: {
           created_at: string
