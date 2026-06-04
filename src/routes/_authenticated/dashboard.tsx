@@ -19,7 +19,7 @@ import { ActivityFeed } from "@/components/imperium/activity-feed";
 import { StatusBadge } from "@/components/imperium/status-badge";
 import { MatchScore } from "@/components/imperium/match-score";
 import { ExecutionTimeline } from "@/components/imperium/execution-timeline";
-import { getDashboard, getApplications, getJobs, getActivity, getCareerIntelligence } from "@/lib/imperium/client";
+import { getDashboard, getApplications, getJobs, getActivity, getCareerIntelligence, getInterviews } from "@/lib/imperium/client";
 import { formatRelativeTime } from "@/lib/imperium/format";
 import { getApiBaseUrl } from "@/lib/imperium/config";
 
