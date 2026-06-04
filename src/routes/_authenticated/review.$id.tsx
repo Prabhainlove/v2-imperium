@@ -138,7 +138,7 @@ function ReviewPage() {
   const a = app.data;
   const fields = a.application_fields ?? {};
   const isSubmitted = a.status === "Applied";
-  const isPending = a.status === "Pending Review";
+  const isPending = a.status === "Preparing";
 
   return (
     <div className="mx-auto w-full max-w-7xl space-y-5 p-4 md:p-6">
