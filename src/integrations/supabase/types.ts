@@ -47,53 +47,110 @@ export type Database = {
         }
         Relationships: []
       }
+      application_timeline: {
+        Row: {
+          application_id: string
+          created_at: string
+          event_type: string
+          from_status: string
+          id: string
+          note: string
+          to_status: string
+          user_id: string
+        }
+        Insert: {
+          application_id: string
+          created_at?: string
+          event_type: string
+          from_status?: string
+          id?: string
+          note?: string
+          to_status?: string
+          user_id: string
+        }
+        Update: {
+          application_id?: string
+          created_at?: string
+          event_type?: string
+          from_status?: string
+          id?: string
+          note?: string
+          to_status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       applications: {
         Row: {
           applied_at: string | null
           company: string
           cover_letter_md: string
+          cover_letter_version: string
           created_at: string
           id: string
+          interview_notes: string
           job_title: string
           listing_id: string
           match_score: number
+          next_action: string
+          next_action_at: string | null
           notes: string
+          recruiter_notes: string
           resume_md: string
+          resume_version: string
+          source: string
           status: string
           task_id: string
           updated_at: string
+          url: string
           user_id: string
         }
         Insert: {
           applied_at?: string | null
           company: string
           cover_letter_md?: string
+          cover_letter_version?: string
           created_at?: string
           id?: string
+          interview_notes?: string
           job_title: string
           listing_id: string
           match_score?: number
+          next_action?: string
+          next_action_at?: string | null
           notes?: string
+          recruiter_notes?: string
           resume_md?: string
+          resume_version?: string
+          source?: string
           status?: string
           task_id?: string
           updated_at?: string
+          url?: string
           user_id: string
         }
         Update: {
           applied_at?: string | null
           company?: string
           cover_letter_md?: string
+          cover_letter_version?: string
           created_at?: string
           id?: string
+          interview_notes?: string
           job_title?: string
           listing_id?: string
           match_score?: number
+          next_action?: string
+          next_action_at?: string | null
           notes?: string
+          recruiter_notes?: string
           resume_md?: string
+          resume_version?: string
+          source?: string
           status?: string
           task_id?: string
           updated_at?: string
+          url?: string
           user_id?: string
         }
         Relationships: [
@@ -190,8 +247,60 @@ export type Database = {
         }
         Relationships: []
       }
+      interviews: {
+        Row: {
+          application_id: string | null
+          company: string
+          created_at: string
+          feedback: string
+          id: string
+          interview_at: string | null
+          location: string
+          notes: string
+          outcome: string
+          position: string
+          recruiter: string
+          stage: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          application_id?: string | null
+          company: string
+          created_at?: string
+          feedback?: string
+          id?: string
+          interview_at?: string | null
+          location?: string
+          notes?: string
+          outcome?: string
+          position?: string
+          recruiter?: string
+          stage?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          application_id?: string | null
+          company?: string
+          created_at?: string
+          feedback?: string
+          id?: string
+          interview_at?: string | null
+          location?: string
+          notes?: string
+          outcome?: string
+          position?: string
+          recruiter?: string
+          stage?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       job_listings: {
         Row: {
+          bookmarked: boolean
           company: string
           description: string
           discovered_at: string
@@ -204,6 +313,7 @@ export type Database = {
           salary_currency: string
           salary_max: number | null
           salary_min: number | null
+          saved: boolean
           source: string
           status: string
           task_id: string
@@ -213,6 +323,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          bookmarked?: boolean
           company: string
           description?: string
           discovered_at?: string
@@ -225,6 +336,7 @@ export type Database = {
           salary_currency?: string
           salary_max?: number | null
           salary_min?: number | null
+          saved?: boolean
           source: string
           status?: string
           task_id?: string
@@ -234,6 +346,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          bookmarked?: boolean
           company?: string
           description?: string
           discovered_at?: string
@@ -246,6 +359,7 @@ export type Database = {
           salary_currency?: string
           salary_max?: number | null
           salary_min?: number | null
+          saved?: boolean
           source?: string
           status?: string
           task_id?: string
