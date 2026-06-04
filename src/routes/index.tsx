@@ -200,66 +200,42 @@ function SectionHero({ cta, ctaLabel }: { cta: string; ctaLabel: string }) {
 function HeroArtifact() {
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.85, rotateX: 12 }}
-      animate={{ opacity: 1, scale: 1, rotateX: 0 }}
+      initial={{ opacity: 0, scale: 0.9 }}
+      animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 1.4, ease: [0.16, 1, 0.3, 1] }}
       className="imp-artifact"
     >
-      <div className="imp-artifact-card">
-        {/* glow */}
-        <div className="imp-artifact-glow" aria-hidden />
-        {/* terminal-ish content */}
-        <div className="relative z-10 flex h-full flex-col">
-          <div className="flex items-center justify-between px-5 pt-4 text-[10px] uppercase tracking-[0.3em] text-white/60">
+      <div className="imp-artifact-card relative overflow-hidden">
+        <Spotlight
+          className="-top-40 left-0 md:-top-20 md:left-60"
+          fill="white"
+        />
+        <div className="absolute inset-0 z-0">
+          <SplineScene
+            scene="https://prod.spline.design/kZDDjO5HuC9GJUM2/scene.splinecode"
+            className="h-full w-full"
+          />
+        </div>
+        <div className="imp-artifact-glow pointer-events-none" aria-hidden />
+        <div className="pointer-events-none relative z-10 flex h-full flex-col justify-between p-5">
+          <div className="flex items-center justify-between text-[10px] uppercase tracking-[0.3em] text-white/70">
             <span className="flex items-center gap-2">
               <span className="h-1.5 w-1.5 rounded-full bg-[color:var(--imp-ember)] [animation:pulse-dot_1.6s_ease-in-out_infinite]" />
               live agent
             </span>
             <span>i_001</span>
           </div>
-          <div className="mt-5 px-5">
-            <div className="text-[10px] uppercase tracking-[0.3em] text-white/45">Now hunting</div>
-            <div className="mt-1 font-display text-[2rem] leading-[0.95] tracking-tight text-white md:text-[2.4rem]">
-              Senior&nbsp;Frontend
-              <span className="block text-[color:var(--imp-ember)]">Engineer · Remote</span>
+          <div>
+            <div className="text-[10px] uppercase tracking-[0.3em] text-white/55">
+              Interactive 3D
             </div>
-          </div>
-          <div className="mt-5 grid grid-cols-3 gap-3 px-5 text-[10px] uppercase tracking-[0.25em] text-white/55">
-            {[
-              ["Sources", "7"],
-              ["Matches", "128"],
-              ["Score", "94"],
-            ].map(([k, v]) => (
-              <div key={k} className="rounded-md border border-white/10 bg-white/[0.03] px-3 py-2">
-                <div className="text-white/45">{k}</div>
-                <div className="mt-1 font-display text-base text-white normal-case tracking-tight">{v}</div>
-              </div>
-            ))}
-          </div>
-          <div className="mt-auto space-y-2 px-5 pb-5">
-            {[
-              "Scanning RemoteOK · Remotive · LinkedIn",
-              "Scoring 41 fresh roles against profile",
-              "Tailoring resume to top match",
-            ].map((line, i) => (
-              <motion.div
-                key={line}
-                initial={{ opacity: 0, x: -8 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.6 + i * 0.25, duration: 0.5 }}
-                className="flex items-center gap-3 text-[11px] text-white/70"
-              >
-                <span className="h-px w-6 bg-[color:var(--imp-ember)]" />
-                <span>{line}</span>
-              </motion.div>
-            ))}
-            <div className="relative mt-3 h-px overflow-hidden bg-white/10">
-              <div className="scanline absolute inset-y-0 w-1/3" />
+            <div className="mt-1 font-display text-[2rem] leading-[0.95] tracking-tight text-white md:text-[2.4rem]">
+              Bring your UI
+              <span className="block text-[color:var(--imp-ember)]">to life.</span>
             </div>
           </div>
         </div>
       </div>
-      {/* paper shadow */}
       <div className="imp-artifact-shadow" aria-hidden />
     </motion.div>
   );
