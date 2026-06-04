@@ -806,7 +806,7 @@ export const updateApplicationFields = createServerFn({ method: "POST" })
       const v = (data as Record<string, unknown>)[k];
       if (v !== undefined) patch[k] = v;
     }
-    const { error } = await supabase.from("applications").update(patch).eq("id", data.id);
+    const { error } = await supabase.from("applications").update(patch as never).eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };
   });
@@ -955,7 +955,7 @@ export const upsertInterview = createServerFn({ method: "POST" })
       outcome: data.outcome,
     };
     if (data.id) {
-      const { error } = await supabase.from("interviews").update(payload).eq("id", data.id);
+      const { error } = await supabase.from("interviews").update(payload as never).eq("id", data.id);
       if (error) throw new Error(error.message);
       return { ok: true, id: data.id };
     }
