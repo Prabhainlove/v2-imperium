@@ -130,8 +130,8 @@ function DashboardPage() {
         actions={
           <>
             <Button asChild variant="outline">
-              <Link to="/activity">
-                <ActivityIcon className="mr-2 h-4 w-4" /> Activity
+              <Link to="/interviews">
+                <CalendarClock className="mr-2 h-4 w-4" /> Interviews
               </Link>
             </Button>
             <Button asChild className="bg-gradient-primary text-primary-foreground shadow-glow hover:opacity-95">
