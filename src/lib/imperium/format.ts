@@ -59,33 +59,35 @@ export function scoreTone(score?: number | null): "high" | "mid" | "low" {
 }
 
 export const APPLICATION_STATUS_ORDER: ApplicationStatus[] = [
-  "Pending Review",
+  "Saved",
+  "Preparing",
   "Applied",
-  "Under Review",
-  "Interview Scheduled",
-  "Offer Received",
+  "Assessment",
+  "Interview",
+  "Offer",
   "Rejected",
-  "Skipped",
+  "Withdrawn",
 ];
 
 export function statusTone(
   status: string,
 ): "info" | "success" | "warning" | "destructive" | "muted" | "primary" {
   switch (status) {
-    case "Pending Review":
+    case "Saved":
+      return "muted";
+    case "Preparing":
       return "warning";
     case "Applied":
       return "info";
-    case "Under Review":
+    case "Assessment":
       return "primary";
-    case "Interview Scheduled":
+    case "Interview":
       return "warning";
-    case "Offer Received":
+    case "Offer":
       return "success";
     case "Rejected":
       return "destructive";
-    case "Skipped":
-    case "Manual Review":
+    case "Withdrawn":
       return "muted";
     default:
       return "muted";
