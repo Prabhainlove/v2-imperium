@@ -74,6 +74,12 @@ function DashboardPage() {
     staleTime: 5 * 60_000,
   });
 
+  const interviews = useQuery({
+    queryKey: ["interviews", "dashboard"],
+    queryFn: () => getInterviews(),
+    retry: false,
+  });
+
   const metrics = (dashboard.data?.metrics ?? {}) as Record<string, number>;
   const recentApps = dashboard.data?.recent_applications ?? apps.data ?? [];
   const activity = dashboard.data?.activity ?? [];
