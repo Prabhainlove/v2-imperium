@@ -1,5 +1,6 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
+  Bot,
   Briefcase,
   CalendarClock,
   FileText,
@@ -9,7 +10,6 @@ import {
   Search,
   Send,
   Settings as SettingsIcon,
-  Sparkles,
   Target,
 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -35,6 +35,7 @@ const primaryNav = [
   { title: "Applications", url: "/applications", icon: Send },
   { title: "Resume Studio", url: "/resume", icon: FileText },
   { title: "Cover Letters", url: "/cover-letters", icon: Mail },
+  { title: "Autopilot", url: "/autopilot", icon: Bot },
   { title: "Interviews", url: "/interviews", icon: CalendarClock },
   { title: "Skill Gap", url: "/skills", icon: Target },
 ];

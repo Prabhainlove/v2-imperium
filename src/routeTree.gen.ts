@@ -22,6 +22,7 @@ import { Route as AuthenticatedJobsRouteImport } from './routes/_authenticated/j
 import { Route as AuthenticatedInterviewsRouteImport } from './routes/_authenticated/interviews'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedCoverLettersRouteImport } from './routes/_authenticated/cover-letters'
+import { Route as AuthenticatedAutopilotRouteImport } from './routes/_authenticated/autopilot'
 import { Route as AuthenticatedApplicationsRouteImport } from './routes/_authenticated/applications'
 import { Route as AuthenticatedActivityRouteImport } from './routes/_authenticated/activity'
 import { Route as AuthenticatedReviewIdRouteImport } from './routes/_authenticated/review.$id'
@@ -91,6 +92,11 @@ const AuthenticatedCoverLettersRoute =
     path: '/cover-letters',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedAutopilotRoute = AuthenticatedAutopilotRouteImport.update({
+  id: '/autopilot',
+  path: '/autopilot',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedApplicationsRoute =
   AuthenticatedApplicationsRouteImport.update({
     id: '/applications',
@@ -114,6 +120,7 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/activity': typeof AuthenticatedActivityRoute
   '/applications': typeof AuthenticatedApplicationsRoute
+  '/autopilot': typeof AuthenticatedAutopilotRoute
   '/cover-letters': typeof AuthenticatedCoverLettersRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/interviews': typeof AuthenticatedInterviewsRoute
@@ -131,6 +138,7 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/activity': typeof AuthenticatedActivityRoute
   '/applications': typeof AuthenticatedApplicationsRoute
+  '/autopilot': typeof AuthenticatedAutopilotRoute
   '/cover-letters': typeof AuthenticatedCoverLettersRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/interviews': typeof AuthenticatedInterviewsRoute
@@ -150,6 +158,7 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/_authenticated/activity': typeof AuthenticatedActivityRoute
   '/_authenticated/applications': typeof AuthenticatedApplicationsRoute
+  '/_authenticated/autopilot': typeof AuthenticatedAutopilotRoute
   '/_authenticated/cover-letters': typeof AuthenticatedCoverLettersRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/interviews': typeof AuthenticatedInterviewsRoute
@@ -169,6 +178,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/activity'
     | '/applications'
+    | '/autopilot'
     | '/cover-letters'
     | '/dashboard'
     | '/interviews'
@@ -186,6 +196,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/activity'
     | '/applications'
+    | '/autopilot'
     | '/cover-letters'
     | '/dashboard'
     | '/interviews'
@@ -204,6 +215,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/_authenticated/activity'
     | '/_authenticated/applications'
+    | '/_authenticated/autopilot'
     | '/_authenticated/cover-letters'
     | '/_authenticated/dashboard'
     | '/_authenticated/interviews'
@@ -316,6 +328,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedCoverLettersRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/autopilot': {
+      id: '/_authenticated/autopilot'
+      path: '/autopilot'
+      fullPath: '/autopilot'
+      preLoaderRoute: typeof AuthenticatedAutopilotRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/applications': {
       id: '/_authenticated/applications'
       path: '/applications'
@@ -343,6 +362,7 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedActivityRoute: typeof AuthenticatedActivityRoute
   AuthenticatedApplicationsRoute: typeof AuthenticatedApplicationsRoute
+  AuthenticatedAutopilotRoute: typeof AuthenticatedAutopilotRoute
   AuthenticatedCoverLettersRoute: typeof AuthenticatedCoverLettersRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedInterviewsRoute: typeof AuthenticatedInterviewsRoute
@@ -358,6 +378,7 @@ interface AuthenticatedRouteRouteChildren {
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedActivityRoute: AuthenticatedActivityRoute,
   AuthenticatedApplicationsRoute: AuthenticatedApplicationsRoute,
+  AuthenticatedAutopilotRoute: AuthenticatedAutopilotRoute,
   AuthenticatedCoverLettersRoute: AuthenticatedCoverLettersRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedInterviewsRoute: AuthenticatedInterviewsRoute,
@@ -382,3 +403,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
