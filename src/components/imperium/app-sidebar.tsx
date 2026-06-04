@@ -1,14 +1,16 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
-  Activity,
   Briefcase,
+  CalendarClock,
   FileText,
   LayoutDashboard,
   LogOut,
+  Mail,
   Search,
   Send,
   Settings as SettingsIcon,
   Sparkles,
+  Target,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import {
@@ -32,7 +34,9 @@ const primaryNav = [
   { title: "Jobs", url: "/jobs", icon: Briefcase },
   { title: "Applications", url: "/applications", icon: Send },
   { title: "Resume Studio", url: "/resume", icon: FileText },
-  { title: "Activity", url: "/activity", icon: Activity },
+  { title: "Cover Letters", url: "/cover-letters", icon: Mail },
+  { title: "Interviews", url: "/interviews", icon: CalendarClock },
+  { title: "Skill Gap", url: "/skills", icon: Target },
 ];
 
 export function AppSidebar() {

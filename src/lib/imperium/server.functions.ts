@@ -765,7 +765,7 @@ export const updateApplicationStatus = createServerFn({ method: "POST" })
     if (data.status === "Applied") patch.applied_at = new Date().toISOString();
     const { error: updErr } = await supabase
       .from("applications")
-      .update(patch)
+      .update(patch as never)
       .eq("id", data.id);
     if (updErr) throw new Error(updErr.message);
     await supabase.from("application_timeline").insert({
@@ -806,7 +806,7 @@ export const updateApplicationFields = createServerFn({ method: "POST" })
       const v = (data as Record<string, unknown>)[k];
       if (v !== undefined) patch[k] = v;
     }
-    const { error } = await supabase.from("applications").update(patch).eq("id", data.id);
+    const { error } = await supabase.from("applications").update(patch as never).eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };
   });
@@ -955,13 +955,13 @@ export const upsertInterview = createServerFn({ method: "POST" })
       outcome: data.outcome,
     };
     if (data.id) {
-      const { error } = await supabase.from("interviews").update(payload).eq("id", data.id);
+      const { error } = await supabase.from("interviews").update(payload as never).eq("id", data.id);
       if (error) throw new Error(error.message);
       return { ok: true, id: data.id };
     }
     const { data: inserted, error } = await supabase
       .from("interviews")
-      .insert(payload)
+      .insert(payload as never)
       .select("id")
       .single();
     if (error || !inserted) throw new Error(error?.message ?? "Failed to create interview");
@@ -1004,3 +1004,40 @@ export const deleteInterview = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+/* ---------- Skill Gap Analysis ---------- */
+export const getSkillGap = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase, userId } = context;
+    const [{ data: profile }, { data: jobs }] = await Promise.all([
+      supabase
+        .from("profiles")
+        .select("target_role, headline, skills")
+        .eq("id", userId)
+        .maybeSingle(),
+      supabase
+        .from("job_listings")
+        .select("title, tech_stack")
+        .order("discovered_at", { ascending: false })
+        .limit(60),
+    ]);
+    const candidate_skills = ((profile?.skills as string[] | null) ?? []) as string[];
+    const target_role =
+      (profile?.target_role as string) || (profile?.headline as string) || "Candidate";
+    const recent_job_titles = (jobs ?? [])
+      .map((j) => j.title as string)
+      .filter(Boolean)
+      .slice(0, 20);
+    const recent_job_skills = (jobs ?? []).flatMap(
+      (j) => ((j.tech_stack as string[] | null) ?? []) as string[],
+    );
+    const { analyzeSkillGap } = await import("./brain/skill-gap.server");
+    return analyzeSkillGap({
+      target_role,
+      candidate_skills,
+      recent_job_titles,
+      recent_job_skills,
+    });
+  });
+

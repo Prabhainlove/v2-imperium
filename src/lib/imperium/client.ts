@@ -219,3 +219,21 @@ export const getInterviews = () =>
 
 export const deleteInterview = (id: string) =>
   fns.deleteInterview({ data: { id } }) as unknown as Promise<{ ok: boolean }>;
+
+/* ---------- Skill Gap ---------- */
+export type SkillGapItem = {
+  skill: string;
+  importance: "critical" | "important" | "nice_to_have";
+  rationale: string;
+  resource_hint: string;
+};
+export type SkillGapResult = {
+  target_role: string;
+  matched_skills: string[];
+  missing_skills: SkillGapItem[];
+  roadmap_30_60_90: { thirty: string[]; sixty: string[]; ninety: string[] };
+  summary: string;
+  model: string;
+};
+export const getSkillGap = () =>
+  fns.getSkillGap() as unknown as Promise<SkillGapResult>;
