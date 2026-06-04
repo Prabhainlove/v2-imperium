@@ -4,6 +4,8 @@ import { motion, useScroll, useTransform, useSpring, useInView } from "motion/re
 import { LogOut } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { SplineScene } from "@/components/ui/splite";
+import { Spotlight } from "@/components/ui/spotlight";
 
 export const Route = createFileRoute("/")({
   head: () => ({
