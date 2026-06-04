@@ -1,14 +1,16 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
-  Activity,
   Briefcase,
+  CalendarClock,
   FileText,
   LayoutDashboard,
   LogOut,
+  Mail,
   Search,
   Send,
   Settings as SettingsIcon,
   Sparkles,
+  Target,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import {
