@@ -123,31 +123,9 @@ function scoreJob(
   return { overall, title_score, skill_score, matched, missing, salary_match, experience_match, location_match };
 }
 
-async function lovableAI(prompt: string, system: string): Promise<string> {
-  const key = process.env.LOVABLE_API_KEY;
-  if (!key) throw new Error("LOVABLE_API_KEY not configured");
-  const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Lovable-API-Key": key,
-      "X-Lovable-AIG-SDK": "imperium-job-agent",
-    },
-    body: JSON.stringify({
-      model: "google/gemini-2.5-flash",
-      messages: [
-        { role: "system", content: system },
-        { role: "user", content: prompt },
-      ],
-    }),
-  });
-  if (!res.ok) {
-    const body = await res.text();
-    throw new Error(`AI gateway ${res.status}: ${body.slice(0, 200)}`);
-  }
-  const data = (await res.json()) as { choices?: { message?: { content?: string } }[] };
-  return data.choices?.[0]?.message?.content ?? "";
-}
+// Legacy Lovable AI Gateway helper removed for portability.
+// Brain calls now route exclusively through OpenRouter / OpenAI / Anthropic
+// via routeBrainCall() in src/lib/imperium/brain/model-router.server.ts.
 
 function fallbackResume(input: PipelineInput, job: RawJob, matched: string[]): string {
   return [
