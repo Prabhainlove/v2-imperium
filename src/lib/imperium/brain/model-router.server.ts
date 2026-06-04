@@ -43,7 +43,6 @@ export const BRAIN_MODELS: BrainModelInfo[] = (() => {
   if (process.env.OPENROUTER_API_KEY) out.push(...PROVIDER_MODELS.openrouter);
   if (process.env.OPENAI_API_KEY) out.push(...PROVIDER_MODELS.openai);
   if (process.env.ANTHROPIC_API_KEY) out.push(...PROVIDER_MODELS.anthropic);
-  if (process.env.LOVABLE_API_KEY) out.push(...PROVIDER_MODELS.lovable);
   return out;
 })();
 
@@ -243,7 +242,6 @@ function buildChain(): { provider: Provider; key: string; model: BrainModelInfo 
   push("openrouter", process.env.OPENROUTER_API_KEY);
   push("openai", process.env.OPENAI_API_KEY);
   push("anthropic", process.env.ANTHROPIC_API_KEY);
-  push("lovable", process.env.LOVABLE_API_KEY);
   return chain;
 }
 
@@ -254,7 +252,7 @@ export async function routeBrainCall(
   const chain = buildChain();
   if (chain.length === 0) {
     throw new Error(
-      "Brain has no AI provider configured. Set one of OPENROUTER_API_KEY, OPENAI_API_KEY, ANTHROPIC_API_KEY, or LOVABLE_API_KEY in your .env file. See .env.example.",
+      "Brain has no AI provider configured. Set OPENROUTER_API_KEY (recommended), OPENAI_API_KEY, or ANTHROPIC_API_KEY in your .env file.",
     );
   }
 

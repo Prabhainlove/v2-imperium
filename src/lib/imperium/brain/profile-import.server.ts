@@ -187,45 +187,15 @@ export async function extractProfileFromText(text: string): Promise<{
 }
 
 /**
- * OCR a PDF using Lovable AI Gateway (Gemini) and return the extracted plain text.
- * Used as a fallback when client-side pdfjs extraction returns too little text
- * (typically scanned/image-based resumes).
+ * OCR fallback for scanned PDFs was previously implemented via the Lovable AI
+ * Gateway. It has been removed for portability. Client-side pdfjs extraction
+ * is still attempted first; if it returns too little text, the user is asked
+ * to upload a text-based PDF, DOCX, or TXT version of their resume.
  */
-export async function extractTextFromPdfBase64(base64: string): Promise<string> {
-  const key = process.env.LOVABLE_API_KEY;
-  if (!key) throw new Error("LOVABLE_API_KEY is not configured for PDF OCR fallback");
-  const dataUrl = base64.startsWith("data:") ? base64 : `data:application/pdf;base64,${base64}`;
-  const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "Lovable-API-Key": key },
-    body: JSON.stringify({
-      model: "google/gemini-2.5-flash",
-      messages: [
-        {
-          role: "user",
-          content: [
-            {
-              type: "text",
-              text: "Extract ALL readable text from this resume PDF. Preserve section order (header, summary, experience, education, skills, projects, certifications). Return plain text only — no commentary, no markdown fences.",
-            },
-            { type: "image_url", image_url: { url: dataUrl } },
-          ],
-        },
-      ],
-      temperature: 0,
-      max_tokens: 4000,
-    }),
-  });
-  if (!res.ok) {
-    const body = await res.text();
-    throw new Error(`PDF OCR failed (${res.status}): ${body.slice(0, 200)}`);
-  }
-  const data = (await res.json()) as { choices?: { message?: { content?: string } }[] };
-  const text = (data.choices?.[0]?.message?.content ?? "").trim();
-  if (text.length < 40) {
-    throw new Error("OCR returned no readable text. Try a different PDF export or upload a DOCX/TXT version.");
-  }
-  return text;
+export async function extractTextFromPdfBase64(_base64: string): Promise<string> {
+  throw new Error(
+    "Scanned-PDF OCR is not available in the local build. Please upload a text-based PDF, DOCX, or TXT version of your resume.",
+  );
 }
 
 /** Extract a profile patch from a base64-encoded PDF (server-side OCR via Gemini). */
