@@ -17,26 +17,22 @@ import type { BrainModelInfo } from "./types";
 
 type Provider = "openrouter" | "openai" | "anthropic" | "lovable";
 
-/** Default chat-model chain per provider (most-capable → cheapest). */
+/** Default chat-model chain per provider (most-capable → cheapest).
+ *  OpenRouter is FIRST and uses free-tier models with automatic failover. */
 const PROVIDER_MODELS: Record<Provider, BrainModelInfo[]> = {
   openrouter: [
-    { id: "openai/gpt-4o-mini", label: "GPT-4o mini (OR)", free: false },
-    { id: "deepseek/deepseek-chat", label: "DeepSeek Chat (OR)", free: false },
-    { id: "google/gemini-flash-1.5", label: "Gemini 1.5 Flash (OR)", free: false },
-    { id: "meta-llama/llama-3.1-70b-instruct", label: "Llama 3.1 70B (OR)", free: false },
+    { id: "nvidia/nemotron-3-super-120b-a12b:free", label: "Nemotron 3 Super 120B (free)", free: true },
+    { id: "openai/gpt-oss-120b:free", label: "GPT-OSS 120B (free)", free: true },
+    { id: "qwen/qwen3-235b-a22b-thinking-2507:free", label: "Qwen3 235B Thinking (free)", free: true },
   ],
   openai: [
     { id: "gpt-4o-mini", label: "GPT-4o mini", free: false },
-    { id: "gpt-4o", label: "GPT-4o", free: false },
   ],
   anthropic: [
     { id: "claude-3-5-haiku-latest", label: "Claude 3.5 Haiku", free: false },
-    { id: "claude-3-5-sonnet-latest", label: "Claude 3.5 Sonnet", free: false },
   ],
   lovable: [
     { id: "google/gemini-2.5-flash", label: "Gemini 2.5 Flash (Lovable)", free: false },
-    { id: "google/gemini-2.5-flash-lite", label: "Gemini 2.5 Flash Lite (Lovable)", free: false },
-    { id: "google/gemini-2.5-pro", label: "Gemini 2.5 Pro (Lovable)", free: false },
   ],
 };
 

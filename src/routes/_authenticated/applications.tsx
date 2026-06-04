@@ -69,7 +69,7 @@ function ApplicationsPage() {
     });
   }, [apps, q, status]);
 
-  const pendingCount = countsByStatus.get("Pending Review") ?? 0;
+  const pendingCount = countsByStatus.get("Preparing") ?? 0;
 
   return (
     <div className="mx-auto w-full max-w-7xl space-y-5 p-4 md:p-6">
@@ -99,7 +99,7 @@ function ApplicationsPage() {
             </div>
             <Button
               size="sm"
-              onClick={() => setStatus("Pending Review")}
+              onClick={() => setStatus("Preparing")}
               className="bg-warning text-warning-foreground hover:opacity-90"
             >
               Show pending
@@ -155,7 +155,7 @@ function ApplicationsPage() {
       ) : (
         <div className="space-y-3">
           {filtered.map((a) => {
-            const isPending = a.status === "Pending Review";
+            const isPending = a.status === "Preparing";
             return (
               <Card key={a.application_id} className={isPending ? "border-warning/40" : "overflow-hidden"}>
                 <CardContent className="flex flex-col gap-3 p-4 md:flex-row md:items-center">
