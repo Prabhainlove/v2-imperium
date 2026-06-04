@@ -1,4 +1,5 @@
-import { Suspense, lazy, useEffect, useState } from 'react';
+import { ClientOnly } from '@tanstack/react-router';
+import { Suspense, lazy } from 'react';
 
 const Spline = lazy(() => import('@splinetool/react-spline'));
 
@@ -7,31 +8,22 @@ interface SplineSceneProps {
   className?: string;
 }
 
-export function SplineScene({ scene, className }: SplineSceneProps) {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
-
-  if (!mounted) {
-    return (
-      <div className={`flex h-full w-full items-center justify-center ${className ?? ''}`}>
-        <span className="text-[10px] uppercase tracking-[0.3em] text-white/40">
-          Loading scene…
-        </span>
-      </div>
-    );
-  }
-
+function Fallback({ className }: { className?: string }) {
   return (
-    <Suspense
-      fallback={
-        <div className={`flex h-full w-full items-center justify-center ${className ?? ''}`}>
-          <span className="text-[10px] uppercase tracking-[0.3em] text-white/40">
-            Loading scene…
-          </span>
-        </div>
-      }
-    >
-      <Spline scene={scene} className={className} />
-    </Suspense>
+    <div className={`flex h-full w-full items-center justify-center ${className ?? ''}`}>
+      <span className="text-[10px] uppercase tracking-[0.3em] text-white/40">
+        Loading scene…
+      </span>
+    </div>
+  );
+}
+
+export function SplineScene({ scene, className }: SplineSceneProps) {
+  return (
+    <ClientOnly fallback={<Fallback className={className} />}>
+      <Suspense fallback={<Fallback className={className} />}>
+        <Spline scene={scene} className={className} />
+      </Suspense>
+    </ClientOnly>
   );
 }
