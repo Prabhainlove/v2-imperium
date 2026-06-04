@@ -3,7 +3,6 @@ import {
   Activity,
   Briefcase,
   FileText,
-  Home,
   LayoutDashboard,
   LogOut,
   Search,
@@ -28,7 +27,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 const primaryNav = [
-  { title: "Home", url: "/", icon: Home, exact: true },
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard, exact: true },
   { title: "Job Search", url: "/search", icon: Search },
   { title: "Jobs", url: "/jobs", icon: Briefcase },

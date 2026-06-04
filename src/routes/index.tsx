@@ -1,11 +1,7 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { motion, useScroll, useTransform, useSpring, useInView } from "motion/react";
-import { LogOut } from "lucide-react";
-import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { SplineScene } from "@/components/ui/splite";
-import { Spotlight } from "@/components/ui/spotlight";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -27,17 +23,10 @@ export const Route = createFileRoute("/")({
 
 function LandingPage() {
   const [signedIn, setSignedIn] = useState(false);
-  const [userEmail, setUserEmail] = useState<string>("");
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      setSignedIn(!!data.user);
-      setUserEmail(data.user?.email ?? "");
-    });
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => {
-      setSignedIn(!!s);
-      setUserEmail(s?.user?.email ?? "");
-    });
+    supabase.auth.getSession().then(({ data }) => setSignedIn(!!data.session));
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => setSignedIn(!!s));
     return () => sub.subscription.unsubscribe();
   }, []);
 
@@ -51,7 +40,7 @@ function LandingPage() {
   return (
     <div className="imp-stage">
       {/* fixed chrome */}
-      <FrameChrome cta={cta} ctaLabel={ctaLabel} signedIn={signedIn} userEmail={userEmail} />
+      <FrameChrome cta={cta} ctaLabel={ctaLabel} />
       <ProgressRail progress={progress} />
 
       {/* scroll-snap stage */}
@@ -70,15 +59,7 @@ function LandingPage() {
 
 /* ---------- chrome ---------- */
 
-function FrameChrome({ cta, ctaLabel, signedIn, userEmail }: { cta: string; ctaLabel: string; signedIn: boolean; userEmail: string }) {
-  const navigate = useNavigate();
-  const initials = (userEmail || "?").slice(0, 1).toUpperCase();
-  const signOut = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) return toast.error(error.message);
-    toast.success("Signed out");
-    navigate({ to: "/", replace: true });
-  };
+function FrameChrome({ cta, ctaLabel }: { cta: string; ctaLabel: string }) {
   return (
     <>
       <header className="pointer-events-none fixed inset-x-0 top-0 z-50 flex items-center justify-between px-6 py-5 md:px-10">
@@ -88,40 +69,19 @@ function FrameChrome({ cta, ctaLabel, signedIn, userEmail }: { cta: string; ctaL
             Imperium
           </span>
         </Link>
-        <nav className="pointer-events-auto hidden items-center gap-6 text-[10px] uppercase tracking-[0.3em] text-white/55 md:flex">
-          {signedIn ? (
-            <>
-              <Link to="/dashboard" className="hover:text-white/90">Dashboard</Link>
-              <Link to="/settings" className="hover:text-white/90">Settings</Link>
-              <button onClick={signOut} className="flex items-center gap-1.5 hover:text-white/90">
-                <LogOut className="h-3 w-3" /> Logout
-              </button>
-            </>
-          ) : (
-            <>
-              <a href="#features" className="hover:text-white/90">Features</a>
-              <a href="#about" className="hover:text-white/90">About</a>
-              <Link to="/auth" className="hover:text-white/90">Login</Link>
-            </>
-          )}
-        </nav>
-        {signedIn ? (
-          <Link to="/settings" className="pointer-events-auto flex items-center gap-2" aria-label="Account">
-            <span className="hidden text-[10px] uppercase tracking-[0.3em] text-white/55 sm:inline">{userEmail}</span>
-            <span className="flex h-8 w-8 items-center justify-center rounded-full border border-white/20 bg-white/5 text-[11px] font-semibold text-white/90">
-              {initials}
-            </span>
-          </Link>
-        ) : (
-          <Link
-            to={cta}
-            className="imp-cta-pill pointer-events-auto"
-            data-label={ctaLabel}
-          >
-            <span>{ctaLabel}</span>
-            <span aria-hidden>→</span>
-          </Link>
-        )}
+        <div className="pointer-events-auto hidden items-center gap-8 text-[10px] uppercase tracking-[0.3em] text-white/55 md:flex">
+          <span>An AI Job Agent</span>
+          <span className="text-white/30">·</span>
+          <span>v2 · 2026</span>
+        </div>
+        <Link
+          to={cta}
+          className="imp-cta-pill pointer-events-auto"
+          data-label={ctaLabel}
+        >
+          <span>{ctaLabel}</span>
+          <span aria-hidden>→</span>
+        </Link>
       </header>
 
       {/* corner ticks like editorial sites */}
@@ -137,7 +97,7 @@ function FrameChrome({ cta, ctaLabel, signedIn, userEmail }: { cta: string; ctaL
           Scroll · Discover the agent
         </span>
         <span className="text-[10px] uppercase tracking-[0.35em] text-white/40">
-          {signedIn ? `Signed in · ${userEmail}` : "Frontend / Cinematic Build"}
+          Frontend / Cinematic Build
         </span>
       </footer>
     </>
@@ -200,42 +160,66 @@ function SectionHero({ cta, ctaLabel }: { cta: string; ctaLabel: string }) {
 function HeroArtifact() {
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.9 }}
-      animate={{ opacity: 1, scale: 1 }}
+      initial={{ opacity: 0, scale: 0.85, rotateX: 12 }}
+      animate={{ opacity: 1, scale: 1, rotateX: 0 }}
       transition={{ duration: 1.4, ease: [0.16, 1, 0.3, 1] }}
       className="imp-artifact"
     >
-      <div className="imp-artifact-card relative overflow-hidden">
-        <Spotlight
-          className="-top-40 left-0 md:-top-20 md:left-60"
-          fill="white"
-        />
-        <div className="absolute inset-0 z-0">
-          <SplineScene
-            scene="https://prod.spline.design/kZDDjO5HuC9GJUM2/scene.splinecode"
-            className="h-full w-full"
-          />
-        </div>
-        <div className="imp-artifact-glow pointer-events-none" aria-hidden />
-        <div className="pointer-events-none relative z-10 flex h-full flex-col justify-between p-5">
-          <div className="flex items-center justify-between text-[10px] uppercase tracking-[0.3em] text-white/70">
+      <div className="imp-artifact-card">
+        {/* glow */}
+        <div className="imp-artifact-glow" aria-hidden />
+        {/* terminal-ish content */}
+        <div className="relative z-10 flex h-full flex-col">
+          <div className="flex items-center justify-between px-5 pt-4 text-[10px] uppercase tracking-[0.3em] text-white/60">
             <span className="flex items-center gap-2">
               <span className="h-1.5 w-1.5 rounded-full bg-[color:var(--imp-ember)] [animation:pulse-dot_1.6s_ease-in-out_infinite]" />
               live agent
             </span>
             <span>i_001</span>
           </div>
-          <div>
-            <div className="text-[10px] uppercase tracking-[0.3em] text-white/55">
-              Interactive 3D
-            </div>
+          <div className="mt-5 px-5">
+            <div className="text-[10px] uppercase tracking-[0.3em] text-white/45">Now hunting</div>
             <div className="mt-1 font-display text-[2rem] leading-[0.95] tracking-tight text-white md:text-[2.4rem]">
-              Bring your UI
-              <span className="block text-[color:var(--imp-ember)]">to life.</span>
+              Senior&nbsp;Frontend
+              <span className="block text-[color:var(--imp-ember)]">Engineer · Remote</span>
+            </div>
+          </div>
+          <div className="mt-5 grid grid-cols-3 gap-3 px-5 text-[10px] uppercase tracking-[0.25em] text-white/55">
+            {[
+              ["Sources", "7"],
+              ["Matches", "128"],
+              ["Score", "94"],
+            ].map(([k, v]) => (
+              <div key={k} className="rounded-md border border-white/10 bg-white/[0.03] px-3 py-2">
+                <div className="text-white/45">{k}</div>
+                <div className="mt-1 font-display text-base text-white normal-case tracking-tight">{v}</div>
+              </div>
+            ))}
+          </div>
+          <div className="mt-auto space-y-2 px-5 pb-5">
+            {[
+              "Scanning RemoteOK · Remotive · LinkedIn",
+              "Scoring 41 fresh roles against profile",
+              "Tailoring resume to top match",
+            ].map((line, i) => (
+              <motion.div
+                key={line}
+                initial={{ opacity: 0, x: -8 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.6 + i * 0.25, duration: 0.5 }}
+                className="flex items-center gap-3 text-[11px] text-white/70"
+              >
+                <span className="h-px w-6 bg-[color:var(--imp-ember)]" />
+                <span>{line}</span>
+              </motion.div>
+            ))}
+            <div className="relative mt-3 h-px overflow-hidden bg-white/10">
+              <div className="scanline absolute inset-y-0 w-1/3" />
             </div>
           </div>
         </div>
       </div>
+      {/* paper shadow */}
       <div className="imp-artifact-shadow" aria-hidden />
     </motion.div>
   );
