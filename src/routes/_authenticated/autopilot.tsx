@@ -207,7 +207,6 @@ function AutopilotPage() {
   return (
     <div className="space-y-6 p-6">
       <PageHeader
-        eyebrow="Live Browser Automation"
         title="Autopilot"
         description="Queue a job URL; the local Playwright agent on your machine opens a real Chromium window, fills the form, and pauses for your approval before submitting."
       />
