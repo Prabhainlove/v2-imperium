@@ -253,25 +253,44 @@ function DashboardPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="flex items-center gap-2 text-base">
-              <ActivityIcon className="h-4 w-4 text-primary" /> Live Activity
+              <CalendarClock className="h-4 w-4 text-primary" /> Upcoming Interviews
             </CardTitle>
             <Button asChild variant="ghost" size="sm">
-              <Link to="/activity">
+              <Link to="/interviews">
                 Open <ChevronRight className="ml-1 h-3.5 w-3.5" />
               </Link>
             </Button>
           </CardHeader>
           <CardContent>
-            <ActivityFeed
-              entries={activity.slice(0, 8)}
-              dense
-              emptyHint="Run a search to populate the activity timeline."
-            />
+            {(() => {
+              const upcoming = (interviews.data ?? [])
+                .filter((i) => i.interview_at && new Date(i.interview_at) >= new Date())
+                .slice(0, 6);
+              if (upcoming.length === 0) {
+                return (
+                  <div className="rounded-md border border-dashed border-border/60 p-6 text-center text-sm text-muted-foreground">
+                    No interviews scheduled. Add one from the Interview Tracker.
+                  </div>
+                );
+              }
+              return (
+                <ul className="divide-y divide-border/60">
+                  {upcoming.map((i) => (
+                    <li key={i.id} className="py-2.5">
+                      <div className="truncate text-sm font-medium">
+                        {i.position || i.stage} <span className="text-muted-foreground">@</span> {i.company}
+                      </div>
+                      <div className="truncate text-xs text-muted-foreground">
+                        {new Date(i.interview_at as string).toLocaleString()} · {i.stage}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              );
+            })()}
           </CardContent>
         </Card>
       </div>
-
-      {/* removed legacy "How Imperium Works" placeholder stage panel */}
     </div>
   );
 }
