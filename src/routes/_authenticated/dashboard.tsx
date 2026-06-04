@@ -4,6 +4,7 @@ import {
   Activity as ActivityIcon,
   AlertCircle,
   Briefcase,
+  CalendarClock,
   CheckCircle2,
   ChevronRight,
   Search as SearchIcon,
