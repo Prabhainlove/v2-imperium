@@ -98,7 +98,7 @@ function DashboardPage() {
       label: "Interviews",
       value:
         metrics.interviews ??
-        recentApps.filter((a) => a.status === "Interview Scheduled").length,
+        recentApps.filter((a) => a.status === "Interview").length,
       icon: ActivityIcon,
       tone: "warning" as const,
     },
@@ -106,7 +106,7 @@ function DashboardPage() {
       label: "Offers",
       value:
         metrics.offers ??
-        recentApps.filter((a) => a.status === "Offer Received").length,
+        recentApps.filter((a) => a.status === "Offer").length,
       icon: Trophy,
       tone: "success" as const,
     },
