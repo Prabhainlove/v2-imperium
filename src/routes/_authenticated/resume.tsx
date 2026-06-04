@@ -271,10 +271,8 @@ function ResumeStudioPage() {
               ) : (
                 <div className="grid gap-3 md:grid-cols-2">
                   <div>
-                    <div className="mb-1 text-[11px] uppercase tracking-wider text-muted-foreground">Optimized Markdown</div>
-                    <pre className="max-h-[520px] overflow-auto whitespace-pre-wrap rounded-md border border-border/60 bg-muted/30 p-3 font-mono text-[12px] leading-relaxed">
-                      {rendered.data!.optimized_md}
-                    </pre>
+                    <div className="mb-1 text-[11px] uppercase tracking-wider text-muted-foreground">Optimized Markdown (live)</div>
+                    <LiveTypewriter text={rendered.data!.optimized_md} />
                   </div>
                   <div>
                     <div className="mb-1 text-[11px] uppercase tracking-wider text-muted-foreground">RenderCV Output ({template})</div>
