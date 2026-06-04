@@ -133,95 +133,60 @@ function SectionHero({ cta, ctaLabel }: { cta: string; ctaLabel: string }) {
         <span aria-hidden>JOB&nbsp;AGENT</span>
       </div>
 
-      {/* corner editorial copy */}
-      <div className="absolute left-6 top-24 max-w-[15rem] text-[12px] leading-snug text-white/75 md:left-10 md:top-28 md:max-w-xs md:text-sm">
-        An autonomous platform for the modern job search.
-        <span className="block text-white/40">Discover · Analyze · Apply · Track.</span>
-      </div>
-      <div className="absolute right-6 top-24 max-w-[15rem] text-right text-[12px] leading-snug text-white/75 md:right-10 md:top-28 md:max-w-xs md:text-sm">
-        Seven live sources.
-        <span className="block text-white/40">One transparent pipeline.</span>
-      </div>
-
       {/* aceternity spotlight wash */}
       <Spotlight className="-top-40 left-0 md:-top-20 md:left-60" fill="#ff6b3d" />
 
-      {/* central 3D-feel artwork */}
-      <div className="imp-stage-center">
-        <HeroArtifact />
+      {/* central showcase: spline + copy */}
+      <div className="relative z-10 mx-auto flex h-full w-full max-w-6xl items-center px-6 md:px-10">
+        <div className="grid w-full gap-6 md:grid-cols-2 md:gap-10">
+          {/* Left copy */}
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
+            className="flex flex-col justify-center"
+          >
+            <div className="text-[10px] uppercase tracking-[0.4em] text-[color:var(--imp-ember)]">
+              An AI Job Agent
+            </div>
+            <h1 className="mt-4 bg-gradient-to-b from-white to-white/40 bg-clip-text font-display text-[clamp(2.4rem,6vw,4.6rem)] leading-[0.95] tracking-[-0.03em] text-transparent">
+              Interactive
+              <span className="block text-[color:var(--imp-ember)]">Job Hunt.</span>
+            </h1>
+            <p className="mt-5 max-w-md text-[15px] leading-relaxed text-white/65">
+              Imperium discovers, scores, tailors, and tracks every opportunity —
+              an autonomous, transparent pipeline for the modern career.
+            </p>
+            <div className="mt-8 flex items-center gap-4">
+              <Link to={cta} className="imp-cta-pill">
+                <span>{ctaLabel}</span>
+                <span aria-hidden>→</span>
+              </Link>
+              <span className="text-[10px] uppercase tracking-[0.32em] text-white/45">
+                Scroll · discover
+              </span>
+            </div>
+          </motion.div>
+
+          {/* Right: Spline 3D scene */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 1.4, ease: [0.16, 1, 0.3, 1] }}
+            className="relative h-[420px] min-h-[320px] w-full md:h-[560px]"
+          >
+            <SplineScene
+              scene="https://prod.spline.design/kZDDjO5HuC9GJUM2/scene.splinecode"
+              className="h-full w-full"
+            />
+          </motion.div>
+        </div>
       </div>
 
       {/* year markers like reference */}
       <div className="imp-year imp-year-left" aria-hidden>2026</div>
       <div className="imp-year imp-year-right" aria-hidden>V&nbsp;2</div>
-
-      <Link to={cta} className="imp-anywhere">
-        <span>{ctaLabel === "Open Console" ? "click anywhere to enter" : "click anywhere to start"}</span>
-      </Link>
     </section>
-  );
-}
-
-function HeroArtifact() {
-  return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.85, rotateX: 12 }}
-      animate={{ opacity: 1, scale: 1, rotateX: 0 }}
-      transition={{ duration: 1.4, ease: [0.16, 1, 0.3, 1] }}
-      className="imp-artifact"
-    >
-      <div className="imp-artifact-card">
-        {/* glow */}
-        <div className="imp-artifact-glow" aria-hidden />
-        {/* 3D Spline scene */}
-        <div className="absolute inset-0 z-0">
-          <SplineScene
-            scene="https://prod.spline.design/kZDDjO5HuC9GJUM2/scene.splinecode"
-            className="h-full w-full"
-          />
-        </div>
-        {/* terminal-ish content */}
-        <div className="relative z-10 flex h-full flex-col">
-          <div className="flex items-center justify-between px-5 pt-4 text-[10px] uppercase tracking-[0.3em] text-white/60">
-            <span className="flex items-center gap-2">
-              <span className="h-1.5 w-1.5 rounded-full bg-[color:var(--imp-ember)] [animation:pulse-dot_1.6s_ease-in-out_infinite]" />
-              live agent
-            </span>
-            <span>i_001</span>
-          </div>
-          <div className="mt-5 px-5">
-            <div className="text-[10px] uppercase tracking-[0.3em] text-white/45">Now hunting</div>
-            <div className="mt-1 font-display text-[2rem] leading-[0.95] tracking-tight text-white md:text-[2.4rem]">
-              Senior&nbsp;Frontend
-              <span className="block text-[color:var(--imp-ember)]">Engineer · Remote</span>
-            </div>
-          </div>
-          <div className="mt-auto space-y-2 px-5 pb-5">
-            {[
-              "Scanning RemoteOK · Remotive · LinkedIn",
-              "Scoring 41 fresh roles against profile",
-              "Tailoring resume to top match",
-            ].map((line, i) => (
-              <motion.div
-                key={line}
-                initial={{ opacity: 0, x: -8 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.6 + i * 0.25, duration: 0.5 }}
-                className="flex items-center gap-3 text-[11px] text-white/70"
-              >
-                <span className="h-px w-6 bg-[color:var(--imp-ember)]" />
-                <span>{line}</span>
-              </motion.div>
-            ))}
-            <div className="relative mt-3 h-px overflow-hidden bg-white/10">
-              <div className="scanline absolute inset-y-0 w-1/3" />
-            </div>
-          </div>
-        </div>
-      </div>
-      {/* paper shadow */}
-      <div className="imp-artifact-shadow" aria-hidden />
-    </motion.div>
   );
 }
 
