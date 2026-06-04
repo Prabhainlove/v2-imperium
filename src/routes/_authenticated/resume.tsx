@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { PageHeader } from "@/components/imperium/page-header";
 import { MasterResumeStudio } from "@/components/imperium/master-resume-studio";
+import { LiveTypewriter } from "@/components/imperium/live-typewriter";
 import {
   getApplications,
   getProfile,
