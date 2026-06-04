@@ -961,7 +961,7 @@ export const upsertInterview = createServerFn({ method: "POST" })
     }
     const { data: inserted, error } = await supabase
       .from("interviews")
-      .insert(payload)
+      .insert(payload as never)
       .select("id")
       .single();
     if (error || !inserted) throw new Error(error?.message ?? "Failed to create interview");
