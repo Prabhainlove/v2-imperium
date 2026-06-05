@@ -286,6 +286,13 @@ def fill_visible_fields(driver, emit: Emit, profile: Dict[str, Any],
             try: el.clear()
             except WebDriverException: pass
             el.send_keys(str(val))
+            if el.get_attribute("role") == "combobox" or (el.get_attribute("aria-autocomplete") or "").lower() in {"list", "both"}:
+                time.sleep(0.6)
+                try:
+                    el.send_keys(Keys.ARROW_DOWN)
+                    el.send_keys(Keys.ENTER)
+                except WebDriverException:
+                    pass
             filled += 1
             emit("fill", f"Filled '{label[:60]}' = {str(val)[:60]}", level="success")
             time.sleep(0.1)
