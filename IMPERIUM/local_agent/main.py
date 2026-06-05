@@ -67,7 +67,7 @@ STATE_FILE = Path(os.environ.get("STATE_FILE", "./agent_state.json"))
 # CHROME_PROFILE_DIR is the sub-folder (e.g. "Default", "Profile 1").
 # IMPORTANT: fully close your normal Chrome before starting the agent, or
 # Chrome will refuse to open the profile twice.
-def _default_chrome_user_data_dir() -> str:
+def _real_chrome_user_data_dir() -> str:
     home = Path.home()
     if os.name == "nt":
         p = home / "AppData" / "Local" / "Google" / "Chrome" / "User Data"
@@ -77,9 +77,41 @@ def _default_chrome_user_data_dir() -> str:
         p = home / ".config" / "google-chrome"
     return str(p)
 
-CHROME_USER_DATA_DIR = os.environ.get("CHROME_USER_DATA_DIR", _default_chrome_user_data_dir())
+
+def _dedicated_chrome_user_data_dir() -> str:
+    # A persistent profile owned by the agent. Survives restarts, keeps
+    # LinkedIn / Google logins, and never collides with your real Chrome.
+    return str(Path.home() / ".imperium_chrome_profile")
+
+
+# USE_REAL_CHROME=1  -> reuse your real Chrome "User Data" (you MUST fully
+#                      close Chrome first; not recommended).
+# Default            -> dedicated persistent profile at ~/.imperium_chrome_profile
+USE_REAL_CHROME = os.environ.get("USE_REAL_CHROME", "0") == "1"
+# Back-compat with previous env var name:
+if os.environ.get("USE_DEFAULT_CHROME") == "1":
+    USE_REAL_CHROME = True
+
+CHROME_USER_DATA_DIR = os.environ.get(
+    "CHROME_USER_DATA_DIR",
+    _real_chrome_user_data_dir() if USE_REAL_CHROME else _dedicated_chrome_user_data_dir(),
+)
 CHROME_PROFILE_DIR = os.environ.get("CHROME_PROFILE_DIR", "Default")
-USE_DEFAULT_CHROME = os.environ.get("USE_DEFAULT_CHROME", "1") == "1"
+
+
+def _clear_singleton_locks(user_data_dir: str) -> None:
+    """Remove stale Chrome lock files that block a fresh launch."""
+    try:
+        base = Path(user_data_dir)
+        if not base.exists():
+            base.mkdir(parents=True, exist_ok=True)
+            return
+        for name in ("SingletonLock", "SingletonCookie", "SingletonSocket"):
+            for p in base.glob(name):
+                try: p.unlink()
+                except Exception: pass
+    except Exception as exc:  # noqa: BLE001
+        print(f"[agent] could not clear singleton locks: {exc}", file=sys.stderr)
 
 
 # --------------------------- in-memory state ----------------------------
@@ -254,15 +286,35 @@ def run_job(job_id: str) -> None:
     if HEADLESS:
         opts.add_argument("--headless=new")
     opts.add_argument("--window-size=1280,860")
-    if USE_DEFAULT_CHROME and CHROME_USER_DATA_DIR:
+    opts.add_argument("--no-first-run")
+    opts.add_argument("--no-default-browser-check")
+    if CHROME_USER_DATA_DIR:
+        _clear_singleton_locks(CHROME_USER_DATA_DIR)
         opts.add_argument(f"--user-data-dir={CHROME_USER_DATA_DIR}")
         if CHROME_PROFILE_DIR:
             opts.add_argument(f"--profile-directory={CHROME_PROFILE_DIR}")
-        emit(job_id, "profile", f"Using Chrome profile: {CHROME_PROFILE_DIR} ({CHROME_USER_DATA_DIR})")
+        kind = "REAL Chrome profile" if USE_REAL_CHROME else "dedicated agent profile"
+        emit(job_id, "profile", f"Using {kind}: {CHROME_PROFILE_DIR} ({CHROME_USER_DATA_DIR})")
+        if USE_REAL_CHROME:
+            emit(job_id, "profile",
+                 "Make sure your normal Chrome is FULLY CLOSED (check the system tray) — "
+                 "Chrome refuses to open the same profile twice.", level="warn")
 
     driver = None
     try:
-        driver = uc.Chrome(options=opts)
+        try:
+            driver = uc.Chrome(options=opts)
+        except WebDriverException as exc:
+            msg = (exc.msg or "").lower()
+            if "chrome not reachable" in msg or "cannot connect to chrome" in msg:
+                hint = (
+                    "Chrome failed to start. Most common cause: your normal Chrome is "
+                    "still running and locking the profile. Close every Chrome window "
+                    "(and the tray icon), or unset USE_REAL_CHROME to use the dedicated "
+                    "agent profile at ~/.imperium_chrome_profile."
+                )
+                emit(job_id, "boot", hint, level="error")
+            raise
         _update(job_id, progress=20, current_step="navigate", current_action=f"Opening {url}", current_url=url)
         emit(job_id, "navigate", f"Opening {url}", url=url)
         driver.get(url)
