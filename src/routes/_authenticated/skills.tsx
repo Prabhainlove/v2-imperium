@@ -11,7 +11,7 @@ export const Route = createFileRoute("/_authenticated/skills")({
   head: () => ({
     meta: [
       { title: "Skill Gap — Imperium" },
-      { name: "description", content: "AI-powered skill gap analysis vs your target role and the live job market." },
+      { name: "description", content: "Local skill gap analysis vs your target role and the live job market." },
       { property: "og:title", content: "Skill Gap — Imperium" },
       { property: "og:description", content: "Close the gap between you and your target role." },
     ],
@@ -37,7 +37,7 @@ function SkillsPage() {
     <div className="mx-auto w-full max-w-7xl space-y-6 p-4 md:p-6">
       <PageHeader
         title="Skill Gap Analysis"
-        description="Imperium Brain compares your skills against your target role and the live market signal."
+        description="Imperium compares your skills against your target role and the live market signal locally."
         actions={
           <Button onClick={() => q.refetch()} variant="outline" disabled={q.isFetching}>
             {q.isFetching ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
@@ -47,7 +47,7 @@ function SkillsPage() {
       />
 
       {q.isLoading ? (
-        <Card><CardContent className="flex items-center gap-2 p-6 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Brain is analyzing…</CardContent></Card>
+        <Card><CardContent className="flex items-center gap-2 p-6 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Analyzing locally…</CardContent></Card>
       ) : q.error ? (
         <Card><CardContent className="p-6 text-sm text-destructive">Failed to analyze: {(q.error as Error).message}</CardContent></Card>
       ) : q.data ? (
@@ -55,7 +55,7 @@ function SkillsPage() {
           <Card className="border-primary/30 bg-gradient-to-br from-primary/5 via-card to-card">
             <CardHeader className="pb-2">
               <CardTitle className="flex items-center gap-2 text-base">
-                <Sparkles className="h-4 w-4 text-primary" /> Brain Summary — {q.data.target_role}
+                <Sparkles className="h-4 w-4 text-primary" /> Local Summary — {q.data.target_role}
               </CardTitle>
             </CardHeader>
             <CardContent>
