@@ -628,10 +628,12 @@ export const evaluateApplication = createServerFn({ method: "POST" })
       recommendation: matchScore >= 0.65 ? "apply" : matchScore >= 0.4 ? "consider" : "skip",
       required_match: skills.length ? matchedSkills.length / skills.length : matchScore,
       preferred_match: matchScore,
+      matched_skills: matchedSkills.slice(0, 8),
       missing_skills: jobKeywords.filter((k) => !skills.some((s) => s.toLowerCase() === k.toLowerCase())).slice(0, 8),
       strength_alignment: matchedSkills.slice(0, 8),
       risk: matchScore >= 0.65 ? "low" : matchScore >= 0.4 ? "medium" : "high",
       difficulty: expCount > 2 ? "moderate" : "standard",
+      interview_potential: Math.max(0.2, Math.min(0.9, matchScore + 0.1)),
       reasoning: "Local deterministic scoring based on title, skills, location, and ATS keyword coverage.",
     };
     const ats = analyzeAts(
@@ -642,7 +644,7 @@ export const evaluateApplication = createServerFn({ method: "POST" })
     const readiness = {
       readiness_score: readinessScore,
       success_probability: Math.max(0.2, Math.min(0.9, readinessScore / 100)),
-      final_recommendation: readinessScore >= 65 ? "submit" : readinessScore >= 45 ? "revise" : "hold",
+      final_recommendation: readinessScore >= 65 ? "submit" : readinessScore >= 45 ? "revise" : "skip",
       reasoning: "Computed locally from match score and ATS keyword coverage. No AI provider is required.",
       risks: [
         ...(job_score.missing_skills.length ? [`Missing keywords: ${job_score.missing_skills.slice(0, 4).join(", ")}`] : []),
