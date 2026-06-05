@@ -194,78 +194,25 @@ def emit(job_id: str, step: str, action: str, *, level: str = "info", url: str =
     print(f"[{level:>7}] {job_id[:8]} {step}: {action}")
 
 
-# --------------------------- form filling -------------------------------
+# --------------------------- run executor -------------------------------
 
-PROFILE_FIELD_MAP = {
-    "first":     ["first name", "given name"],
-    "last":      ["last name", "surname", "family name"],
-    "name":      ["full name", "your name", "name"],
-    "email":     ["email", "e-mail"],
-    "phone":     ["phone", "mobile", "telephone"],
-    "location":  ["location", "city", "address"],
-    "linkedin":  ["linkedin"],
-    "github":    ["github"],
-    "portfolio": ["portfolio", "website"],
-    "summary":   ["summary", "about you", "cover letter"],
-}
+from brain import classify_page, llm_available  # noqa: E402
+from adapters import (  # noqa: E402
+    page_snapshot, run_adapter, find_submit_button,
+)
 
 
-def _label_for(el) -> str:
-    for attr in ("aria-label", "placeholder", "name", "id"):
-        v = el.get_attribute(attr) or ""
-        if v.strip():
-            return v.strip().lower()
-    try:
-        return (el.text or "").strip().lower()
-    except Exception:  # noqa: BLE001
-        return ""
-
-
-def _profile_value(label: str, profile: Dict[str, Any], name_parts: Dict[str, str]) -> Optional[str]:
-    label = label.lower()
-    for key, needles in PROFILE_FIELD_MAP.items():
-        if any(n in label for n in needles):
-            if key == "first": return name_parts.get("first")
-            if key == "last":  return name_parts.get("last")
-            if key == "name":  return profile.get("name")
-            if key == "linkedin":  return profile.get("linkedin_url") or profile.get("linkedin")
-            if key == "github":    return profile.get("github_url") or profile.get("github")
-            if key == "portfolio": return profile.get("portfolio_url") or profile.get("portfolio")
-            return profile.get(key)
+def _wait_for_decision(job_id: str, timeout: float = 600) -> Optional[str]:
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        time.sleep(1)
+        r = _runs.get(job_id) or {}
+        if r.get("status") == "cancelled":
+            return "cancel"
+        if r.get("approved") is True:  return "approve"
+        if r.get("approved") is False: return "reject"
     return None
 
-
-def fill_application(driver, job_id: str, profile: Dict[str, Any]) -> int:
-    full_name = (profile.get("name") or "").strip()
-    parts = full_name.split(" ", 1)
-    name_parts = {"first": parts[0] if parts else "", "last": parts[1] if len(parts) > 1 else ""}
-
-    inputs = driver.find_elements(By.CSS_SELECTOR, "input, textarea")
-    emit(job_id, "scan", f"Found {len(inputs)} input fields", url=driver.current_url)
-
-    filled = 0
-    for el in inputs:
-        try:
-            t = (el.get_attribute("type") or "text").lower()
-            if t in {"hidden", "submit", "button", "checkbox", "radio", "file"}:
-                continue
-            if not el.is_displayed() or not el.is_enabled():
-                continue
-            label = _label_for(el)
-            val = _profile_value(label, profile, name_parts)
-            if not val:
-                continue
-            el.clear()
-            el.send_keys(val)
-            emit(job_id, "fill", f"Filled '{label}' = {val}", level="success")
-            filled += 1
-            time.sleep(0.15)
-        except WebDriverException as exc:
-            emit(job_id, "fill", f"Skipped a field: {exc.msg}", level="warn")
-    return filled
-
-
-# --------------------------- run executor -------------------------------
 
 def run_job(job_id: str) -> None:
     if not SELENIUM_OK:
@@ -274,13 +221,16 @@ def run_job(job_id: str) -> None:
         return
 
     run = _runs.get(job_id)
-    if not run:
-        return
+    if not run: return
     url = run["job_url"]
     profile = run.get("profile") or {}
 
-    _update(job_id, status="running", progress=5, current_step="boot", current_action="Starting Chrome")
+    _update(job_id, status="running", progress=5, current_step="boot",
+            current_action="Starting Chrome")
     emit(job_id, "boot", "Launching local Chrome with Selenium")
+    emit(job_id, "brain",
+         f"Ollama brain {'AVAILABLE' if llm_available() else 'OFFLINE — using heuristics'}",
+         level="info" if llm_available() else "warn")
 
     opts = uc.ChromeOptions()
     if HEADLESS:
@@ -297,8 +247,7 @@ def run_job(job_id: str) -> None:
         emit(job_id, "profile", f"Using {kind}: {CHROME_PROFILE_DIR} ({CHROME_USER_DATA_DIR})")
         if USE_REAL_CHROME:
             emit(job_id, "profile",
-                 "Make sure your normal Chrome is FULLY CLOSED (check the system tray) — "
-                 "Chrome refuses to open the same profile twice.", level="warn")
+                 "Make sure your normal Chrome is FULLY CLOSED.", level="warn")
 
     driver = None
     try:
@@ -307,64 +256,93 @@ def run_job(job_id: str) -> None:
         except WebDriverException as exc:
             msg = (exc.msg or "").lower()
             if "chrome not reachable" in msg or "cannot connect to chrome" in msg:
-                hint = (
-                    "Chrome failed to start. Most common cause: your normal Chrome is "
-                    "still running and locking the profile. Close every Chrome window "
-                    "(and the tray icon), or unset USE_REAL_CHROME to use the dedicated "
-                    "agent profile at ~/.imperium_chrome_profile."
-                )
-                emit(job_id, "boot", hint, level="error")
+                emit(job_id, "boot",
+                     "Chrome failed to start. Close every Chrome window (tray included) "
+                     "or unset USE_REAL_CHROME.", level="error")
             raise
-        _update(job_id, progress=20, current_step="navigate", current_action=f"Opening {url}", current_url=url)
+
+        _update(job_id, progress=15, current_step="navigate",
+                current_action=f"Opening {url}", current_url=url)
         emit(job_id, "navigate", f"Opening {url}", url=url)
         driver.get(url)
         WebDriverWait(driver, 20).until(EC.presence_of_element_located((By.TAG_NAME, "body")))
-        time.sleep(1.5)
-        _update(job_id, progress=40, current_step="loaded", current_action="Page loaded", current_url=driver.current_url)
-        emit(job_id, "loaded", "Page loaded", level="success", url=driver.current_url)
+        time.sleep(2)
 
-        filled = fill_application(driver, job_id, profile)
-        _update(job_id, progress=70, current_step="filled", current_action=f"Filled {filled} fields")
-        emit(job_id, "filled", f"Auto-filled {filled} field(s). Awaiting your approval to submit.", level="success")
+        # ---- observe → classify → plan → execute loop ----
+        outcome = "needs_human"
+        for tick in range(6):  # at most 6 page transitions
+            # If a new tab opened (external apply), switch to the newest
+            try:
+                if len(driver.window_handles) > 1:
+                    driver.switch_to.window(driver.window_handles[-1])
+            except WebDriverException:
+                pass
 
-        _update(job_id, status="awaiting_approval", progress=80, current_step="approval", current_action="Waiting for human approval")
-        emit(job_id, "approval", "Click Approve or Reject in the web app.", level="warn")
+            snap = page_snapshot(driver)
+            kind = classify_page(snap)
+            _update(job_id, progress=25 + tick * 10,
+                    current_step=kind, current_action=f"Page detected: {kind}",
+                    current_url=snap["url"])
+            emit(job_id, "classify", f"Page → {kind}", url=snap["url"])
 
-        deadline = time.time() + 600
-        decision: Optional[str] = None
-        while time.time() < deadline:
-            time.sleep(1)
-            r = _runs.get(job_id) or {}
-            if r.get("status") == "cancelled":
-                emit(job_id, "cancel", "Cancelled", level="warn")
-                return
-            if r.get("approved") is True:
-                decision = "approve"
+            outcome = run_adapter(kind, driver,
+                                  lambda step, action, level="info", url="":
+                                      emit(job_id, step, action, level=level, url=url),
+                                  profile)
+            if outcome in ("awaiting_approval", "submitted", "needs_human"):
                 break
-            if r.get("approved") is False:
-                decision = "reject"
-                break
+            time.sleep(1.5)
+
+        if outcome == "submitted":
+            _update(job_id, status="submitted", progress=100,
+                    current_step="submitted", current_action="Already submitted")
+            return
+
+        if outcome == "needs_human":
+            _update(job_id, status="awaiting_approval", progress=70,
+                    current_step="needs_human",
+                    current_action="Agent is stuck. Take over in the Chrome window, "
+                                   "then click Approve to submit or Reject to abort.")
+            emit(job_id, "needs_human",
+                 "Agent paused — finish manually in Chrome, then Approve/Reject.",
+                 level="warn")
+        else:
+            _update(job_id, status="awaiting_approval", progress=85,
+                    current_step="approval",
+                    current_action="Form filled. Waiting for human approval.")
+            emit(job_id, "approval", "Click Approve or Reject in the web app.", level="warn")
+
+        # ---- approval wait ----
+        decision = _wait_for_decision(job_id)
 
         if decision == "approve":
-            submit = None
-            for sel in ["button[type='submit']", "input[type='submit']"]:
-                try:
-                    submit = driver.find_element(By.CSS_SELECTOR, sel)
-                    break
-                except NoSuchElementException:
-                    continue
+            submit = find_submit_button(driver)
+            if not submit:
+                # Allow a beat — many forms enable Submit only after validation
+                time.sleep(1.5)
+                submit = find_submit_button(driver)
             if submit:
-                emit(job_id, "submit", "Clicking submit", level="success")
-                submit.click()
+                emit(job_id, "submit",
+                     f"Clicking submit: {submit.text or submit.get_attribute('aria-label') or 'button'}",
+                     level="success")
+                try: submit.click()
+                except WebDriverException:
+                    driver.execute_script("arguments[0].click();", submit)
                 time.sleep(3)
-                _update(job_id, status="submitted", progress=100, current_step="submitted", current_action="Application submitted")
+                _update(job_id, status="submitted", progress=100,
+                        current_step="submitted", current_action="Application submitted")
                 emit(job_id, "submitted", "Application submitted", level="success")
             else:
                 _update(job_id, status="failed", error="No submit button found")
-                emit(job_id, "submit", "Could not find a submit button", level="error")
+                emit(job_id, "submit",
+                     "Could not find a submit button. The form may need you to click "
+                     "the final Submit manually in Chrome.", level="error")
         elif decision == "reject":
-            _update(job_id, status="rejected", current_step="rejected", current_action="Rejected by user")
+            _update(job_id, status="rejected", current_step="rejected",
+                    current_action="Rejected by user")
             emit(job_id, "reject", "Rejected before submit", level="warn")
+        elif decision == "cancel":
+            emit(job_id, "cancel", "Cancelled", level="warn")
         else:
             _update(job_id, status="failed", error="Approval timeout")
             emit(job_id, "timeout", "Timed out waiting for approval", level="error")
@@ -380,6 +358,7 @@ def run_job(job_id: str) -> None:
         if driver:
             try: driver.quit()
             except Exception: pass
+
 
 
 # --------------------------- HTTP server --------------------------------
