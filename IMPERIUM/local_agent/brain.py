@@ -98,15 +98,23 @@ def classify_page(snapshot: Dict[str, Any]) -> str:
        or "thanks for applying" in text or "we received your application" in text:
         return "success"
 
-    # LinkedIn Easy Apply modal
-    if any("easy apply" in b for b in buttons) and "linkedin.com" in url:
-        if any(b in ("next", "review", "submit application", "continue") for b in buttons):
-            return "easy_apply_step"
-        return "job_detail"
+    # LinkedIn URL takes precedence over button-text guesses, because the
+    # search results page also has 'Easy Apply' badges AND a 'Next' pagination
+    # button which would otherwise look like a wizard step.
     if "linkedin.com/jobs/search" in url or "linkedin.com/jobs/collections" in url:
         return "job_listing"
-    if "linkedin.com/jobs/view" in url:
-        return "job_detail"
+    # Easy Apply modal is only real if the modal dialog is actually present
+    if "linkedin.com" in url:
+        has_modal = any(s in text for s in (
+            "submit application", "review your application",
+            "save this application", "contact info",
+        ))
+        if has_modal and any(b in ("next", "review", "submit application",
+                                    "continue to next step") for b in buttons):
+            return "easy_apply_step"
+        if "linkedin.com/jobs/view" in url:
+            return "job_detail"
+
 
     # External ATS
     host = url.split("/")[2] if "://" in url else url
