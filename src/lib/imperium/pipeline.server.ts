@@ -391,8 +391,8 @@ export async function runPipeline(input: PipelineInput) {
  * application-fill animation. Marks the application as Applied. No real
  * external submission is sent — clearly logged as a manual hand-off step.
  */
-export async function simulateSubmission(applicationId: string, user_id: string) {
-  const { data: app, error } = await supabaseAdmin
+export async function simulateSubmission(applicationId: string, user_id: string, db: ImperiumDb) {
+  const { data: app, error } = await db
     .from("applications")
     .select("*")
     .eq("id", applicationId)
@@ -423,13 +423,13 @@ export async function simulateSubmission(applicationId: string, user_id: string)
   ];
 
   for (const [action, detail] of steps) {
-    await log(user_id, task_id, action, "running", detail);
+    await log(db, user_id, task_id, action, "running", detail);
     await sleep(450);
-    await log(user_id, task_id, action, "success", detail);
+    await log(db, user_id, task_id, action, "success", detail);
   }
 
   const prevStatus = (app.status as string) || "Preparing";
-  await supabaseAdmin
+  await db
     .from("applications")
     .update({
       status: "Applied",
@@ -438,7 +438,7 @@ export async function simulateSubmission(applicationId: string, user_id: string)
     })
     .eq("id", applicationId);
 
-  await supabaseAdmin.from("application_timeline").insert({
+  await db.from("application_timeline").insert({
     user_id,
     application_id: applicationId,
     event_type: "status_change",
@@ -448,6 +448,7 @@ export async function simulateSubmission(applicationId: string, user_id: string)
   });
 
   await log(
+    db,
     user_id,
     task_id,
     "application_submitted",
@@ -458,8 +459,8 @@ export async function simulateSubmission(applicationId: string, user_id: string)
   return { ok: true };
 }
 
-export async function skipApplication(applicationId: string, user_id: string) {
-  const { data: app, error } = await supabaseAdmin
+export async function skipApplication(applicationId: string, user_id: string, db: ImperiumDb) {
+  const { data: app, error } = await db
     .from("applications")
     .select("task_id, company, job_title, status")
     .eq("id", applicationId)
@@ -467,12 +468,12 @@ export async function skipApplication(applicationId: string, user_id: string) {
     .maybeSingle();
   if (error || !app) throw new Error("Application not found");
   const prevStatus = (app.status as string) || "Preparing";
-  await supabaseAdmin
+  await db
     .from("applications")
     .update({ status: "Withdrawn", updated_at: new Date().toISOString() })
     .eq("id", applicationId)
     .eq("user_id", user_id);
-  await supabaseAdmin.from("application_timeline").insert({
+  await db.from("application_timeline").insert({
     user_id,
     application_id: applicationId,
     event_type: "status_change",
@@ -481,6 +482,7 @@ export async function skipApplication(applicationId: string, user_id: string) {
     note: `User withdrew application for ${app.company} — ${app.job_title}`,
   });
   await log(
+    db,
     user_id,
     (app.task_id as string) || "skip",
     "user_skip",
