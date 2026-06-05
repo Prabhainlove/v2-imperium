@@ -67,8 +67,8 @@ function DashboardPage() {
     retry: false,
   });
 
-  const brain = useQuery({
-    queryKey: ["brain-career"],
+  const intelligence = useQuery({
+    queryKey: ["career-intelligence"],
     queryFn: () => getCareerIntelligence(),
     retry: false,
     staleTime: 5 * 60_000,
@@ -167,9 +167,9 @@ function DashboardPage() {
       <Card className="border-primary/30 bg-gradient-to-br from-primary/5 via-card to-card">
         <CardHeader className="flex flex-row items-center justify-between pb-2">
           <CardTitle className="flex items-center gap-2 text-base">
-            <Sparkles className="h-4 w-4 text-primary" /> Imperium Brain
+            <Sparkles className="h-4 w-4 text-primary" /> Local Intelligence
             <span className="ml-2 rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-primary">
-              {brain.isFetching ? "Thinking…" : "Live"}
+              {intelligence.isFetching ? "Calculating…" : "Live"}
             </span>
           </CardTitle>
         </CardHeader>
@@ -177,28 +177,28 @@ function DashboardPage() {
           <div>
             <div className="text-xs uppercase tracking-wider text-muted-foreground">Strategy</div>
             <p className="mt-1 text-sm">
-              {brain.data?.application_strategy ?? (brain.isLoading ? "Analyzing your career signals…" : "Run a job search so Brain can analyze your trajectory.")}
+              {intelligence.data?.application_strategy ?? (intelligence.isLoading ? "Analyzing your career signals…" : "Run a job search to analyze your trajectory.")}
             </p>
           </div>
           <div>
             <div className="text-xs uppercase tracking-wider text-muted-foreground">Market Insights</div>
             <ul className="mt-1 space-y-1 text-sm">
-              {(brain.data?.market_insights ?? []).slice(0, 3).map((m, i) => (
+              {(intelligence.data?.market_insights ?? []).slice(0, 3).map((m, i) => (
                 <li key={i} className="flex gap-2">
                   <span className="text-primary">›</span>
                   <span>{m}</span>
                 </li>
               ))}
-              {(!brain.data?.market_insights?.length) && (
-                <li className="text-muted-foreground">{brain.isLoading ? "…" : "—"}</li>
+              {(!intelligence.data?.market_insights?.length) && (
+                <li className="text-muted-foreground">{intelligence.isLoading ? "…" : "—"}</li>
               )}
             </ul>
           </div>
-          {!!brain.data?.skill_recommendations?.length && (
+          {!!intelligence.data?.skill_recommendations?.length && (
             <div className="md:col-span-2">
               <div className="text-xs uppercase tracking-wider text-muted-foreground">Skill Focus</div>
               <div className="mt-2 flex flex-wrap gap-1.5">
-                {brain.data.skill_recommendations.slice(0, 8).map((s) => (
+                {intelligence.data.skill_recommendations.slice(0, 8).map((s) => (
                   <span key={s} className="rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-xs">
                     {s}
                   </span>

@@ -1,6 +1,6 @@
 /**
  * Profile Import card — upload a resume file or paste a LinkedIn URL
- * and let the Brain auto-fill the profile editor.
+ * and auto-fill the profile editor locally.
  */
 import { useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
@@ -154,7 +154,7 @@ export function ProfileImportCard({ current, onApply }: Props) {
             <FileText className="h-4 w-4 text-muted-foreground" /> Upload a resume
           </div>
           <p className="text-xs text-muted-foreground">
-            PDF, DOCX, or TXT. We extract your details locally, then ask the Brain to structure them — empty fields are filled, your existing entries are kept.
+            PDF, DOCX, or TXT. We extract and structure your details locally — empty fields are filled, your existing entries are kept.
           </p>
           <input
             ref={fileRef}
@@ -178,7 +178,7 @@ export function ProfileImportCard({ current, onApply }: Props) {
             ) : (
               <Upload className="mr-2 h-4 w-4" />
             )}
-            {parsing ? "Reading file…" : resumeImport.isPending ? "Brain extracting…" : "Choose resume file"}
+            {parsing ? "Reading file…" : resumeImport.isPending ? "Extracting…" : "Choose resume file"}
           </Button>
         </div>
 

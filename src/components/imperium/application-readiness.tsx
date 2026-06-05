@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import {
   AlertTriangle,
-  Brain,
+  Calculator,
   CheckCircle2,
   Loader2,
   Send,
@@ -26,7 +26,7 @@ export function ApplicationReadinessPanel({ applicationId }: { applicationId: st
     return (
       <Card className="border-primary/20 bg-primary/5">
         <CardContent className="flex items-center gap-2 p-4 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin text-primary" /> Brain evaluating application readiness…
+          <Loader2 className="h-4 w-4 animate-spin text-primary" /> Evaluating application readiness locally…
         </CardContent>
       </Card>
     );
@@ -35,7 +35,7 @@ export function ApplicationReadinessPanel({ applicationId }: { applicationId: st
     return (
       <Card className="border-destructive/30 bg-destructive/5">
         <CardContent className="p-4 text-sm text-destructive">
-          Brain could not evaluate readiness for this application.
+          Could not evaluate readiness for this application.
         </CardContent>
       </Card>
     );
@@ -60,7 +60,7 @@ export function ApplicationReadinessPanel({ applicationId }: { applicationId: st
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center justify-between text-base">
           <span className="flex items-center gap-2">
-            <Brain className="h-4 w-4 text-primary" /> Application Readiness
+            <Calculator className="h-4 w-4 text-primary" /> Application Readiness
           </span>
           <Badge variant="outline" className={recColor}>
             {readiness.final_recommendation === "submit" ? (

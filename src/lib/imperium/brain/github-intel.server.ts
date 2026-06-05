@@ -1,8 +1,7 @@
 /**
- * Imperium Brain — GitHub Intelligence.
- * Server-only. Fetches public GitHub data, asks Brain to summarize.
+ * GitHub Intelligence.
+ * Server-only. Fetches public GitHub data and summarizes it locally.
  */
-import { brainJson } from "./reasoning.server";
 import type { GithubIntel } from "@/lib/imperium/profile/types";
 
 function parseUsername(url: string): string | null {
@@ -93,36 +92,10 @@ export async function analyzeGithubUrl(url: string): Promise<GithubIntel> {
     inferred_stack: top_languages.map((l) => l.name),
   };
 
-  // Ask Brain for a 3-line summary + resume bullets (best-effort; degrade gracefully).
-  try {
-    const { data } = await brainJson<{ summary: string; resume_bullets: string[]; inferred_stack: string[] }>({
-      system:
-        "You analyze a developer's public GitHub footprint. Return STRICT JSON with keys: " +
-        "summary (1-2 sentences, no fluff), resume_bullets (array of 3 punchy resume bullets in past tense), " +
-        "inferred_stack (array of 6-10 concrete tools/frameworks).",
-      user: JSON.stringify({
-        username,
-        public_repos: user.public_repos,
-        followers: user.followers,
-        bio: user.bio ?? "",
-        top_languages,
-        top_repos: top_repos.map((r) => ({
-          name: r.name, stars: r.stars, language: r.language, description: r.description,
-        })),
-      }),
-      temperature: 0.3,
-      max_tokens: 600,
-    });
-    if (data) {
-      if (typeof data.summary === "string") intel.summary = data.summary.trim();
-      if (Array.isArray(data.resume_bullets)) intel.resume_bullets = data.resume_bullets.slice(0, 5).filter((b) => typeof b === "string");
-      if (Array.isArray(data.inferred_stack) && data.inferred_stack.length) {
-        intel.inferred_stack = data.inferred_stack.slice(0, 12).filter((s) => typeof s === "string");
-      }
-    }
-  } catch {
-    // Brain unavailable — return raw data only.
-  }
+  intel.summary = `${username} has ${user.public_repos} public repos, ${user.followers} followers, and strongest visible activity in ${top_languages.slice(0, 3).map((l) => l.name).join(", ") || "public repositories"}.`;
+  intel.resume_bullets = top_repos.slice(0, 3).map((r) =>
+    `Built ${r.name}${r.language ? ` with ${r.language}` : ""}${r.stars ? `, earning ${r.stars} GitHub stars` : ""}.`,
+  );
 
   return intel;
 }

@@ -19,7 +19,7 @@ export const getAgents = createServerFn({ method: "GET" }).handler(async () => [
   {
     name: "JobAgent",
     capabilities: ["discover", "analyze", "resume", "cover_letter", "review", "track"],
-    skills: ["RemoteOK", "Remotive", "Arbeitnow", "Adzuna", "Jooble", "LinkedIn", "Lovable AI"],
+    skills: ["RemoteOK", "Remotive", "Arbeitnow", "Adzuna", "Jooble", "LinkedIn", "Local scoring"],
     status: "ready",
   },
 ]);
@@ -321,7 +321,7 @@ export const approveApplication = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => IdInput.parse(input))
   .handler(async ({ data, context }) => {
     const { simulateSubmission } = await import("./pipeline.server");
-    return simulateSubmission(data.id, context.userId);
+    return simulateSubmission(data.id, context.userId, context.supabase);
   });
 
 export const skipApplicationFn = createServerFn({ method: "POST" })
@@ -329,7 +329,7 @@ export const skipApplicationFn = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => IdInput.parse(input))
   .handler(async ({ data, context }) => {
     const { skipApplication } = await import("./pipeline.server");
-    return skipApplication(data.id, context.userId);
+    return skipApplication(data.id, context.userId, context.supabase);
   });
 
 /* ---------- Activity ---------- */
@@ -443,17 +443,18 @@ export const getCareerIntelligence = createServerFn({ method: "GET" })
     const avg =
       (jobs ?? []).reduce((acc, j) => acc + Number(j.match_score ?? 0), 0) /
       Math.max(1, jobs?.length ?? 1);
-    const { generateCareerIntelligence } = await import("./brain/brain.server");
-    return generateCareerIntelligence({
-      candidate_role: (profile?.headline as string) || "Candidate",
-      candidate_skills: ((profile?.skills as string[] | null) ?? []) as string[],
-      total_applications: totalApps,
-      applied_count: applied,
-      interview_count: interview,
-      top_companies: topCompanies,
-      recent_job_titles: (jobs ?? []).slice(0, 10).map((j) => j.title as string),
-      avg_match_score: avg,
-    });
+    const skills = ((profile?.skills as string[] | null) ?? []) as string[];
+    return {
+      market_insights: [
+        `${jobs?.length ?? 0} saved/discovered jobs available for local comparison.`,
+        `Average match score is ${Math.round(avg * 100)}% across recent roles.`,
+        topCompanies.length ? `Most frequent companies: ${topCompanies.join(", ")}.` : "Run a job search to collect company signal.",
+      ],
+      skill_recommendations: skills.slice(0, 8),
+      learning_recommendations: skills.length ? skills.slice(0, 4).map((s) => `Prepare one measurable story for ${s}.`) : ["Add skills in Settings to improve local matching."],
+      application_strategy: `Local strategy: ${totalApps} applications tracked, ${applied} applied, ${interview} interview-stage. Prioritize roles above 60% match and review every generated package before applying.`,
+      growth_opportunities: (jobs ?? []).slice(0, 5).map((j) => `Target similar roles to ${(j.title as string) || "recent match"}`),
+    };
   });
 
 
@@ -535,7 +536,6 @@ export const optimizeMasterResume = createServerFn({ method: "POST" })
       .select("name, email, phone, summary, skills, experience")
       .eq("id", userId)
       .maybeSingle();
-    const { optimizeResume } = await import("./brain/resume-optimizer.server");
     const { extractKeywords } = await import("./resume-render");
     const jobKeywords = extractKeywords(data.job_description, 20);
     const candSkills = ((profile?.skills as string[] | null) ?? []) as string[];
@@ -545,22 +545,22 @@ export const optimizeMasterResume = createServerFn({ method: "POST" })
     const missing = jobKeywords.filter(
       (k) => !candSkills.some((s) => s.toLowerCase() === k.toLowerCase()),
     );
-    return optimizeResume({
-      candidate_name: (profile?.name as string) || "Candidate",
-      candidate_email: (profile?.email as string) || "",
-      candidate_phone: (profile?.phone as string) || "",
-      candidate_summary: (profile?.summary as string) || undefined,
-      candidate_skills: candSkills,
-      candidate_experience: `${((profile?.experience as unknown[] | null) ?? []).length} role(s)`,
-      job_title: data.job_title,
-      company: data.company,
-      job_description: data.job_description,
-      job_tech_stack: jobKeywords,
-      matched_skills: matched,
-      missing_skills: missing.slice(0, 10),
-      current_resume_md: data.resume_md,
-      template: data.template,
-    });
+    const before = jobKeywords.length
+      ? Math.round((jobKeywords.filter((k) => data.resume_md.toLowerCase().includes(k.toLowerCase())).length / jobKeywords.length) * 100)
+      : 70;
+    const keywordLine = missing.length ? `\n\n## Target Keywords\n- ${missing.slice(0, 10).join(", ")}` : "";
+    const optimized = `${data.resume_md.trim()}${keywordLine}`;
+    const after = jobKeywords.length
+      ? Math.round((jobKeywords.filter((k) => optimized.toLowerCase().includes(k.toLowerCase())).length / jobKeywords.length) * 100)
+      : before;
+    return {
+      optimized_md: optimized,
+      ats_score_before: before,
+      ats_score_after: after,
+      improvements: missing.length ? [`Added ${missing.slice(0, 10).length} missing job keywords.`] : ["Resume already covers the detected job keywords."],
+      added_keywords: missing.slice(0, 10),
+      reasoning: "Local keyword optimization. No AI provider is required.",
+    };
   });
 
 /* ---------- Brain: per-listing intelligence ---------- */
@@ -574,20 +574,27 @@ export const analyzeJobListing = createServerFn({ method: "POST" })
       supabase.from("profiles").select("headline, skills, experience, target_role").eq("id", userId).maybeSingle(),
     ]);
     if (!listing) throw new Error("Listing not found");
-    const { analyzeJob } = await import("./brain/job-analysis.server");
     const skills = ((profile?.skills as string[] | null) ?? []) as string[];
     const expCount = ((profile?.experience as unknown[] | null) ?? []).length;
-    return analyzeJob({
-      title: (listing.title as string) || "",
-      company: (listing.company as string) || "",
-      description: (listing.description as string) || "",
-      tech_stack: ((listing.tech_stack as string[] | null) ?? []) as string[],
-      location: (listing.location as string) || "",
-      remote: Boolean(listing.remote),
-      candidate_skills: skills,
-      candidate_role: (profile?.target_role as string) || (profile?.headline as string) || "Candidate",
-      candidate_experience: `${expCount} role(s)`,
-    });
+    const techStack = ((listing.tech_stack as string[] | null) ?? []) as string[];
+    const jobText = `${listing.title ?? ""} ${listing.description ?? ""} ${techStack.join(" ")}`.toLowerCase();
+    const matched = skills.filter((s) => jobText.includes(s.toLowerCase()));
+    const missing = techStack.filter((k) => !skills.some((s) => s.toLowerCase() === k.toLowerCase())).slice(0, 8);
+    const matchScore = Number(listing.match_score ?? (skills.length ? matched.length / skills.length : 0.5));
+    return {
+      match_score: matchScore,
+      confidence: 0.82,
+      required_match: skills.length ? matched.length / skills.length : matchScore,
+      preferred_match: matchScore,
+      matched_skills: matched.slice(0, 8),
+      missing_skills: missing,
+      strength_alignment: matched.slice(0, 8),
+      risk: matchScore >= 0.65 ? "low" : matchScore >= 0.4 ? "medium" : "high",
+      difficulty: expCount > 2 ? "moderate" : "standard",
+      interview_potential: Math.max(0.2, Math.min(0.9, matchScore + 0.1)),
+      recommendation: matchScore >= 0.65 ? "apply" : matchScore >= 0.4 ? "consider" : "skip",
+      reasoning: "Local deterministic analysis from saved job text, tech stack, and profile skills.",
+    };
   });
 
 /* ---------- Brain: application readiness ---------- */
@@ -612,35 +619,46 @@ export const evaluateApplication = createServerFn({ method: "POST" })
       .select("headline, skills, experience, target_role")
       .eq("id", userId)
       .maybeSingle();
-    const { analyzeJob } = await import("./brain/job-analysis.server");
-    const { evaluateApplicationReadiness } = await import("./brain/application-engine.server");
     const { analyzeAts } = await import("./rendercv.server");
 
     const skills = ((profile?.skills as string[] | null) ?? []) as string[];
     const expCount = ((profile?.experience as unknown[] | null) ?? []).length;
-    const job_score = await analyzeJob({
-      title: (listing?.title as string) || (app.job_title as string),
-      company: (listing?.company as string) || (app.company as string),
-      description: (listing?.description as string) || "",
-      tech_stack: ((listing?.tech_stack as string[] | null) ?? []) as string[],
-      location: (listing?.location as string) || "",
-      remote: Boolean(listing?.remote),
-      candidate_skills: skills,
-      candidate_role: (profile?.target_role as string) || (profile?.headline as string) || "Candidate",
-      candidate_experience: `${expCount} role(s)`,
-    });
-    const ats = analyzeAts(
-      (app.resume_md as string) || "",
-      ((listing?.tech_stack as string[] | null) ?? []).slice(0, 20),
+    const jobKeywords = ((listing?.tech_stack as string[] | null) ?? []) as string[];
+    const resumeText = (app.resume_md as string) || "";
+    const matchedSkills = skills.filter((skill) =>
+      `${listing?.description ?? ""} ${jobKeywords.join(" ")}`.toLowerCase().includes(skill.toLowerCase()),
     );
-    const readiness = await evaluateApplicationReadiness({
-      job_score,
-      resume_ats_score: ats.score,
-      resume_excerpt: (app.resume_md as string) || "",
-      cover_letter_excerpt: (app.cover_letter_md as string) || "",
-      job_title: (app.job_title as string) || "",
-      company: (app.company as string) || "",
-    });
+    const matchScore = Number(app.match_score ?? 0);
+    const job_score = {
+      match_score: matchScore,
+      confidence: 0.82,
+      recommendation: matchScore >= 0.65 ? "apply" : matchScore >= 0.4 ? "consider" : "skip",
+      required_match: skills.length ? matchedSkills.length / skills.length : matchScore,
+      preferred_match: matchScore,
+      matched_skills: matchedSkills.slice(0, 8),
+      missing_skills: jobKeywords.filter((k) => !skills.some((s) => s.toLowerCase() === k.toLowerCase())).slice(0, 8),
+      strength_alignment: matchedSkills.slice(0, 8),
+      risk: matchScore >= 0.65 ? "low" : matchScore >= 0.4 ? "medium" : "high",
+      difficulty: expCount > 2 ? "moderate" : "standard",
+      interview_potential: Math.max(0.2, Math.min(0.9, matchScore + 0.1)),
+      reasoning: "Local deterministic scoring based on title, skills, location, and ATS keyword coverage.",
+    };
+    const ats = analyzeAts(
+      resumeText,
+      jobKeywords.slice(0, 20),
+    );
+    const readinessScore = Math.round(matchScore * 55 + ats.score * 0.45);
+    const readiness = {
+      readiness_score: readinessScore,
+      success_probability: Math.max(0.2, Math.min(0.9, readinessScore / 100)),
+      final_recommendation: readinessScore >= 65 ? "submit" : readinessScore >= 45 ? "revise" : "skip",
+      reasoning: "Computed locally from match score and ATS keyword coverage. No AI provider is required.",
+      risks: [
+        ...(job_score.missing_skills.length ? [`Missing keywords: ${job_score.missing_skills.slice(0, 4).join(", ")}`] : []),
+        ...(ats.score < 50 ? ["Low ATS keyword coverage"] : []),
+      ],
+      recommended_improvements: ats.missing_keywords.slice(0, 5).map((k) => `Add evidence for ${k}`),
+    };
     return { job_score, ats, readiness };
   });
 
@@ -684,6 +702,7 @@ export const runJobSearch = createServerFn({ method: "POST" })
     );
 
     const result = await runPipeline({
+      db: supabase,
       task_id,
       user_id: userId,
       role: data.role,
@@ -1032,12 +1051,37 @@ export const getSkillGap = createServerFn({ method: "GET" })
     const recent_job_skills = (jobs ?? []).flatMap(
       (j) => ((j.tech_stack as string[] | null) ?? []) as string[],
     );
-    const { analyzeSkillGap } = await import("./brain/skill-gap.server");
-    return analyzeSkillGap({
+    const marketCounts = new Map<string, number>();
+    for (const skill of recent_job_skills) {
+      const key = String(skill).trim();
+      if (!key) continue;
+      marketCounts.set(key, (marketCounts.get(key) ?? 0) + 1);
+    }
+    const candidateSet = new Set(candidate_skills.map((s) => s.toLowerCase()));
+    const missing = [...marketCounts.entries()]
+      .filter(([skill]) => !candidateSet.has(skill.toLowerCase()))
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10)
+      .map(([skill, count]) => ({
+        skill,
+        importance: count >= 4 ? "critical" : count >= 2 ? "important" : "nice_to_have",
+        rationale: `Appears in ${count} recent job listing${count > 1 ? "s" : ""}.`,
+        resource_hint: `Build a small portfolio task using ${skill}.`,
+      }));
+    const matched = candidate_skills.filter((s) => marketCounts.has(s));
+    return {
       target_role,
-      candidate_skills,
-      recent_job_titles,
-      recent_job_skills,
-    });
+      matched_skills: matched,
+      missing_skills: missing,
+      roadmap_30_60_90: {
+        thirty: missing.slice(0, 3).map((m) => `Refresh fundamentals for ${m.skill}.`),
+        sixty: missing.slice(3, 6).map((m) => `Build a project showing ${m.skill}.`),
+        ninety: missing.slice(6, 9).map((m) => `Add ${m.skill} proof to resume and applications.`),
+      },
+      summary: recent_job_titles.length
+        ? `Local analysis compared your profile against ${recent_job_titles.length} recent job titles and ${recent_job_skills.length} market skill signals.`
+        : "Run a job search to gather local market signals for skill-gap analysis.",
+      model: "local-deterministic",
+    };
   });
 

@@ -6,16 +6,12 @@
  *              -> stage as **Pending Review** (no auto submission).
  * Writes an activity_log row at every stage so the UI animates live.
  */
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { SOURCES, type RawJob } from "./sources.server";
-import {
-  analyzeJob,
-  optimizeResume,
-  generateCoverLetter,
-  evaluateApplicationReadiness,
-} from "./brain/brain.server";
+
+type ImperiumDb = { from: (table: string) => any };
 
 export interface PipelineInput {
+  db: ImperiumDb;
   task_id: string;
   user_id: string;
   role: string;
@@ -33,13 +29,14 @@ export interface PipelineInput {
 }
 
 async function log(
+  db: ImperiumDb,
   user_id: string,
   task_id: string,
   action: string,
   status: "ok" | "running" | "success" | "failed" | "completed" | "skipped" = "ok",
   detail = "",
 ) {
-  await supabaseAdmin.from("activity_log").insert({
+  await db.from("activity_log").insert({
     user_id,
     task_id,
     agent: "job_agent",
@@ -123,9 +120,8 @@ function scoreJob(
   return { overall, title_score, skill_score, matched, missing, salary_match, experience_match, location_match };
 }
 
-// Legacy Lovable AI Gateway helper removed for portability.
-// Brain calls now route exclusively through OpenRouter / OpenAI / Anthropic
-// via routeBrainCall() in src/lib/imperium/brain/model-router.server.ts.
+// AI removed from the search/package pipeline for portability.
+// Matching, resume, cover letter, and readiness now run locally.
 
 function fallbackResume(input: PipelineInput, job: RawJob, matched: string[]): string {
   return [
@@ -160,9 +156,9 @@ function fallbackCover(input: PipelineInput, job: RawJob): string {
 
 export async function runPipeline(input: PipelineInput) {
   const started = Date.now();
-  const { task_id, user_id } = input;
+  const { task_id, user_id, db } = input;
 
-  await log(user_id, task_id, "search_started", "ok", `role=${input.role} location=${input.location} max_apps=${input.max_applications}`);
+  await log(db, user_id, task_id, "search_started", "ok", `role=${input.role} location=${input.location} max_apps=${input.max_applications}`);
 
   // --- Discovery (parallel, with availability gating) ---
   const raw: RawJob[] = [];
@@ -173,6 +169,7 @@ export async function runPipeline(input: PipelineInput) {
       if (!src.isAvailable()) {
         per_source[src.id] = { count: 0, status: "skipped" };
         await log(
+          db,
           user_id,
           task_id,
           `discover_${src.id}`,
@@ -181,23 +178,23 @@ export async function runPipeline(input: PipelineInput) {
         );
         return;
       }
-      await log(user_id, task_id, `discover_${src.id}`, "running", `Querying ${src.label}…`);
+      await log(db, user_id, task_id, `discover_${src.id}`, "running", `Querying ${src.label}…`);
       try {
         const jobs = await src.fetch(input.role, input.location);
         per_source[src.id] = { count: jobs.length, status: "ok" };
         raw.push(...jobs);
-        await log(user_id, task_id, `discover_${src.id}`, "success", `${jobs.length} jobs from ${src.label}`);
+        await log(db, user_id, task_id, `discover_${src.id}`, "success", `${jobs.length} jobs from ${src.label}`);
       } catch (err) {
         per_source[src.id] = { count: 0, status: "failed" };
-        await log(user_id, task_id, `discover_${src.id}`, "failed", err instanceof Error ? err.message : String(err));
+        await log(db, user_id, task_id, `discover_${src.id}`, "failed", err instanceof Error ? err.message : String(err));
       }
     }),
   );
 
-  await log(user_id, task_id, "jobs_retrieved", "success", `${raw.length} raw jobs from ${Object.values(per_source).filter((p) => p.status === "ok").length} sources`);
+  await log(db, user_id, task_id, "jobs_retrieved", "success", `${raw.length} raw jobs from ${Object.values(per_source).filter((p) => p.status === "ok").length} sources`);
 
   // --- Dedupe ---
-  await log(user_id, task_id, "deduplicate", "running", `${raw.length} raw jobs`);
+  await log(db, user_id, task_id, "deduplicate", "running", `${raw.length} raw jobs`);
   const seen = new Set<string>();
   const unique: RawJob[] = [];
   for (const j of raw) {
@@ -206,20 +203,65 @@ export async function runPipeline(input: PipelineInput) {
     seen.add(key);
     unique.push(j);
   }
-  await log(user_id, task_id, "deduplicate", "success", `${unique.length} unique jobs after dedupe`);
+  await log(db, user_id, task_id, "deduplicate", "success", `${unique.length} unique jobs after dedupe`);
 
   // --- Score ---
-  await log(user_id, task_id, "jobs_ranked", "running", `Scoring ${unique.length} jobs`);
+  await log(db, user_id, task_id, "jobs_ranked", "running", `Scoring ${unique.length} jobs`);
   const scored = unique.map((j) => ({
     job: j,
     ...scoreJob(j, input.role, input.skills, input.experience, input.location, input.desired_salary_min),
   }));
   scored.sort((a, b) => b.overall - a.overall);
-  await log(user_id, task_id, "jobs_ranked", "success", `Top score ${scored[0]?.overall.toFixed(2) ?? "n/a"} across ${scored.length} jobs`);
+  await log(db, user_id, task_id, "jobs_ranked", "success", `Top score ${scored[0]?.overall.toFixed(2) ?? "n/a"} across ${scored.length} jobs`);
+
+  const listingIds = new Map<string, string>();
+  for (const s of scored) {
+    const key = `${s.job.source}:${s.job.external_id}`;
+    const { data: existingRow } = await db
+      .from("job_listings")
+      .select("id")
+      .eq("source", s.job.source)
+      .eq("external_id", s.job.external_id)
+      .eq("user_id", user_id)
+      .maybeSingle();
+    if (existingRow?.id) {
+      listingIds.set(key, existingRow.id as string);
+      await db
+        .from("job_listings")
+        .update({ match_score: Number(s.overall.toFixed(3)), status: "discovered", task_id })
+        .eq("id", existingRow.id as string);
+      continue;
+    }
+    const { data: insertedListing, error: insertErr } = await db
+      .from("job_listings")
+      .insert({
+        source: s.job.source,
+        external_id: s.job.external_id,
+        url: s.job.url,
+        title: s.job.title,
+        company: s.job.company,
+        location: s.job.location,
+        remote: s.job.remote,
+        salary_min: s.job.salary_min,
+        salary_max: s.job.salary_max,
+        salary_currency: s.job.salary_currency,
+        tech_stack: s.job.tech_stack,
+        description: s.job.description,
+        posted_at: s.job.posted_at,
+        match_score: Number(s.overall.toFixed(3)),
+        status: "discovered",
+        task_id,
+        user_id,
+      })
+      .select("id")
+      .single();
+    if (!insertErr && insertedListing?.id) listingIds.set(key, insertedListing.id as string);
+  }
+  await log(db, user_id, task_id, "jobs_saved", "success", `${listingIds.size} jobs saved to tracker`);
 
   // --- Shortlist (search results are EPHEMERAL — only shortlisted jobs touch the DB) ---
   const shortlist = scored.filter((s) => s.overall >= 0.3).slice(0, input.max_applications);
-  await log(user_id, task_id, "shortlist", "success", `${shortlist.length} qualified (≥0.30) selected for application prep`);
+  await log(db, user_id, task_id, "shortlist", "success", `${shortlist.length} qualified (≥0.30) selected for application prep`);
 
   const matches: Array<{
     application_id?: string;
@@ -238,153 +280,24 @@ export async function runPipeline(input: PipelineInput) {
   }> = [];
 
   for (const s of shortlist) {
-    // Insert (or fetch) the listing row ONLY for shortlisted jobs we'll build an application for.
-    const { data: existingRow } = await supabaseAdmin
-      .from("job_listings")
-      .select("id")
-      .eq("source", s.job.source)
-      .eq("external_id", s.job.external_id)
-      .eq("user_id", user_id)
-      .maybeSingle();
-    let listing_id: string;
-    if (existingRow?.id) {
-      listing_id = existingRow.id as string;
-    } else {
-      const { data: insertedListing, error: insertErr } = await supabaseAdmin
-        .from("job_listings")
-        .insert({
-          source: s.job.source,
-          external_id: s.job.external_id,
-          url: s.job.url,
-          title: s.job.title,
-          company: s.job.company,
-          location: s.job.location,
-          remote: s.job.remote,
-          salary_min: s.job.salary_min,
-          salary_max: s.job.salary_max,
-          salary_currency: s.job.salary_currency,
-          tech_stack: s.job.tech_stack,
-          description: s.job.description,
-          posted_at: s.job.posted_at,
-          match_score: Number(s.overall.toFixed(3)),
-          status: "shortlisted",
-          task_id,
-          user_id,
-        })
-        .select("id")
-        .single();
-      if (insertErr || !insertedListing) {
-        await log(user_id, task_id, "lookup_listing", "failed", `${s.job.company} — ${s.job.title}`);
-        continue;
-      }
-      listing_id = insertedListing.id as string;
+    const listing_id = listingIds.get(`${s.job.source}:${s.job.external_id}`);
+    if (!listing_id) {
+      await log(db, user_id, task_id, "lookup_listing", "failed", `${s.job.company} — ${s.job.title}`);
+      continue;
     }
+    await db.from("job_listings").update({ status: "shortlisted" }).eq("id", listing_id);
 
-    await log(user_id, task_id, "brain_analyze_job", "running", `Brain analysing ${s.job.company} — ${s.job.title}…`);
-    const brainScore = await analyzeJob({
-      title: s.job.title,
-      company: s.job.company,
-      description: s.job.description,
-      tech_stack: s.job.tech_stack,
-      location: s.job.location,
-      remote: s.job.remote,
-      candidate_skills: input.skills,
-      candidate_role: input.role,
-      candidate_experience: input.experience,
-    });
-    await log(
-      user_id,
-      task_id,
-      "brain_analyze_job",
-      "success",
-      `Brain match=${(brainScore.match_score * 100).toFixed(0)}% · conf=${(brainScore.confidence * 100).toFixed(0)}% · rec=${brainScore.recommendation}`,
-    );
+    await log(db, user_id, task_id, "local_analyze_job", "success", `Local match=${(s.overall * 100).toFixed(0)}% for ${s.job.company} — ${s.job.title}`);
 
-    // Resume — Brain-optimized
-    let resume_md = "";
-    let resumeAts = 0;
-    await log(user_id, task_id, "brain_optimize_resume", "running", `Optimizing resume for ${s.job.company}…`);
-    try {
-      const opt = await optimizeResume({
-        candidate_name: input.candidate.name,
-        candidate_email: input.candidate.email,
-        candidate_phone: input.candidate.phone,
-        candidate_summary: input.candidate.summary,
-        candidate_skills: input.skills,
-        candidate_experience: input.experience,
-        job_title: s.job.title,
-        company: s.job.company,
-        job_description: s.job.description,
-        job_tech_stack: s.job.tech_stack,
-        matched_skills: brainScore.matched_skills.length ? brainScore.matched_skills : s.matched,
-        missing_skills: brainScore.missing_skills.length ? brainScore.missing_skills : s.missing,
-      });
-      resume_md = opt.optimized_md;
-      resumeAts = opt.ats_score_after;
-      await log(
-        user_id,
-        task_id,
-        "brain_optimize_resume",
-        "success",
-        `ATS ${opt.ats_score_before}→${opt.ats_score_after} · +${opt.added_keywords.length} keywords`,
-      );
-    } catch (err) {
-      resume_md = fallbackResume(input, s.job, s.matched);
-      await log(user_id, task_id, "brain_optimize_resume", "failed", `${err instanceof Error ? err.message : err} — fallback used`);
-    }
+    const resume_md = fallbackResume(input, s.job, s.matched);
+    await log(db, user_id, task_id, "local_resume", "success", `Resume generated locally for ${s.job.company}`);
 
-    // Cover letter — Brain-generated
-    let cover_md = "";
-    await log(user_id, task_id, "brain_cover_letter", "running", `Drafting cover letter for ${s.job.company}…`);
-    try {
-      const cover = await generateCoverLetter({
-        candidate_name: input.candidate.name,
-        candidate_summary: input.candidate.summary,
-        candidate_skills: input.skills,
-        candidate_experience: input.experience,
-        job_title: s.job.title,
-        company: s.job.company,
-        job_description: s.job.description,
-      });
-      cover_md = cover.cover_letter_md;
-      await log(
-        user_id,
-        task_id,
-        "brain_cover_letter",
-        "success",
-        `Conf ${(cover.confidence * 100).toFixed(0)}% · aligned to ${s.job.company}`,
-      );
-    } catch (err) {
-      cover_md = fallbackCover(input, s.job);
-      await log(user_id, task_id, "brain_cover_letter", "failed", `${err instanceof Error ? err.message : err} — fallback used`);
-    }
-
-    // Brain readiness check
-    await log(user_id, task_id, "brain_readiness", "running", `Evaluating application readiness…`);
-    let readiness;
-    try {
-      readiness = await evaluateApplicationReadiness({
-        job_score: brainScore,
-        resume_ats_score: resumeAts || 65,
-        resume_excerpt: resume_md.slice(0, 800),
-        cover_letter_excerpt: cover_md.slice(0, 400),
-        job_title: s.job.title,
-        company: s.job.company,
-      });
-      await log(
-        user_id,
-        task_id,
-        "brain_readiness",
-        "success",
-        `Readiness ${readiness.readiness_score}/100 · ${readiness.final_recommendation}`,
-      );
-    } catch (err) {
-      await log(user_id, task_id, "brain_readiness", "failed", err instanceof Error ? err.message : String(err));
-    }
+    const cover_md = fallbackCover(input, s.job);
+    await log(db, user_id, task_id, "local_cover_letter", "success", `Cover letter generated locally for ${s.job.company}`);
 
 
     // Application — staged as Pending Review (NEVER auto-submit)
-    await log(user_id, task_id, "prepare_application", "running", `${s.job.company} — ${s.job.title}`);
+    await log(db, user_id, task_id, "prepare_application", "running", `${s.job.company} — ${s.job.title}`);
     const meta = {
       matched: s.matched,
       missing: s.missing,
@@ -398,7 +311,7 @@ export async function runPipeline(input: PipelineInput) {
         location: input.location,
       },
     };
-    const { data: inserted, error: appErr } = await supabaseAdmin
+    const { data: inserted, error: appErr } = await db
       .from("applications")
       .insert({
         listing_id,
@@ -417,11 +330,11 @@ export async function runPipeline(input: PipelineInput) {
       .select("id")
       .single();
     if (appErr) {
-      await log(user_id, task_id, "prepare_application", "failed", appErr.message);
+      await log(db, user_id, task_id, "prepare_application", "failed", appErr.message);
       continue;
     }
     if (inserted?.id) {
-      await supabaseAdmin.from("application_timeline").insert({
+      await db.from("application_timeline").insert({
         user_id,
         application_id: inserted.id as string,
         event_type: "created",
@@ -430,7 +343,7 @@ export async function runPipeline(input: PipelineInput) {
         note: `Application package prepared for ${s.job.company} — ${s.job.title}`,
       });
     }
-    await log(user_id, task_id, "prepare_application", "success", `Package ready for ${s.job.company} — awaiting user approval`);
+    await log(db, user_id, task_id, "prepare_application", "success", `Package ready for ${s.job.company} — awaiting user approval`);
 
     matches.push({
       application_id: inserted?.id as string,
@@ -451,6 +364,7 @@ export async function runPipeline(input: PipelineInput) {
 
   const duration_seconds = Math.round((Date.now() - started) / 100) / 10;
   await log(
+    db,
     user_id,
     task_id,
     "user_review",
@@ -458,6 +372,7 @@ export async function runPipeline(input: PipelineInput) {
     `${matches.length} application packages awaiting user approval`,
   );
   await log(
+    db,
     user_id,
     task_id,
     "complete",
@@ -485,8 +400,8 @@ export async function runPipeline(input: PipelineInput) {
  * application-fill animation. Marks the application as Applied. No real
  * external submission is sent — clearly logged as a manual hand-off step.
  */
-export async function simulateSubmission(applicationId: string, user_id: string) {
-  const { data: app, error } = await supabaseAdmin
+export async function simulateSubmission(applicationId: string, user_id: string, db: ImperiumDb) {
+  const { data: app, error } = await db
     .from("applications")
     .select("*")
     .eq("id", applicationId)
@@ -517,13 +432,13 @@ export async function simulateSubmission(applicationId: string, user_id: string)
   ];
 
   for (const [action, detail] of steps) {
-    await log(user_id, task_id, action, "running", detail);
+    await log(db, user_id, task_id, action, "running", detail);
     await sleep(450);
-    await log(user_id, task_id, action, "success", detail);
+    await log(db, user_id, task_id, action, "success", detail);
   }
 
   const prevStatus = (app.status as string) || "Preparing";
-  await supabaseAdmin
+  await db
     .from("applications")
     .update({
       status: "Applied",
@@ -532,7 +447,7 @@ export async function simulateSubmission(applicationId: string, user_id: string)
     })
     .eq("id", applicationId);
 
-  await supabaseAdmin.from("application_timeline").insert({
+  await db.from("application_timeline").insert({
     user_id,
     application_id: applicationId,
     event_type: "status_change",
@@ -542,6 +457,7 @@ export async function simulateSubmission(applicationId: string, user_id: string)
   });
 
   await log(
+    db,
     user_id,
     task_id,
     "application_submitted",
@@ -552,8 +468,8 @@ export async function simulateSubmission(applicationId: string, user_id: string)
   return { ok: true };
 }
 
-export async function skipApplication(applicationId: string, user_id: string) {
-  const { data: app, error } = await supabaseAdmin
+export async function skipApplication(applicationId: string, user_id: string, db: ImperiumDb) {
+  const { data: app, error } = await db
     .from("applications")
     .select("task_id, company, job_title, status")
     .eq("id", applicationId)
@@ -561,12 +477,12 @@ export async function skipApplication(applicationId: string, user_id: string) {
     .maybeSingle();
   if (error || !app) throw new Error("Application not found");
   const prevStatus = (app.status as string) || "Preparing";
-  await supabaseAdmin
+  await db
     .from("applications")
     .update({ status: "Withdrawn", updated_at: new Date().toISOString() })
     .eq("id", applicationId)
     .eq("user_id", user_id);
-  await supabaseAdmin.from("application_timeline").insert({
+  await db.from("application_timeline").insert({
     user_id,
     application_id: applicationId,
     event_type: "status_change",
@@ -575,6 +491,7 @@ export async function skipApplication(applicationId: string, user_id: string) {
     note: `User withdrew application for ${app.company} — ${app.job_title}`,
   });
   await log(
+    db,
     user_id,
     (app.task_id as string) || "skip",
     "user_skip",
