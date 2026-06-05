@@ -237,7 +237,7 @@ export async function runPipeline(input: PipelineInput) {
 
   for (const s of shortlist) {
     // Insert (or fetch) the listing row ONLY for shortlisted jobs we'll build an application for.
-    const { data: existingRow } = await supabaseAdmin
+    const { data: existingRow } = await db
       .from("job_listings")
       .select("id")
       .eq("source", s.job.source)
@@ -248,7 +248,7 @@ export async function runPipeline(input: PipelineInput) {
     if (existingRow?.id) {
       listing_id = existingRow.id as string;
     } else {
-      const { data: insertedListing, error: insertErr } = await supabaseAdmin
+      const { data: insertedListing, error: insertErr } = await db
         .from("job_listings")
         .insert({
           source: s.job.source,
@@ -272,23 +272,23 @@ export async function runPipeline(input: PipelineInput) {
         .select("id")
         .single();
       if (insertErr || !insertedListing) {
-        await log(user_id, task_id, "lookup_listing", "failed", `${s.job.company} — ${s.job.title}`);
+        await log(db, user_id, task_id, "lookup_listing", "failed", `${s.job.company} — ${s.job.title}`);
         continue;
       }
       listing_id = insertedListing.id as string;
     }
 
-    await log(user_id, task_id, "local_analyze_job", "success", `Local match=${(s.overall * 100).toFixed(0)}% for ${s.job.company} — ${s.job.title}`);
+    await log(db, user_id, task_id, "local_analyze_job", "success", `Local match=${(s.overall * 100).toFixed(0)}% for ${s.job.company} — ${s.job.title}`);
 
     const resume_md = fallbackResume(input, s.job, s.matched);
-    await log(user_id, task_id, "local_resume", "success", `Resume generated locally for ${s.job.company}`);
+    await log(db, user_id, task_id, "local_resume", "success", `Resume generated locally for ${s.job.company}`);
 
     const cover_md = fallbackCover(input, s.job);
-    await log(user_id, task_id, "local_cover_letter", "success", `Cover letter generated locally for ${s.job.company}`);
+    await log(db, user_id, task_id, "local_cover_letter", "success", `Cover letter generated locally for ${s.job.company}`);
 
 
     // Application — staged as Pending Review (NEVER auto-submit)
-    await log(user_id, task_id, "prepare_application", "running", `${s.job.company} — ${s.job.title}`);
+    await log(db, user_id, task_id, "prepare_application", "running", `${s.job.company} — ${s.job.title}`);
     const meta = {
       matched: s.matched,
       missing: s.missing,
