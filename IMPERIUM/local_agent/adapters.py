@@ -429,15 +429,19 @@ def linkedin_easy_apply_loop(driver, emit: Emit, profile: Dict[str, Any],
 
     for step in range(max_steps):
         time.sleep(1)
-        maybe_upload_resume(driver, emit, profile)
-        n = fill_visible_fields(driver, emit, profile, job_context)
+        root = _active_form_root(driver)
+        maybe_upload_resume(driver, emit, profile, root=root)
+        n = fill_visible_fields(driver, emit, profile, job_context, root=root)
+        n += fill_choice_controls(driver, emit, profile, job_context, root=root)
         emit("easy_apply", f"Step {step+1}: filled {n} field(s)")
 
         # Look for Review/Submit first
         if click_first(driver, [
             "button[aria-label*='Review your application' i]",
             "button[aria-label='Review your application']",
-        ], timeout=2):
+        ], timeout=2, root=root) or click_xpath(driver, [
+            ".//button[not(@disabled) and contains(translate(normalize-space(.),'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'review')]",
+        ], timeout=1, root=root):
             emit("easy_apply", "Reached Review step", level="success")
             time.sleep(1.5)
             return "awaiting_approval"
@@ -447,10 +451,13 @@ def linkedin_easy_apply_loop(driver, emit: Emit, profile: Dict[str, Any],
             "button[aria-label='Continue to next step']",
             "button[aria-label*='Continue' i]",
             "button[aria-label*='next step' i]",
-        ], timeout=3)
+            "button[aria-label*='Next' i]",
+        ], timeout=3, root=root) or click_xpath(driver, [
+            ".//button[not(@disabled) and (normalize-space(translate(.,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'))='next' or contains(translate(normalize-space(.),'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'continue'))]",
+        ], timeout=1, root=root)
         if not moved:
             # No Next button? Maybe we're already at Submit.
-            if find_submit_button(driver):
+            if find_submit_button(driver, root=root):
                 emit("easy_apply", "Reached Submit step", level="success")
                 return "awaiting_approval"
             emit("easy_apply", "Stuck — no Next/Review/Submit visible", level="warn")
