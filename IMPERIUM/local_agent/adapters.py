@@ -304,16 +304,26 @@ def maybe_upload_resume(driver, emit: Emit, profile: Dict[str, Any]) -> bool:
 
 def linkedin_pick_first_job(driver, emit: Emit) -> bool:
     """On a /jobs/search page, click the first job card."""
-    if not click_first(driver, [
+    before = driver.current_url
+    ok = click_first(driver, [
+        "li.jobs-search-results__list-item a[href*='/jobs/view/']",
+        "div.job-card-container a[href*='/jobs/view/']",
         "a.job-card-list__title",
         "a.job-card-container__link",
-        "div.job-card-container a[href*='/jobs/view/']",
-        "li.jobs-search-results__list-item a[href*='/jobs/view/']",
-    ], timeout=8):
+        "a[href*='/jobs/view/']",
+    ], timeout=8)
+    if not ok:
         emit("listing", "Could not find a job card to click", level="warn")
         return False
     emit("listing", "Opened first job card", level="success")
-    time.sleep(2)
+    try:
+        WebDriverWait(driver, 10).until(
+            lambda d: d.current_url != before
+            or d.find_elements(By.CSS_SELECTOR, "button.jobs-apply-button, button[aria-label*='Easy Apply' i], button[aria-label*='Apply' i]")
+        )
+    except TimeoutException:
+        pass
+    time.sleep(1)
     return True
 
 
@@ -321,6 +331,7 @@ def linkedin_click_easy_apply(driver, emit: Emit) -> bool:
     if click_first(driver, [
         "button.jobs-apply-button",
         "button[aria-label*='Easy Apply' i]",
+        "button[aria-label*='Apply' i]",
         "button[data-control-name='jobdetails_topcard_inapply']",
     ], timeout=8):
         emit("easy_apply", "Opened Easy Apply modal", level="success")
