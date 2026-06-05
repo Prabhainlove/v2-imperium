@@ -84,11 +84,14 @@ PAGE_KINDS = [
 
 
 def classify_page(snapshot: Dict[str, Any]) -> str:
-    """Rule-first classifier. Falls back to LLM only when unsure."""
+    """Rule-first classifier. Hard URL/page-structure rules beat Ollama."""
     url = (snapshot.get("url") or "").lower()
     title = (snapshot.get("title") or "").lower()
     text = (snapshot.get("body_text") or "").lower()[:4000]
+    dialog_text = (snapshot.get("dialog_text") or "").lower()[:3000]
     buttons = [b.lower() for b in snapshot.get("buttons", [])]
+    has_dialog = bool(snapshot.get("has_dialog"))
+    job_cards = int(snapshot.get("job_cards") or 0)
 
     if "checkpoint" in url or "captcha" in text or "verify you are human" in text:
         return "captcha"
@@ -101,19 +104,33 @@ def classify_page(snapshot: Dict[str, Any]) -> str:
     # LinkedIn URL takes precedence over button-text guesses, because the
     # search results page also has 'Easy Apply' badges AND a 'Next' pagination
     # button which would otherwise look like a wizard step.
-    if "linkedin.com/jobs/search" in url or "linkedin.com/jobs/collections" in url:
-        return "job_listing"
     # Easy Apply modal is only real if the modal dialog is actually present
     if "linkedin.com" in url:
-        has_modal = any(s in text for s in (
+        modal_source = dialog_text if has_dialog else ""
+        has_modal = bool(modal_source) and any(s in modal_source for s in (
             "submit application", "review your application",
             "save this application", "contact info",
         ))
-        if has_modal and any(b in ("next", "review", "submit application",
-                                    "continue to next step") for b in buttons):
+        has_wizard_button = any(
+            b in ("next", "review", "submit application", "continue to next step")
+            or "continue to next step" in b
+            or "review your application" in b
+            or "submit application" in b
+            for b in buttons
+        )
+        if has_modal and has_wizard_button:
             return "easy_apply_step"
         if "linkedin.com/jobs/view" in url:
             return "job_detail"
+
+    is_linkedin_jobs_search = (
+        "linkedin.com/jobs/search" in url
+        or "linkedin.com/jobs/collections" in url
+        or ("linkedin.com/jobs" in url and job_cards >= 2 and not has_dialog)
+        or ("linkedin.com/jobs" in url and any(q in url for q in ("keywords=", "f_al=", "geoId=", "currentjobid=", "start=")) and not has_dialog)
+    )
+    if is_linkedin_jobs_search:
+        return "job_listing"
 
 
     # External ATS
