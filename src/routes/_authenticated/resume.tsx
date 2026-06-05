@@ -234,11 +234,8 @@ function ResumeStudioPage() {
             <CardHeader className="pb-2 flex flex-row items-center justify-between">
               <CardTitle className="text-base">Resume Preview</CardTitle>
               <div className="flex gap-2">
-                <Button size="sm" variant="outline" onClick={downloadMd} disabled={!rendered.data}>
-                  <Download className="mr-1.5 h-3.5 w-3.5" /> Markdown
-                </Button>
-                <Button size="sm" variant="outline" onClick={printPdf} disabled={!rendered.data}>
-                  <Download className="mr-1.5 h-3.5 w-3.5" /> PDF
+                <Button size="sm" variant="outline" onClick={downloadPdf} disabled={!rendered.data}>
+                  <Download className="mr-1.5 h-3.5 w-3.5" /> Download PDF
                 </Button>
               </div>
             </CardHeader>
