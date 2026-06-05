@@ -76,25 +76,10 @@ function ResumeStudioPage() {
     retry: false,
   });
 
-  const downloadMd = () => {
+  const downloadPdf = async () => {
     if (!rendered.data) return;
-    const blob = new Blob([rendered.data.optimized_md], { type: "text/markdown" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `resume_${selectedAppId?.slice(0, 8)}.md`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const printPdf = () => {
-    if (!rendered.data) return;
-    const w = window.open("", "_blank");
-    if (!w) return;
-    w.document.write(rendered.data.rendered_html);
-    w.document.close();
-    w.focus();
-    setTimeout(() => w.print(), 300);
+    const { downloadResumePdf } = await import("@/lib/imperium/resume-render");
+    await downloadResumePdf(rendered.data.optimized_md, template, `resume_${selectedAppId?.slice(0, 8)}.pdf`);
   };
 
   const ats = rendered.data?.ats;
