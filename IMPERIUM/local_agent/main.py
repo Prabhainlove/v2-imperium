@@ -205,6 +205,8 @@ from adapters import (  # noqa: E402
 def _safe_classify(snapshot: Dict[str, Any]) -> str:
     """Hard guards around LLM classification for pages we can identify safely."""
     url = (snapshot.get("url") or "").lower()
+    if "linkedin.com" in url and snapshot.get("has_dialog"):
+        return classify_page(snapshot)
     if "linkedin.com/jobs/search" in url or "linkedin.com/jobs/collections" in url:
         return "job_listing"
     if "linkedin.com/jobs" in url and snapshot.get("job_cards") and not snapshot.get("has_dialog"):
