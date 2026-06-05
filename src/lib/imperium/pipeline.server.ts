@@ -8,12 +8,6 @@
  */
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { SOURCES, type RawJob } from "./sources.server";
-import {
-  analyzeJob,
-  optimizeResume,
-  generateCoverLetter,
-  evaluateApplicationReadiness,
-} from "./brain/brain.server";
 
 export interface PipelineInput {
   task_id: string;
@@ -280,107 +274,13 @@ export async function runPipeline(input: PipelineInput) {
       listing_id = insertedListing.id as string;
     }
 
-    await log(user_id, task_id, "brain_analyze_job", "running", `Brain analysing ${s.job.company} — ${s.job.title}…`);
-    const brainScore = await analyzeJob({
-      title: s.job.title,
-      company: s.job.company,
-      description: s.job.description,
-      tech_stack: s.job.tech_stack,
-      location: s.job.location,
-      remote: s.job.remote,
-      candidate_skills: input.skills,
-      candidate_role: input.role,
-      candidate_experience: input.experience,
-    });
-    await log(
-      user_id,
-      task_id,
-      "brain_analyze_job",
-      "success",
-      `Brain match=${(brainScore.match_score * 100).toFixed(0)}% · conf=${(brainScore.confidence * 100).toFixed(0)}% · rec=${brainScore.recommendation}`,
-    );
+    await log(user_id, task_id, "local_analyze_job", "success", `Local match=${(s.overall * 100).toFixed(0)}% for ${s.job.company} — ${s.job.title}`);
 
-    // Resume — Brain-optimized
-    let resume_md = "";
-    let resumeAts = 0;
-    await log(user_id, task_id, "brain_optimize_resume", "running", `Optimizing resume for ${s.job.company}…`);
-    try {
-      const opt = await optimizeResume({
-        candidate_name: input.candidate.name,
-        candidate_email: input.candidate.email,
-        candidate_phone: input.candidate.phone,
-        candidate_summary: input.candidate.summary,
-        candidate_skills: input.skills,
-        candidate_experience: input.experience,
-        job_title: s.job.title,
-        company: s.job.company,
-        job_description: s.job.description,
-        job_tech_stack: s.job.tech_stack,
-        matched_skills: brainScore.matched_skills.length ? brainScore.matched_skills : s.matched,
-        missing_skills: brainScore.missing_skills.length ? brainScore.missing_skills : s.missing,
-      });
-      resume_md = opt.optimized_md;
-      resumeAts = opt.ats_score_after;
-      await log(
-        user_id,
-        task_id,
-        "brain_optimize_resume",
-        "success",
-        `ATS ${opt.ats_score_before}→${opt.ats_score_after} · +${opt.added_keywords.length} keywords`,
-      );
-    } catch (err) {
-      resume_md = fallbackResume(input, s.job, s.matched);
-      await log(user_id, task_id, "brain_optimize_resume", "failed", `${err instanceof Error ? err.message : err} — fallback used`);
-    }
+    const resume_md = fallbackResume(input, s.job, s.matched);
+    await log(user_id, task_id, "local_resume", "success", `Resume generated locally for ${s.job.company}`);
 
-    // Cover letter — Brain-generated
-    let cover_md = "";
-    await log(user_id, task_id, "brain_cover_letter", "running", `Drafting cover letter for ${s.job.company}…`);
-    try {
-      const cover = await generateCoverLetter({
-        candidate_name: input.candidate.name,
-        candidate_summary: input.candidate.summary,
-        candidate_skills: input.skills,
-        candidate_experience: input.experience,
-        job_title: s.job.title,
-        company: s.job.company,
-        job_description: s.job.description,
-      });
-      cover_md = cover.cover_letter_md;
-      await log(
-        user_id,
-        task_id,
-        "brain_cover_letter",
-        "success",
-        `Conf ${(cover.confidence * 100).toFixed(0)}% · aligned to ${s.job.company}`,
-      );
-    } catch (err) {
-      cover_md = fallbackCover(input, s.job);
-      await log(user_id, task_id, "brain_cover_letter", "failed", `${err instanceof Error ? err.message : err} — fallback used`);
-    }
-
-    // Brain readiness check
-    await log(user_id, task_id, "brain_readiness", "running", `Evaluating application readiness…`);
-    let readiness;
-    try {
-      readiness = await evaluateApplicationReadiness({
-        job_score: brainScore,
-        resume_ats_score: resumeAts || 65,
-        resume_excerpt: resume_md.slice(0, 800),
-        cover_letter_excerpt: cover_md.slice(0, 400),
-        job_title: s.job.title,
-        company: s.job.company,
-      });
-      await log(
-        user_id,
-        task_id,
-        "brain_readiness",
-        "success",
-        `Readiness ${readiness.readiness_score}/100 · ${readiness.final_recommendation}`,
-      );
-    } catch (err) {
-      await log(user_id, task_id, "brain_readiness", "failed", err instanceof Error ? err.message : String(err));
-    }
+    const cover_md = fallbackCover(input, s.job);
+    await log(user_id, task_id, "local_cover_letter", "success", `Cover letter generated locally for ${s.job.company}`);
 
 
     // Application — staged as Pending Review (NEVER auto-submit)
