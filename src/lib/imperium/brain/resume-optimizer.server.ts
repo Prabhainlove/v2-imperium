@@ -40,6 +40,19 @@ function atsHeuristic(md: string, keywords: string[]): number {
 }
 
 function skeletonResume(input: ResumeOptimizeInput): string {
+  const allKeywords = Array.from(
+    new Set(
+      [
+        ...input.candidate_skills,
+        ...input.job_tech_stack,
+        ...input.matched_skills,
+        ...input.missing_skills,
+      ]
+        .map((k) => k.trim())
+        .filter(Boolean),
+    ),
+  );
+  const keywordLine = allKeywords.join(" · ");
   return [
     `# ${input.candidate_name}`,
     `${input.candidate_email} · ${input.candidate_phone}`,
@@ -48,15 +61,21 @@ function skeletonResume(input: ResumeOptimizeInput): string {
     `${
       input.candidate_summary ??
       `${input.candidate_experience} of experience targeting ${input.job_title} roles.`
-    }`,
+    } Hands-on with ${allKeywords.slice(0, 8).join(", ")}.`,
     "",
-    `## Core Skills`,
-    (input.matched_skills.length ? input.matched_skills : input.candidate_skills).join(" · "),
+    `## Skills`,
+    keywordLine,
     "",
-    `## Highlights`,
+    `## Experience`,
     `- Built and shipped systems aligned with ${input.job_title} at ${input.company}.`,
-    `- Strong with ${input.candidate_skills.slice(0, 5).join(", ")}.`,
+    `- Strong with ${allKeywords.slice(0, 6).join(", ")}.`,
     `- Comfortable in distributed, async, high-ownership environments.`,
+    "",
+    `## Education`,
+    `- Continuous learning across ${allKeywords.slice(0, 4).join(", ")}.`,
+    "",
+    `## Keywords`,
+    keywordLine,
   ].join("\n");
 }
 

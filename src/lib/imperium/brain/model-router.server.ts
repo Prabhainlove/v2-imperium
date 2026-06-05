@@ -15,11 +15,16 @@
  */
 import type { BrainModelInfo } from "./types";
 
-type Provider = "openrouter" | "openai" | "anthropic";
+type Provider = "ollama" | "openrouter" | "openai" | "anthropic";
 
 /** Default chat-model chain per provider (most-capable → cheapest).
- *  OpenRouter is FIRST and uses free-tier models with automatic failover. */
+ *  Ollama is FIRST when configured — fully local, no API key, no cost.
+ *  Set OLLAMA_BASE_URL (e.g. http://localhost:11434) and optionally
+ *  OLLAMA_MODEL (default: llama3.1) to enable. */
 const PROVIDER_MODELS: Record<Provider, BrainModelInfo[]> = {
+  ollama: [
+    { id: process.env.OLLAMA_MODEL || "llama3.1", label: `Ollama ${process.env.OLLAMA_MODEL || "llama3.1"} (local)`, free: true },
+  ],
   openrouter: [
     { id: "nvidia/nemotron-3-super-120b-a12b:free", label: "Nemotron 3 Super 120B (free)", free: true },
     { id: "openai/gpt-oss-120b:free", label: "GPT-OSS 120B (free)", free: true },
@@ -36,7 +41,7 @@ const PROVIDER_MODELS: Record<Provider, BrainModelInfo[]> = {
 /** Exported for UI display. Returns the active chain based on configured keys. */
 export const BRAIN_MODELS: BrainModelInfo[] = (() => {
   const out: BrainModelInfo[] = [];
-  // Order matters: same as the failover order in routeBrainCall.
+  if (process.env.OLLAMA_BASE_URL) out.push(...PROVIDER_MODELS.ollama);
   if (process.env.OPENROUTER_API_KEY) out.push(...PROVIDER_MODELS.openrouter);
   if (process.env.OPENAI_API_KEY) out.push(...PROVIDER_MODELS.openai);
   if (process.env.ANTHROPIC_API_KEY) out.push(...PROVIDER_MODELS.anthropic);
@@ -172,6 +177,30 @@ function configFor(provider: Provider, apiKey: string): ProviderConfig {
         },
       };
 
+    case "ollama": {
+      const base = (process.env.OLLAMA_BASE_URL || "http://localhost:11434").replace(/\/$/, "");
+      return {
+        url: `${base}/v1/chat/completions`,
+        headers: { "Content-Type": "application/json" },
+        buildBody: (modelId, input) => {
+          const body: Record<string, unknown> = {
+            model: modelId,
+            messages: [
+              { role: "system", content: input.system },
+              { role: "user", content: input.user },
+            ],
+            temperature: input.temperature ?? 0.4,
+            max_tokens: input.max_tokens ?? 1400,
+            stream: false,
+          };
+          if (input.json) body.response_format = { type: "json_object" };
+          return body;
+        },
+        extractContent: (json) =>
+          (json as { choices?: { message?: { content?: string } }[] }).choices?.[0]?.message
+            ?.content ?? "",
+      };
+    }
   }
 }
 
@@ -212,6 +241,7 @@ function buildChain(): { provider: Provider; key: string; model: BrainModelInfo 
     if (!key) return;
     for (const m of PROVIDER_MODELS[provider]) chain.push({ provider, key, model: m });
   };
+  push("ollama", process.env.OLLAMA_BASE_URL);
   push("openrouter", process.env.OPENROUTER_API_KEY);
   push("openai", process.env.OPENAI_API_KEY);
   push("anthropic", process.env.ANTHROPIC_API_KEY);
