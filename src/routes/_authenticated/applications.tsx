@@ -70,15 +70,18 @@ function ApplicationsPage() {
 
   const pendingCount = countsByStatus.get("Preparing") ?? 0;
 
-  const downloadArtifact = async (path: string, filename: string) => {
+  const downloadResume = async (path: string, idShort: string) => {
     const content = await fetchArtifactText(path);
-    const blob = new Blob([content], { type: "text/markdown" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    a.click();
-    URL.revokeObjectURL(url);
+    const { downloadResumePdf } = await import("@/lib/imperium/resume-render");
+    await downloadResumePdf(content, "classic", `resume_${idShort}.pdf`);
+  };
+  const downloadCover = async (path: string, idShort: string, company: string, candidate: string) => {
+    const content = await fetchArtifactText(path);
+    const { downloadCoverLetterPdf } = await import("@/lib/imperium/resume-render");
+    await downloadCoverLetterPdf(
+      { candidate_name: candidate || "Candidate", company: company || "Company", body: content },
+      `cover-letter_${idShort}.pdf`,
+    );
   };
 
   return (
@@ -212,18 +215,18 @@ function ApplicationsPage() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => downloadArtifact(a.resume_path!, `resume_${a.application_id.slice(0, 8)}.md`)}
+                        onClick={() => downloadResume(a.resume_path!, a.application_id.slice(0, 8))}
                       >
-                          <FileText className="mr-1.5 h-3.5 w-3.5" /> Resume
+                          <FileText className="mr-1.5 h-3.5 w-3.5" /> Resume PDF
                       </Button>
                     )}
                     {a.cover_letter_path && (
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => downloadArtifact(a.cover_letter_path!, `cover-letter_${a.application_id.slice(0, 8)}.md`)}
+                        onClick={() => downloadCover(a.cover_letter_path!, a.application_id.slice(0, 8), a.company, "")}
                       >
-                          <Mail className="mr-1.5 h-3.5 w-3.5" /> Cover Letter
+                          <Mail className="mr-1.5 h-3.5 w-3.5" /> Cover Letter PDF
                       </Button>
                     )}
                   </div>

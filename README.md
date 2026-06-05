@@ -51,24 +51,30 @@ node .output/server/index.mjs
 
 ---
 
-## Documentation
+## Local automation agent (Selenium)
 
-- [`docs/INSTALLATION.md`](./docs/INSTALLATION.md) — local setup, Supabase, AI providers
-- [`docs/ENVIRONMENT.md`](./docs/ENVIRONMENT.md) — every environment variable explained
-- [`docs/DEPLOYMENT.md`](./docs/DEPLOYMENT.md) — Docker, Railway, Render, VPS
-- [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) — code layout and conventions
-- [`docs/BRAIN_SYSTEM.md`](./docs/BRAIN_SYSTEM.md) — AI provider routing and Brain modules
+The web app queues job applications; a small Python agent runs on your
+laptop, opens a real visible Chrome window, fills the application form, and
+streams every action back to the web UI in real time. See
+[`IMPERIUM/local_agent/README.md`](./IMPERIUM/local_agent/README.md).
+
+```bash
+cd IMPERIUM/local_agent
+pip install -r requirements.txt
+cp .env.example .env  # fill in SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, IMPERIUM_AGENT_TOKEN
+python main.py
+```
 
 ---
 
 ## Tech stack
 
 - **Frontend:** React 19, Tailwind CSS v4, shadcn/ui, TanStack Router/Query.
-- **Backend:** TanStack Start server functions (`createServerFn`), Nitro
-  (node-server preset for self-host, cloudflare for Workers).
-- **Database / Auth:** Supabase (Postgres + GoTrue) — hosted or self-hosted.
-- **AI:** OpenRouter / OpenAI / Anthropic / Lovable AI — multi-provider router
-  with automatic failover (`src/lib/imperium/brain/model-router.server.ts`).
+- **Backend:** TanStack Start server functions (`createServerFn`).
+- **Database / Auth:** Supabase (Postgres + GoTrue).
+- **Resume / Cover Letter PDF:** jsPDF + html2canvas — pure browser, fully local.
+- **Local agent:** Python + Selenium + undetected-chromedriver.
+- **AI (optional):** Ollama (local) / OpenRouter / OpenAI / Anthropic / Lovable AI.
 
 ---
 

@@ -1,17 +1,19 @@
 /**
- * Client-safe resume markdown → HTML renderer.
- * Zero dependencies. Mirrors the server renderer but adds 2 extra templates
- * (elegant, minimal) and exposes readability heuristics for the Studio UI.
+ * Client-safe ATS-grade resume renderer.
+ * - 3 strict single-column, ATS-safe templates (Classic / Modern / Compact)
+ * - Markdown → semantic HTML → real-PDF export via jsPDF + html2canvas
+ * - All templates use OS-default safe fonts (Times, Calibri, Arial) — no icons,
+ *   no tables, no multi-column layouts that confuse ATS parsers.
  */
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
 
-export type ResumeTemplate = "classic" | "modern" | "compact" | "elegant" | "minimal";
+export type ResumeTemplate = "classic" | "modern" | "compact";
 
 export const RESUME_TEMPLATES: { id: ResumeTemplate; label: string; desc: string }[] = [
-  { id: "classic", label: "Classic", desc: "ATS-safe, serifless, single column" },
-  { id: "modern", label: "Modern", desc: "Accent color headings, clean grid" },
-  { id: "compact", label: "Compact", desc: "Dense layout for senior CVs" },
-  { id: "elegant", label: "Elegant", desc: "Subtle serif, generous spacing" },
-  { id: "minimal", label: "Minimal", desc: "Pure typography, no rules" },
+  { id: "classic", label: "Classic", desc: "Resume-Worded style. Serif, single column, ALL-CAPS section bars." },
+  { id: "modern", label: "Modern", desc: "Sans-serif with role title under name. Still 100% ATS-safe." },
+  { id: "compact", label: "Compact", desc: "Dense one-page layout for senior CVs." },
 ];
 
 interface ParsedResume {
@@ -29,7 +31,7 @@ function parseResume(md: string): ParsedResume {
   let contact = "";
   while (i < lines.length && !lines[i].startsWith("#")) {
     const t = lines[i].trim();
-    if (t) contact = contact ? `${contact} · ${t}` : t;
+    if (t) contact = contact ? `${contact} | ${t}` : t;
     i++;
   }
   const sections: { heading: string; lines: string[] }[] = [];
@@ -51,7 +53,6 @@ function parseResume(md: string): ParsedResume {
 function esc(s: string) {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
-
 function inline(s: string) {
   return esc(s)
     .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
@@ -73,6 +74,23 @@ function renderLines(lines: string[]): string {
       flush();
       continue;
     }
+    // ### sub-heading (e.g. Company — Role · dates) — render as bold row
+    if (/^###\s+/.test(line)) {
+      flush();
+      const body = line.replace(/^###\s+/, "");
+      // Split on " · " or " — " for date alignment if a tab/right segment exists
+      const parts = body.split(/\s+·\s+|\s+—\s+/);
+      if (parts.length >= 2) {
+        const left = parts.slice(0, -1).join(" — ");
+        const right = parts[parts.length - 1];
+        out.push(
+          `<div class="role"><span class="role-left"><strong>${inline(left)}</strong></span><span class="role-right">${inline(right)}</span></div>`,
+        );
+      } else {
+        out.push(`<div class="role"><strong>${inline(body)}</strong></div>`);
+      }
+      continue;
+    }
     if (/^[-*•]\s+/.test(line)) {
       if (!inUl) {
         out.push("<ul>");
@@ -88,36 +106,214 @@ function renderLines(lines: string[]): string {
   return out.join("");
 }
 
-const baseCss = `
-*{box-sizing:border-box}
-body{font-family:'Inter','Helvetica Neue',Arial,sans-serif;color:#111;margin:0;padding:32px 40px;line-height:1.45;font-size:11pt;background:#fff}
-h1{font-size:22pt;margin:0 0 4px;letter-spacing:-.01em}
-.contact{color:#444;font-size:10pt;margin-bottom:14px}
-h2{font-size:11pt;text-transform:uppercase;letter-spacing:.08em;border-bottom:1.5px solid #111;padding-bottom:3px;margin:18px 0 8px;color:#111}
-p{margin:4px 0}
-ul{margin:4px 0 8px 18px;padding:0}
-li{margin:2px 0}
-strong{font-weight:600}
-@media print{body{padding:18mm 18mm}}`;
+/* ───────── ATS-grade templates ───────── */
+
+const classicCss = `
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Times New Roman','Liberation Serif',Times,serif;color:#111;padding:0.6in 0.7in;line-height:1.35;font-size:11pt;background:#fff;width:8.5in}
+header{margin-bottom:14px}
+h1{font-size:22pt;font-weight:bold;margin:0 0 4px 0;letter-spacing:0}
+.contact{font-size:10.5pt;color:#222}
+section{margin-top:14px}
+h2{font-size:11pt;font-weight:bold;text-transform:uppercase;letter-spacing:.04em;border-bottom:1.2px solid #111;padding-bottom:2px;margin:14px 0 6px 0}
+.role{display:flex;justify-content:space-between;align-items:baseline;margin:8px 0 2px 0;font-size:11pt}
+.role-right{font-style:italic;font-size:10.5pt;color:#333;white-space:nowrap;padding-left:12px}
+p{margin:3px 0;font-size:11pt}
+ul{margin:4px 0 6px 22px}
+li{margin:2px 0;font-size:11pt;line-height:1.4}
+strong{font-weight:bold}
+em{font-style:italic}
+`;
+
+const modernCss = `
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Calibri','Helvetica Neue',Arial,sans-serif;color:#222;padding:0.55in 0.65in;line-height:1.4;font-size:11pt;background:#fff;width:8.5in}
+header{text-align:center;margin-bottom:16px;padding-bottom:10px;border-bottom:2px solid #1a3a6e}
+h1{font-size:24pt;font-weight:600;letter-spacing:.02em;margin:0 0 4px 0;color:#0b2647}
+.contact{font-size:10.5pt;color:#444}
+section{margin-top:12px}
+h2{font-size:11.5pt;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#0b2647;margin:14px 0 6px 0;padding-bottom:3px;border-bottom:1px solid #c8d3e5}
+.role{display:flex;justify-content:space-between;align-items:baseline;margin:8px 0 2px 0}
+.role-right{font-style:italic;font-size:10.5pt;color:#555;white-space:nowrap;padding-left:12px}
+p{margin:3px 0}
+ul{margin:4px 0 8px 20px}
+li{margin:2px 0;line-height:1.4}
+strong{font-weight:600;color:#0b2647}
+em{font-style:italic;color:#555}
+`;
+
+const compactCss = `
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Arial','Helvetica',sans-serif;color:#111;padding:0.45in 0.55in;line-height:1.25;font-size:10pt;background:#fff;width:8.5in}
+header{margin-bottom:10px}
+h1{font-size:18pt;font-weight:bold;margin:0 0 2px 0}
+.contact{font-size:9.5pt;color:#333}
+section{margin-top:10px}
+h2{font-size:10pt;font-weight:bold;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #111;padding-bottom:1px;margin:10px 0 4px 0}
+.role{display:flex;justify-content:space-between;align-items:baseline;margin:5px 0 1px 0;font-size:10pt}
+.role-right{font-style:italic;font-size:9.5pt;color:#333;white-space:nowrap;padding-left:8px}
+p{margin:2px 0;font-size:10pt}
+ul{margin:2px 0 4px 18px}
+li{margin:1px 0;font-size:10pt;line-height:1.3}
+strong{font-weight:bold}
+`;
 
 const templateCss: Record<ResumeTemplate, string> = {
-  classic: "",
-  modern: `body{font-family:'Inter',system-ui,sans-serif}h1{color:#0b3b8c}h2{color:#0b3b8c;border-bottom-color:#0b3b8c}`,
-  compact: `body{font-size:10pt;padding:24px 32px;line-height:1.35}h1{font-size:18pt}h2{font-size:10pt;margin:12px 0 4px}`,
-  elegant: `body{font-family:'Georgia','Times New Roman',serif;color:#1a1a1a;padding:40px 48px;line-height:1.55}h1{font-weight:500;letter-spacing:0}h2{font-family:'Inter',sans-serif;border-bottom:none;color:#555;font-size:10pt;letter-spacing:.14em;margin-top:22px}`,
-  minimal: `body{padding:36px 44px}h1{font-weight:500}h2{border-bottom:none;color:#888;padding:0;margin:20px 0 6px;font-size:10pt}ul{list-style:none;margin-left:0}li::before{content:"— ";color:#aaa}`,
+  classic: classicCss,
+  modern: modernCss,
+  compact: compactCss,
 };
 
 export function renderResumeHtml(md: string, template: ResumeTemplate = "classic"): string {
   const parsed = parseResume(md);
-  const css = baseCss + (templateCss[template] ?? "");
+  const css = templateCss[template] ?? classicCss;
   const body = parsed.sections
     .map((s) => `<section><h2>${esc(s.heading)}</h2>${renderLines(s.lines)}</section>`)
     .join("");
-  return `<!doctype html><html><head><meta charset="utf-8"><title>${esc(parsed.name)} — Resume</title><style>${css}</style></head><body><header><h1>${esc(parsed.name)}</h1>${parsed.contact ? `<div class="contact">${esc(parsed.contact)}</div>` : ""}</header>${body}</body></html>`;
+  const headerName = template === "modern" ? `<h1>${esc(parsed.name.toUpperCase())}</h1>` : `<h1>${esc(parsed.name)}</h1>`;
+  return `<!doctype html><html><head><meta charset="utf-8"><title>${esc(parsed.name)} — Resume</title><style>${css}</style></head><body><header>${headerName}${parsed.contact ? `<div class="contact">${esc(parsed.contact)}</div>` : ""}</header>${body}</body></html>`;
 }
 
-/* ───────── Readability + ATS heuristics ───────── */
+/* ───────── PDF export (real PDF, multi-page A4) ───────── */
+
+export async function downloadResumePdf(
+  md: string,
+  template: ResumeTemplate,
+  filename = "resume.pdf",
+): Promise<void> {
+  const html = renderResumeHtml(md, template);
+  // Off-screen iframe → render → capture → multi-page A4 PDF
+  const frame = document.createElement("iframe");
+  frame.style.position = "fixed";
+  frame.style.left = "-99999px";
+  frame.style.top = "0";
+  frame.style.width = "816px"; // 8.5in @ 96dpi
+  frame.style.height = "1056px"; // 11in
+  frame.style.border = "0";
+  document.body.appendChild(frame);
+  try {
+    const doc = frame.contentDocument!;
+    doc.open();
+    doc.write(html);
+    doc.close();
+    await new Promise((r) => setTimeout(r, 100));
+    const target = doc.body;
+    const canvas = await html2canvas(target, {
+      scale: 2,
+      backgroundColor: "#ffffff",
+      windowWidth: 816,
+      useCORS: true,
+      logging: false,
+    });
+    const pdf = new jsPDF({ unit: "pt", format: "a4" });
+    const pageW = pdf.internal.pageSize.getWidth();
+    const pageH = pdf.internal.pageSize.getHeight();
+    const imgW = pageW;
+    const imgH = (canvas.height * imgW) / canvas.width;
+    let remaining = imgH;
+    let position = 0;
+    const img = canvas.toDataURL("image/jpeg", 0.95);
+    pdf.addImage(img, "JPEG", 0, position, imgW, imgH);
+    remaining -= pageH;
+    while (remaining > 0) {
+      position -= pageH;
+      pdf.addPage();
+      pdf.addImage(img, "JPEG", 0, position, imgW, imgH);
+      remaining -= pageH;
+    }
+    pdf.save(filename);
+  } finally {
+    document.body.removeChild(frame);
+  }
+}
+
+/* ───────── Profile → ATS Markdown (used by live editor + demo profile) ───────── */
+
+export interface ProfileLike {
+  name?: string;
+  email?: string;
+  phone?: string;
+  location?: string;
+  headline?: string;
+  summary?: string;
+  linkedin_url?: string;
+  github_url?: string;
+  portfolio_url?: string;
+  skills?: string[];
+  experience?: Array<{
+    title?: string;
+    company?: string;
+    location?: string;
+    start?: string;
+    end?: string;
+    current?: boolean;
+    description?: string;
+    highlights?: string[];
+  }>;
+  education?: Array<{
+    school?: string;
+    degree?: string;
+    field?: string;
+    start?: string;
+    end?: string;
+    gpa?: string;
+    description?: string;
+  }>;
+  certifications?: Array<{ name?: string; issuer?: string; year?: string }>;
+  languages?: Array<{ name?: string; proficiency?: string }>;
+}
+
+export function profileToResumeMarkdown(p: ProfileLike): string {
+  const out: string[] = [];
+  out.push(`# ${p.name || "Your Name"}`);
+  const contactBits = [p.email, p.phone, p.location].filter(Boolean);
+  if (contactBits.length) out.push(contactBits.join(" | "));
+  const linkBits = [p.linkedin_url, p.github_url, p.portfolio_url].filter(Boolean);
+  if (linkBits.length) out.push(linkBits.join(" | "));
+  if (p.summary) {
+    out.push("", "## Summary", p.summary);
+  }
+  if (p.experience && p.experience.length) {
+    out.push("", "## Experience");
+    for (const e of p.experience) {
+      const left = [e.company, e.title].filter(Boolean).join(" — ");
+      const dates = [e.start, e.current ? "Present" : e.end].filter(Boolean).join(" – ");
+      out.push(`### ${left}${dates ? ` · ${dates}` : ""}`);
+      if (e.location) out.push(`*${e.location}*`);
+      if (e.description) out.push(e.description);
+      for (const h of e.highlights ?? []) out.push(`- ${h}`);
+    }
+  }
+  if (p.skills && p.skills.length) {
+    out.push("", "## Skills", p.skills.join(" · "));
+  }
+  if (p.education && p.education.length) {
+    out.push("", "## Education");
+    for (const ed of p.education) {
+      const left = [ed.school, ed.degree, ed.field].filter(Boolean).join(" — ");
+      const dates = [ed.start, ed.end].filter(Boolean).join(" – ");
+      out.push(`### ${left}${dates ? ` · ${dates}` : ""}`);
+      if (ed.gpa) out.push(`GPA: ${ed.gpa}`);
+      if (ed.description) out.push(ed.description);
+    }
+  }
+  if (p.certifications && p.certifications.length) {
+    out.push("", "## Certifications");
+    for (const c of p.certifications) {
+      out.push(`- ${[c.name, c.issuer, c.year].filter(Boolean).join(" · ")}`);
+    }
+  }
+  if (p.languages && p.languages.length) {
+    out.push(
+      "",
+      "## Languages",
+      p.languages.map((l) => `${l.name}${l.proficiency ? ` (${l.proficiency})` : ""}`).join(" · "),
+    );
+  }
+  return out.join("\n");
+}
+
+/* ───────── Readability + ATS heuristics (kept for studio) ───────── */
 
 export interface ReadabilityReport {
   word_count: number;
@@ -156,15 +352,10 @@ export function analyzeReadability(md: string): ReadabilityReport {
   const longBullets = bulletLines.filter((l) => l.split(/\s+/).length > 28).length;
   const sentences = (md.match(/[.!?](?:\s|$)/g) ?? []).length || 1;
   const syll = words.reduce((a, w) => a + syllables(w), 0);
-  // Flesch reading ease
   const fres = Math.max(
     0,
-    Math.min(
-      100,
-      Math.round(206.835 - 1.015 * (words.length / sentences) - 84.6 * (syll / Math.max(1, words.length))),
-    ),
+    Math.min(100, Math.round(206.835 - 1.015 * (words.length / sentences) - 84.6 * (syll / Math.max(1, words.length)))),
   );
-
   const notes: string[] = [];
   if (!parsed.contact) notes.push("Add a contact line (email · phone · location) under your name.");
   if (parsed.sections.length < 3) notes.push("Add more sections — recruiters scan for Experience, Skills, Education.");
@@ -230,4 +421,172 @@ export function quickAts(resumeMd: string, jobDescription: string): QuickAts {
   for (const k of keywords) (text.includes(k) ? matched : missing).push(k);
   const score = keywords.length ? Math.round((matched.length / keywords.length) * 100) : 0;
   return { score, matched, missing };
+}
+
+/* ───────── Demo profile (Resume Worded "First Last" sample) ───────── */
+
+export const DEMO_PROFILE: ProfileLike = {
+  name: "Alex Morgan",
+  email: "alex.morgan@example.com",
+  phone: "+1 (415) 555-0188",
+  location: "San Francisco, CA",
+  headline: "Senior Product Manager · Fintech & SaaS",
+  summary:
+    "Senior product manager with 7+ years of experience shipping data-driven SaaS and fintech products. Track record of leading cross-functional teams, driving $4M+ in incremental revenue, and reducing churn through analytics-led roadmaps.",
+  linkedin_url: "linkedin.com/in/alex-morgan",
+  github_url: "github.com/alexmorgan",
+  portfolio_url: "alexmorgan.dev",
+  skills: [
+    "Product Strategy", "Roadmap Planning", "A/B Testing", "SQL", "Python",
+    "Jira", "Figma", "User Research", "OKRs", "Stakeholder Management",
+    "Agile / Scrum", "Tableau", "Mixpanel", "Amplitude",
+  ],
+  experience: [
+    {
+      title: "Senior Product Manager",
+      company: "Resume Worded & Co.",
+      location: "San Francisco, CA",
+      start: "Oct 2021",
+      current: true,
+      highlights: [
+        "Led a cross-functional team of 10 across 3 locations, ranging from entry-level analysts to vice presidents, to deliver a new analytics suite.",
+        "Launched flagship pricing module that grew office revenue by 200% in the first nine months (20% of total company revenue).",
+        "Designed training and peer-mentoring program for the incoming class of 25 analysts in 2024; reduced onboarding time for new hires by 50%.",
+        "Achieved $200K reduction in department overspend by establishing ROI metrics and budget controls to improve prioritization of the $4MM department budget.",
+      ],
+    },
+    {
+      title: "Associate Product Manager",
+      company: "Instamake",
+      location: "San Francisco, CA",
+      start: "Jun 2018",
+      end: "Sep 2021",
+      highlights: [
+        "Spearheaded a major pricing restructure by redirecting focus on consumer willingness to pay instead of product cost; implemented a three-tiered pricing model that increased average sale by 35% and margin by 12%.",
+        "Promoted within 12 months due to strong performance and organizational impact (one year ahead of schedule).",
+        "Identified initiatives to reduce return rates by 10%, resulting in an eventual $75K cost savings.",
+      ],
+    },
+  ],
+  education: [
+    {
+      school: "Resume Worded Business School",
+      degree: "Master of Business Administration",
+      field: "Business Analytics",
+      start: "Aug 2016",
+      end: "May 2018",
+      description:
+        "Awards: Bill & Melinda Gates Fellow (only 5 awarded to class), Director's List 2017 (top 10%). Leadership: Resume Worded Investment Club (Board Member), Consulting Club (Engagement Manager).",
+    },
+    {
+      school: "Resume Worded University",
+      degree: "B.S.",
+      field: "Business Analytics",
+      start: "Aug 2012",
+      end: "May 2016",
+    },
+  ],
+  certifications: [
+    { name: "Certified Scrum Master", issuer: "Scrum Alliance", year: "2023" },
+    { name: "Tableau Desktop Specialist", issuer: "Tableau", year: "2022" },
+  ],
+  languages: [
+    { name: "English", proficiency: "native" },
+    { name: "Spanish", proficiency: "fluent" },
+    { name: "Mandarin", proficiency: "conversational" },
+  ],
+};
+
+/* ───────── Cover letter rendering ───────── */
+
+export interface CoverLetterFields {
+  candidate_name: string;
+  candidate_title?: string;
+  candidate_email?: string;
+  candidate_phone?: string;
+  candidate_location?: string;
+  company: string;
+  hiring_manager?: string;
+  body: string; // markdown / plain text paragraphs separated by blank lines
+}
+
+export function renderCoverLetterHtml(f: CoverLetterFields): string {
+  const paragraphs = f.body
+    .split(/\n\s*\n/)
+    .map((p) => p.trim())
+    .filter(Boolean)
+    .map((p) => `<p>${inline(p)}</p>`)
+    .join("");
+  const contact = [f.candidate_location, f.candidate_email, f.candidate_phone].filter(Boolean);
+  const css = `
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Calibri','Arial',sans-serif;color:#111;padding:0.75in 0.85in;line-height:1.5;font-size:11.5pt;background:#fff;width:8.5in}
+.header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:32px}
+.name{font-size:18pt;font-weight:600;color:#0b2647}
+.title{font-size:11pt;color:#555;margin-top:2px}
+.contact{font-size:10.5pt;color:#444;text-align:right;line-height:1.45}
+.greeting{margin-bottom:14px}
+p{margin:0 0 12px 0}
+.sign{margin-top:24px}
+`;
+  return `<!doctype html><html><head><meta charset="utf-8"><title>${esc(f.candidate_name)} — Cover Letter</title><style>${css}</style></head><body>
+<div class="header">
+  <div>
+    <div class="name">${esc(f.candidate_name)}</div>
+    ${f.candidate_title ? `<div class="title">${esc(f.candidate_title)}</div>` : ""}
+  </div>
+  ${contact.length ? `<div class="contact">${contact.map((s) => esc(String(s))).join("<br/>")}</div>` : ""}
+</div>
+<div class="greeting"><p>Dear ${esc(f.hiring_manager || "Hiring Manager")},</p></div>
+${paragraphs}
+<div class="sign"><p>Sincerely,<br/>${esc(f.candidate_name)}</p></div>
+</body></html>`;
+}
+
+export async function downloadCoverLetterPdf(
+  f: CoverLetterFields,
+  filename = "cover-letter.pdf",
+): Promise<void> {
+  const html = renderCoverLetterHtml(f);
+  const frame = document.createElement("iframe");
+  frame.style.position = "fixed";
+  frame.style.left = "-99999px";
+  frame.style.top = "0";
+  frame.style.width = "816px";
+  frame.style.height = "1056px";
+  frame.style.border = "0";
+  document.body.appendChild(frame);
+  try {
+    const doc = frame.contentDocument!;
+    doc.open();
+    doc.write(html);
+    doc.close();
+    await new Promise((r) => setTimeout(r, 100));
+    const canvas = await html2canvas(doc.body, {
+      scale: 2,
+      backgroundColor: "#ffffff",
+      windowWidth: 816,
+      useCORS: true,
+      logging: false,
+    });
+    const pdf = new jsPDF({ unit: "pt", format: "a4" });
+    const pageW = pdf.internal.pageSize.getWidth();
+    const pageH = pdf.internal.pageSize.getHeight();
+    const imgW = pageW;
+    const imgH = (canvas.height * imgW) / canvas.width;
+    let remaining = imgH;
+    let position = 0;
+    const img = canvas.toDataURL("image/jpeg", 0.95);
+    pdf.addImage(img, "JPEG", 0, position, imgW, imgH);
+    remaining -= pageH;
+    while (remaining > 0) {
+      position -= pageH;
+      pdf.addPage();
+      pdf.addImage(img, "JPEG", 0, position, imgW, imgH);
+      remaining -= pageH;
+    }
+    pdf.save(filename);
+  } finally {
+    document.body.removeChild(frame);
+  }
 }

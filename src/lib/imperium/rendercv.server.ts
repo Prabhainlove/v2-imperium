@@ -79,33 +79,40 @@ function renderLines(lines: string[]): string {
 
 export type ResumeTemplate = "classic" | "modern" | "compact";
 
-const baseCss = `
-  *{box-sizing:border-box}
-  body{font-family:'Inter','Helvetica Neue',Arial,sans-serif;color:#111;margin:0;padding:32px 40px;line-height:1.45;font-size:11pt;background:#fff}
-  h1{font-size:22pt;margin:0 0 4px;letter-spacing:-.01em}
-  .contact{color:#444;font-size:10pt;margin-bottom:14px}
-  h2{font-size:11pt;text-transform:uppercase;letter-spacing:.08em;border-bottom:1.5px solid #111;padding-bottom:3px;margin:18px 0 8px;color:#111}
-  p{margin:4px 0}
-  ul{margin:4px 0 8px 18px;padding:0}
-  li{margin:2px 0}
-  @media print{body{padding:18mm 18mm}}
+const classicCss = `
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Times New Roman',Times,serif;color:#111;padding:0.6in 0.7in;line-height:1.35;font-size:11pt;background:#fff}
+h1{font-size:22pt;font-weight:bold;margin:0 0 4px}
+.contact{font-size:10.5pt;color:#222;margin-bottom:14px}
+h2{font-size:11pt;font-weight:bold;text-transform:uppercase;letter-spacing:.04em;border-bottom:1.2px solid #111;padding-bottom:2px;margin:14px 0 6px}
+p{margin:3px 0}
+ul{margin:4px 0 6px 22px}
+li{margin:2px 0;line-height:1.4}
 `;
-
 const modernCss = `
-  body{font-family:'Inter',system-ui,sans-serif}
-  h1{color:#0b3b8c}
-  h2{color:#0b3b8c;border-bottom-color:#0b3b8c}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Calibri','Helvetica Neue',Arial,sans-serif;color:#222;padding:0.55in 0.65in;line-height:1.4;font-size:11pt;background:#fff}
+h1{font-size:24pt;font-weight:600;color:#0b2647;text-align:center;margin:0 0 4px}
+.contact{font-size:10.5pt;color:#444;text-align:center;border-bottom:2px solid #1a3a6e;padding-bottom:10px;margin-bottom:14px}
+h2{font-size:11.5pt;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#0b2647;border-bottom:1px solid #c8d3e5;padding-bottom:3px;margin:14px 0 6px}
+p{margin:3px 0}
+ul{margin:4px 0 8px 20px}
+li{margin:2px 0;line-height:1.4}
 `;
-
 const compactCss = `
-  body{font-size:10pt;padding:24px 32px;line-height:1.35}
-  h1{font-size:18pt}
-  h2{font-size:10pt;margin:12px 0 4px}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Arial,Helvetica,sans-serif;color:#111;padding:0.45in 0.55in;line-height:1.25;font-size:10pt;background:#fff}
+h1{font-size:18pt;font-weight:bold;margin:0 0 2px}
+.contact{font-size:9.5pt;color:#333;margin-bottom:10px}
+h2{font-size:10pt;font-weight:bold;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #111;padding-bottom:1px;margin:10px 0 4px}
+p{margin:2px 0}
+ul{margin:2px 0 4px 18px}
+li{margin:1px 0;line-height:1.3}
 `;
 
 export function renderResumeHtml(md: string, template: ResumeTemplate = "classic"): string {
   const parsed = parseResumeMarkdown(md);
-  const css = baseCss + (template === "modern" ? modernCss : template === "compact" ? compactCss : "");
+  const css = template === "modern" ? modernCss : template === "compact" ? compactCss : classicCss;
   const body = parsed.sections
     .map((s) => `<section><h2>${esc(s.heading)}</h2>${renderLines(s.lines)}</section>`)
     .join("");

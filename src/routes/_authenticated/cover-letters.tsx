@@ -43,16 +43,30 @@ function CoverLettersPage() {
     retry: false,
   });
 
-  const download = () => {
+  const download = async () => {
     const md = detail.data?.cover_letter_md;
     if (!md) return;
-    const blob = new Blob([md], { type: "text/markdown" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `cover-letter_${activeId?.slice(0, 8)}.md`;
-    a.click();
-    URL.revokeObjectURL(url);
+    const { downloadCoverLetterPdf } = await import("@/lib/imperium/resume-render");
+    const lines = md.split(/\r?\n/);
+    // Heuristic: first line "Dear X," → strip; last "Sincerely,\nName" → strip; rest is body
+    const bodyLines: string[] = [];
+    let name = detail.data?.job_title ? "" : "";
+    for (const raw of lines) {
+      const t = raw.trim();
+      if (/^dear\s+/i.test(t)) continue;
+      if (/^(sincerely|best regards|regards|thanks),?$/i.test(t)) continue;
+      bodyLines.push(raw);
+    }
+    name = bodyLines[bodyLines.length - 1]?.trim() || name;
+    const body = bodyLines.slice(0, -1).join("\n").trim() || md;
+    await downloadCoverLetterPdf(
+      {
+        candidate_name: name || "Candidate",
+        company: detail.data?.company || "Company",
+        body,
+      },
+      `cover-letter_${activeId?.slice(0, 8)}.pdf`,
+    );
   };
 
   return (
@@ -115,7 +129,7 @@ function CoverLettersPage() {
               )}
             </CardTitle>
             <Button size="sm" variant="outline" onClick={download} disabled={!detail.data?.cover_letter_md}>
-              <Download className="mr-1.5 h-3.5 w-3.5" /> Markdown
+              <Download className="mr-1.5 h-3.5 w-3.5" /> Download PDF
             </Button>
           </CardHeader>
           <CardContent>

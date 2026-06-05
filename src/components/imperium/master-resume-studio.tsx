@@ -7,7 +7,7 @@ import {
   FileUp,
   History,
   Loader2,
-  Printer,
+  // (Printer removed — PDF export is now via jsPDF in resume-render.ts)
   Save,
   Sparkles,
   Target,
@@ -151,7 +151,7 @@ export function MasterResumeStudio({ userId: propUserId }: { userId?: string } =
         job_description: jobDesc,
         job_title: jobTitle || "Target Role",
         company: company || "Target Company",
-        template: template === "elegant" || template === "minimal" ? "classic" : template,
+        template,
       }),
     onSuccess: (r) => {
       setMd(r.optimized_md);
@@ -205,23 +205,20 @@ export function MasterResumeStudio({ userId: propUserId }: { userId?: string } =
     qc.invalidateQueries({ queryKey: ["resume-versions", userId] });
   };
 
-  const printPdf = () => {
-    const w = window.open("", "_blank");
-    if (!w) return toast.error("Pop-up blocked — allow pop-ups to print");
-    w.document.write(html);
-    w.document.close();
-    w.focus();
-    setTimeout(() => w.print(), 300);
+  const downloadPdf = async () => {
+    try {
+      const { downloadResumePdf } = await import("@/lib/imperium/resume-render");
+      await downloadResumePdf(md, template, "resume.pdf");
+      toast.success("Resume downloaded as PDF");
+    } catch (e) {
+      toast.error("PDF export failed", { description: (e as Error).message });
+    }
   };
 
-  const downloadMd = () => {
-    const blob = new Blob([md], { type: "text/markdown" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `resume.md`;
-    a.click();
-    URL.revokeObjectURL(url);
+  const seedDemo = async () => {
+    const { DEMO_PROFILE, profileToResumeMarkdown } = await import("@/lib/imperium/resume-render");
+    setMd(profileToResumeMarkdown(DEMO_PROFILE));
+    toast.success("Demo profile loaded into editor");
   };
 
   const onUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -287,11 +284,11 @@ export function MasterResumeStudio({ userId: propUserId }: { userId?: string } =
             <FileUp className="mr-1.5 h-3.5 w-3.5" /> Upload .md
           </Button>
           <input ref={fileRef} type="file" accept=".md,.markdown,.txt" hidden onChange={onUpload} />
-          <Button size="sm" variant="outline" onClick={downloadMd}>
-            <Download className="mr-1.5 h-3.5 w-3.5" /> Markdown
+          <Button size="sm" variant="outline" onClick={seedDemo}>
+            <Sparkles className="mr-1.5 h-3.5 w-3.5" /> Load demo
           </Button>
-          <Button size="sm" variant="outline" onClick={printPdf}>
-            <Printer className="mr-1.5 h-3.5 w-3.5" /> Print / PDF
+          <Button size="sm" variant="outline" onClick={downloadPdf}>
+            <Download className="mr-1.5 h-3.5 w-3.5" /> Download PDF
           </Button>
         </div>
 
