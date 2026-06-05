@@ -177,6 +177,30 @@ function configFor(provider: Provider, apiKey: string): ProviderConfig {
         },
       };
 
+    case "ollama": {
+      const base = (process.env.OLLAMA_BASE_URL || "http://localhost:11434").replace(/\/$/, "");
+      return {
+        url: `${base}/v1/chat/completions`,
+        headers: { "Content-Type": "application/json" },
+        buildBody: (modelId, input) => {
+          const body: Record<string, unknown> = {
+            model: modelId,
+            messages: [
+              { role: "system", content: input.system },
+              { role: "user", content: input.user },
+            ],
+            temperature: input.temperature ?? 0.4,
+            max_tokens: input.max_tokens ?? 1400,
+            stream: false,
+          };
+          if (input.json) body.response_format = { type: "json_object" };
+          return body;
+        },
+        extractContent: (json) =>
+          (json as { choices?: { message?: { content?: string } }[] }).choices?.[0]?.message
+            ?.content ?? "",
+      };
+    }
   }
 }
 
