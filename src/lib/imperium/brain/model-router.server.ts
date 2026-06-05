@@ -241,6 +241,11 @@ function buildChain(): { provider: Provider; key: string; model: BrainModelInfo 
     if (!key) return;
     for (const m of PROVIDER_MODELS[provider]) chain.push({ provider, key, model: m });
   };
+  const push = (provider: Provider, key: string | undefined) => {
+    if (!key) return;
+    for (const m of PROVIDER_MODELS[provider]) chain.push({ provider, key, model: m });
+  };
+  push("ollama", process.env.OLLAMA_BASE_URL);
   push("openrouter", process.env.OPENROUTER_API_KEY);
   push("openai", process.env.OPENAI_API_KEY);
   push("anthropic", process.env.ANTHROPIC_API_KEY);
