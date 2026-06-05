@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { AlertTriangle, Brain, CheckCircle2, Loader2, Target, TrendingUp } from "lucide-react";
+import { AlertTriangle, Calculator, CheckCircle2, Loader2, Target, TrendingUp } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { analyzeJobListing } from "@/lib/imperium/client";
@@ -16,14 +16,14 @@ export function JobIntelligencePanel({ listingId }: { listingId: string }) {
     return (
       <div className="flex items-center gap-2 rounded-md border border-primary/20 bg-primary/5 p-3 text-xs text-muted-foreground">
         <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
-        Brain analyzing this role…
+        Analyzing this role locally…
       </div>
     );
   }
   if (q.error || !q.data) {
     return (
       <div className="rounded-md border border-destructive/20 bg-destructive/5 p-3 text-xs text-destructive">
-        Brain could not score this role.
+        Could not score this role.
       </div>
     );
   }
@@ -42,7 +42,7 @@ export function JobIntelligencePanel({ listingId }: { listingId: string }) {
     <div className="space-y-3 rounded-md border border-primary/20 bg-primary/5 p-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-primary">
-          <Brain className="h-3 w-3" /> Brain Intelligence
+          <Calculator className="h-3 w-3" /> Local Intelligence
         </div>
         <Badge variant="outline" className={recColor}>
           {j.recommendation.toUpperCase()}
@@ -51,7 +51,7 @@ export function JobIntelligencePanel({ listingId }: { listingId: string }) {
 
       <div>
         <div className="mb-1 flex items-center justify-between text-xs">
-          <span className="text-muted-foreground">Brain match</span>
+          <span className="text-muted-foreground">Local match</span>
           <span className="font-semibold tabular-nums">{matchPct}%</span>
         </div>
         <Progress value={matchPct} className="h-1.5" />
