@@ -443,17 +443,18 @@ export const getCareerIntelligence = createServerFn({ method: "GET" })
     const avg =
       (jobs ?? []).reduce((acc, j) => acc + Number(j.match_score ?? 0), 0) /
       Math.max(1, jobs?.length ?? 1);
-    const { generateCareerIntelligence } = await import("./brain/brain.server");
-    return generateCareerIntelligence({
-      candidate_role: (profile?.headline as string) || "Candidate",
-      candidate_skills: ((profile?.skills as string[] | null) ?? []) as string[],
-      total_applications: totalApps,
-      applied_count: applied,
-      interview_count: interview,
-      top_companies: topCompanies,
-      recent_job_titles: (jobs ?? []).slice(0, 10).map((j) => j.title as string),
-      avg_match_score: avg,
-    });
+    const skills = ((profile?.skills as string[] | null) ?? []) as string[];
+    return {
+      market_insights: [
+        `${jobs?.length ?? 0} saved/discovered jobs available for local comparison.`,
+        `Average match score is ${Math.round(avg * 100)}% across recent roles.`,
+        topCompanies.length ? `Most frequent companies: ${topCompanies.join(", ")}.` : "Run a job search to collect company signal.",
+      ],
+      skill_recommendations: skills.slice(0, 8),
+      learning_recommendations: skills.length ? skills.slice(0, 4).map((s) => `Prepare one measurable story for ${s}.`) : ["Add skills in Settings to improve local matching."],
+      application_strategy: `Local strategy: ${totalApps} applications tracked, ${applied} applied, ${interview} interview-stage. Prioritize roles above 60% match and review every generated package before applying.`,
+      growth_opportunities: (jobs ?? []).slice(0, 5).map((j) => `Target similar roles to ${(j.title as string) || "recent match"}`),
+    };
   });
 
 
