@@ -277,6 +277,63 @@ def fill_visible_fields(driver, emit: Emit, profile: Dict[str, Any],
     return filled
 
 
+def fill_choice_controls(driver, emit: Emit, profile: Dict[str, Any],
+                         job_context: str = "") -> int:
+    """Fill visible radio groups and safe required checkboxes."""
+    filled = 0
+    seen_radio_names = set()
+    for el in driver.find_elements(By.CSS_SELECTOR, "input[type='radio'], input[type='checkbox']"):
+        try:
+            t = (el.get_attribute("type") or "").lower()
+            if not el.is_enabled() or el.is_selected():
+                continue
+            label = _label_text(driver, el)
+            try:
+                label = (el.find_element(By.XPATH, "./ancestor::label[1]").text or label).strip()
+            except WebDriverException:
+                pass
+            try:
+                question = (el.find_element(By.XPATH, "./ancestor::fieldset[1]").text or label).strip()
+            except WebDriverException:
+                question = label
+            low = f"{question} {label}".lower()
+
+            if t == "checkbox":
+                if any(k in low for k in ("agree", "confirm", "certify", "consent", "acknowledge")):
+                    driver.execute_script("arguments[0].click();", el)
+                    filled += 1
+                    emit("fill", f"Checked '{label[:60] or 'required confirmation'}'", level="success")
+                continue
+
+            name = el.get_attribute("name") or question
+            if name in seen_radio_names:
+                continue
+            group = driver.find_elements(By.CSS_SELECTOR, f"input[type='radio'][name='{name}']") if el.get_attribute("name") else [el]
+            choices = []
+            for r in group:
+                txt = _label_text(driver, r)
+                try:
+                    txt = (r.find_element(By.XPATH, "./ancestor::label[1]").text or txt).strip()
+                except WebDriverException:
+                    pass
+                choices.append(txt or (r.get_attribute("value") or ""))
+            answer = answer_question(question, profile, job_context, choices=[c for c in choices if c])
+            target = None
+            if answer:
+                for r, choice in zip(group, choices):
+                    if choice and (choice.lower() == answer.lower() or choice.lower() in answer.lower() or answer.lower() in choice.lower()):
+                        target = r
+                        break
+            target = target or group[0]
+            driver.execute_script("arguments[0].click();", target)
+            seen_radio_names.add(name)
+            filled += 1
+            emit("fill", f"Selected '{question[:50]}' = {(answer or choices[0] or 'option')[:40]}", level="success")
+        except (StaleElementReferenceException, WebDriverException) as exc:
+            emit("fill", f"Skipped a choice: {exc.__class__.__name__}", level="warn")
+    return filled
+
+
 def maybe_upload_resume(driver, emit: Emit, profile: Dict[str, Any]) -> bool:
     path = profile.get("resume_path") or profile.get("resume_file")
     if not path:
