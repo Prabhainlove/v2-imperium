@@ -1,166 +1,65 @@
-# Imperium V2 — Foundation Rebuild Plan
+# Full local rebuild — Resume, Cover Letter, Selenium, Live Streaming
 
-Transform Imperium from "resume generator" into a profile-first career OS organized around 5 systems. No new dashboards, no new agents, no experimental features. Everything routes through **Imperium Profile** (source of truth) and **Imperium Brain** (intelligence).
+This is a large change. I'm splitting it into 4 work packages. Confirm and I ship all of them in one pass.
 
----
+## 1. Resume Studio — true ATS templates + PDF
 
-## Scope: 5 Systems Only
+**Replace** `src/lib/imperium/rendercv.server.ts` and `resume-render.ts` with three real ATS templates modeled on your screenshots:
 
-1. **Identity** — auth + guards
-2. **Profile** — single source of truth + completeness engine
-3. **Brain** — invisible intelligence layer (already scaffolded, will be hardened)
-4. **Resume Studio** — rebuilt editor (markdown + live preview + ATS)
-5. **Application Engine** — readiness scoring + tailored cover letters
+- **Classic** (Resume Worded style): single column, Times/Calibri, `# Name`, contact line, ALL CAPS section headings with bottom border, right-aligned dates, bulleted achievements. ATS-safe — no tables, no columns, no icons.
+- **Modern** (Andrew Clark style): single column, sans-serif, role title under name, section bars. Still ATS-safe (no sidebar text — sidebar info inlined as a "Skills" section so parsers read it).
+- **Compact** (Pranhuti Singh / LaTeX style): tight spacing, smaller headings, dense bullets.
 
-All current pages map into these. No new routes added beyond what's listed.
+**PDF generation (local, no markdown download):**
+- Add `jspdf` + `html2canvas` (pure browser, works fully local).
+- New component `src/components/imperium/resume-renderer.tsx` renders the template as real HTML/CSS in a hidden A4-sized div.
+- "Download PDF" button captures that node with html2canvas → jsPDF → multi-page A4. Markdown download removed everywhere.
+- Same renderer used for live preview iframe → what you see is what downloads.
 
----
+**Demo profile:**
+- New server fn `seedDemoProfile` populates the profile + a sample job + a generated application with the "First Last / Financial Data Analyst" data from your screenshot, so the studio is never empty on a fresh install.
+- Button in Settings → "Load demo profile".
 
-## System 1 — Identity
+**Live editing:**
+- Resume Studio gets a left-pane form (name, contact, sections, bullets — add/remove/reorder) and a right-pane PDF-styled preview that updates on every keystroke (no save round-trip).
+- Save button persists to Supabase; preview is always live from local state.
 
-**Keep**: `/auth` (login + signup), `_authenticated` route guard, onboarding guard.
+## 2. Cover Letter — new format
 
-**Add**:
-- Forgot password flow → `/auth` adds "Forgot password?" → `supabase.auth.resetPasswordForEmail` → new `/reset-password` public route to set new password.
-- Tighten profile-completion guard: redirect to `/onboarding` until `profiles.onboarded = true` AND minimum completeness reached (already partially in place — fix edge cases).
+Rewrite `cover-letter-generator.server.ts` template to match the Luisa Hernandez screenshot:
+- Header block: name + title, right-aligned contact (3 lines).
+- "Dear Hiring Manager," → 3 short paragraphs (hook / proof / close) → "Sincerely, Name".
+- Same PDF pipeline (jspdf + html2canvas) — `.pdf` download, no `.md`.
+- Live edit pane mirrors Resume Studio.
 
-**Remove**: any duplicate auth components, dead login UI.
+## 3. Selenium agent (replaces Playwright)
 
----
+- Delete `IMPERIUM/local_agent/` Playwright code.
+- New `IMPERIUM/local_agent/`:
+  - `main.py` — FastAPI server, polls Supabase for queued applications.
+  - `selenium_driver.py` — undetected-chromedriver, visible window (`headless=False` by default so you watch it apply).
+  - `form_filler.py` — field detection by label/placeholder/name, fills from profile, handles file upload (resume PDF), submits.
+  - `requirements.txt`: `selenium`, `undetected-chromedriver`, `webdriver-manager`, `fastapi`, `uvicorn`, `supabase`, `python-dotenv`.
+  - `README.md`: `pip install -r requirements.txt && python main.py`.
+- Remove every reference to "playwright" / `chromium` from docs and code.
 
-## System 2 — Profile (Source of Truth)
+## 4. Live activity stream (no screenshots)
 
-**Single profile system.** Today onboarding writes a partial `profiles` row and `/settings` edits separate fields. Consolidate.
+- New table `agent_events` (application_id, ts, kind, message, field, value).
+- Selenium agent inserts a row for every action: `nav`, `field_filled`, `dropdown_selected`, `file_uploaded`, `submit_clicked`, `success`.
+- Supabase Realtime subscription in `src/routes/_authenticated/applications.tsx` → new "Live Activity" drawer streams events as they arrive: "Filled 'Email' = you@x.com", "Uploaded resume.pdf", "Clicked Submit".
+- Same stream surfaced on `/activity` route as a global live feed.
+- Resume Studio live-edit preview already real-time (Section 1).
 
-**Onboarding rebuild** (`/onboarding`) — multi-step but lightweight:
-1. Personal (name, headline, location, phone)
-2. Career (target role, seniority, work mode, target locations, salary expectation)
-3. Education (repeatable)
-4. Experience (repeatable)
-5. Skills (chips)
-6. Projects (repeatable: name, description, stack, url)
-7. Certifications (repeatable)
-8. Links (LinkedIn URL, GitHub URL, Portfolio)
-9. Languages + Achievements
+## Files touched (high level)
+- **Add**: `src/components/imperium/resume-renderer.tsx`, `cover-letter-renderer.tsx`, `live-activity-stream.tsx`; `IMPERIUM/local_agent/{main.py,selenium_driver.py,form_filler.py}`; migration for `agent_events`.
+- **Rewrite**: `resume.tsx`, `cover-letters.tsx`, `master-resume-studio.tsx`, `rendercv.server.ts`, `cover-letter-generator.server.ts`, `resume-render.ts`, `applications.tsx`, `activity.tsx`.
+- **Delete**: old Playwright files, all `.md` download paths.
+- **Deps add**: `jspdf`, `html2canvas`.
 
-**Single edit surface** (`/settings`) reuses the same section components — no duplicate forms. User can edit any section at any time.
+## Caveats (be honest)
+- html2canvas-based PDFs are pixel-perfect but slightly larger files than text PDFs. They render *exactly* what the preview shows — best fit for "what I see is what I download".
+- Selenium with `undetected-chromedriver` is local-only by design (opens a visible Chrome on your machine). It cannot run inside the Lovable preview sandbox — that's why "live applying" only works when you run the agent on your laptop. The web app shows the live event stream regardless.
+- Demo profile writes to your real Supabase user — can be cleared with a "Reset demo" button.
 
-**Schema additions** (migration):
-- `profiles` add: `target_role`, `seniority`, `work_mode`, `target_locations jsonb`, `salary_expectation jsonb`, `projects jsonb`, `languages jsonb`, `achievements jsonb`.
-- Existing columns (`skills`, `experience`, `education`, `certifications`, `linkedin_url`, `github_url`, `portfolio_url`) kept.
-
-**Profile Completeness Engine** (`src/lib/imperium/profile/completeness.ts`):
-- 10 weighted categories → completion %, strength score, readiness score, missing sections list, top-3 recommendations.
-- Surfaced as a persistent panel in `/settings` and a compact widget on `/dashboard`.
-
----
-
-## GitHub & LinkedIn Intelligence
-
-**GitHub** — server fn `analyzeGithub({ url })`:
-- Fetch public profile + top repos via GitHub REST API (no auth required for public; rate-limited).
-- Extract: languages, frameworks (parse README/package files), commit recency, repo complexity heuristic.
-- Brain summarizes → tech stack, project summaries, skill mapping, resume bullet suggestions.
-- Stored on profile as `github_intel jsonb`. Re-run on demand.
-
-**LinkedIn** — URL only. No scraping, no credentials. Brain uses headline + summary + URL to enrich positioning. Stored as `linkedin_intel jsonb`.
-
-Both surfaced in `/settings → Intelligence` section with "Refresh" buttons.
-
----
-
-## System 3 — Brain (Harden Existing)
-
-Brain modules already exist under `src/lib/imperium/brain/`. Changes:
-- Keep OpenRouter model router + failover chain (already implemented).
-- Add **persistent memory** layer: new table `brain_memory (user_id, kind, key_hash, payload jsonb, created_at)` so analyses (profile intel, job analysis, ATS scores, cover letters) survive process restarts and are reused.
-- Wire `brainOnce` to check Supabase memory before LLM call.
-- Add `profile-intelligence.server.ts` that composes profile + GitHub + LinkedIn intel into one canonical "ProfileIntelligence" object consumed by Resume, ATS, Job Matching, Application.
-
-**Rule**: no React component imports Brain modules directly. All UI calls go through `server.functions.ts` wrappers.
-
----
-
-## System 4 — Resume Studio (Rebuild)
-
-Rebuild `/resume` with RenderCV-inspired UX:
-- **Two-pane layout**: left = markdown editor (with section helpers), right = live HTML preview.
-- **Top bar**: template switcher (Classic / Modern / Compact), Version History dropdown, "Target a job" button, Export PDF.
-- **Generate from profile**: button calls Brain `optimizeResume` seeded with full ProfileIntelligence — produces a complete resume containing all required sections (summary, skills, projects, education, certs, experience, achievements, GitHub, LinkedIn).
-- **Job targeting**: paste job URL/description → Brain returns tailored variant + ATS delta.
-- **Versioning**: every generate/save snapshots into `resume_versions`.
-- **PDF export**: server fn rendering markdown → HTML → PDF via existing rendercv pipeline (kept).
-
-Removes: placeholder generators, dead resume components, ad-hoc forms.
-
----
-
-## ATS Engine (Rebuild)
-
-`src/lib/imperium/brain/ats.server.ts`:
-- Deterministic scoring across 8 categories (completeness, keyword match, skills, projects, education, certs, experience, alignment).
-- Brain provides keyword extraction from JD; scoring math is deterministic so users can see *why*.
-- Returns: overall score, per-category breakdown, missing keywords, missing skills, prioritized suggestions, optimization potential.
-- Shown in Resume Studio sidebar when a job is targeted, and on `/review/$id`.
-
----
-
-## Job Matching (Rewire)
-
-`/jobs` and `/search`:
-- Pipeline: Search → ProfileIntelligence → per-job `analyzeJob` → match calc → rank.
-- Each job card shows: match %, confidence, skill match, missing skills, risk, difficulty, recommendation + one-line reasoning.
-- Sort by opportunity quality (match × confidence × freshness).
-- Backend pipeline already routes via Brain — frontend cards updated to render the full intelligence payload (today shows only match_score).
-
----
-
-## System 5 — Application Engine
-
-`/applications` and `/review/$id`:
-- Before applying, Brain runs `evaluateApplicationReadiness` (already scaffolded) — picks best resume version, best cover letter variant, surfaces application score, readiness, risks, success probability, final recommendation.
-- Cover letters generated per-application using full profile + GitHub + JD + company context. Stored on application row.
-- User reviews, edits inline, then marks applied. Brain recommends; user decides.
-
----
-
-## Codebase Cleanup (audit pass)
-
-- Remove unused/legacy components under `src/components/imperium/` not referenced by the 5 systems.
-- Delete dead routes/files (e.g. any leftover strategist/experimental scaffolding).
-- Fix known bugs: sidebar nav reload (use `<Link>` everywhere), resume export error paths, ATS edge cases, application status transitions, toast error surfacing on server-fn failures.
-- Strip the entire `IMPERIUM/` Python folder from the repo (legacy backend, not used by the TanStack app).
-
----
-
-## Technical Notes
-
-**Stack boundaries**: All AI/data work in `createServerFn` under `src/lib/imperium/*.functions.ts`. UI calls via `useServerFn` + TanStack Query. No direct OpenRouter calls from client.
-
-**Migrations**:
-1. Extend `profiles` with new columns.
-2. Create `brain_memory` table with RLS scoped to `auth.uid()` + grants for `authenticated` + `service_role`.
-
-**No new pages** beyond `/reset-password`. Everything else fits into existing routes: `/auth`, `/onboarding`, `/dashboard`, `/search`, `/jobs`, `/resume`, `/applications`, `/review/$id`, `/settings`, `/activity`.
-
-**Order of execution** (one shot):
-1. DB migration (profiles + brain_memory).
-2. Profile system (schema-driven sections, completeness engine, single edit surface).
-3. GitHub + LinkedIn intelligence server fns + UI hooks.
-4. Brain memory persistence + ProfileIntelligence composer.
-5. Resume Studio rebuild.
-6. ATS engine + Job Matching UI rewire.
-7. Application engine UI surfacing.
-8. Identity polish (forgot password + reset).
-9. Cleanup pass (dead code, broken nav, IMPERIUM/ folder).
-
----
-
-## Out of Scope (explicit)
-
-- No new dashboards, agents, chatbots, or experimental AI features.
-- No LinkedIn scraping or credential capture.
-- No new top-level routes besides `/reset-password`.
-- No changes to publishable Supabase keys or auth provider list (email + Google only, already configured).
-
-Approve and I'll execute end-to-end in one pass.
+**Confirm "go" and I execute all 4 packages in one pass.**
