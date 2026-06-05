@@ -19,7 +19,7 @@ export const getAgents = createServerFn({ method: "GET" }).handler(async () => [
   {
     name: "JobAgent",
     capabilities: ["discover", "analyze", "resume", "cover_letter", "review", "track"],
-    skills: ["RemoteOK", "Remotive", "Arbeitnow", "Adzuna", "Jooble", "LinkedIn", "Lovable AI"],
+    skills: ["RemoteOK", "Remotive", "Arbeitnow", "Adzuna", "Jooble", "LinkedIn", "Local scoring"],
     status: "ready",
   },
 ]);
