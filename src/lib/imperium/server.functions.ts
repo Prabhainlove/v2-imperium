@@ -1050,12 +1050,37 @@ export const getSkillGap = createServerFn({ method: "GET" })
     const recent_job_skills = (jobs ?? []).flatMap(
       (j) => ((j.tech_stack as string[] | null) ?? []) as string[],
     );
-    const { analyzeSkillGap } = await import("./brain/skill-gap.server");
-    return analyzeSkillGap({
+    const marketCounts = new Map<string, number>();
+    for (const skill of recent_job_skills) {
+      const key = String(skill).trim();
+      if (!key) continue;
+      marketCounts.set(key, (marketCounts.get(key) ?? 0) + 1);
+    }
+    const candidateSet = new Set(candidate_skills.map((s) => s.toLowerCase()));
+    const missing = [...marketCounts.entries()]
+      .filter(([skill]) => !candidateSet.has(skill.toLowerCase()))
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10)
+      .map(([skill, count]) => ({
+        skill,
+        importance: count >= 4 ? "critical" : count >= 2 ? "important" : "nice_to_have",
+        rationale: `Appears in ${count} recent job listing${count > 1 ? "s" : ""}.`,
+        resource_hint: `Build a small portfolio task using ${skill}.`,
+      }));
+    const matched = candidate_skills.filter((s) => marketCounts.has(s));
+    return {
       target_role,
-      candidate_skills,
-      recent_job_titles,
-      recent_job_skills,
-    });
+      matched_skills: matched,
+      missing_skills: missing,
+      roadmap_30_60_90: {
+        thirty: missing.slice(0, 3).map((m) => `Refresh fundamentals for ${m.skill}.`),
+        sixty: missing.slice(3, 6).map((m) => `Build a project showing ${m.skill}.`),
+        ninety: missing.slice(6, 9).map((m) => `Add ${m.skill} proof to resume and applications.`),
+      },
+      summary: recent_job_titles.length
+        ? `Local analysis compared your profile against ${recent_job_titles.length} recent job titles and ${recent_job_skills.length} market skill signals.`
+        : "Run a job search to gather local market signals for skill-gap analysis.",
+      model: "local-deterministic",
+    };
   });
 
