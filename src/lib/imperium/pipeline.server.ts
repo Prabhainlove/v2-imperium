@@ -281,47 +281,12 @@ export async function runPipeline(input: PipelineInput) {
   }> = [];
 
   for (const s of shortlist) {
-    // Insert (or fetch) the listing row ONLY for shortlisted jobs we'll build an application for.
-    const { data: existingRow } = await db
-      .from("job_listings")
-      .select("id")
-      .eq("source", s.job.source)
-      .eq("external_id", s.job.external_id)
-      .eq("user_id", user_id)
-      .maybeSingle();
-    let listing_id: string;
-    if (existingRow?.id) {
-      listing_id = existingRow.id as string;
-    } else {
-      const { data: insertedListing, error: insertErr } = await db
-        .from("job_listings")
-        .insert({
-          source: s.job.source,
-          external_id: s.job.external_id,
-          url: s.job.url,
-          title: s.job.title,
-          company: s.job.company,
-          location: s.job.location,
-          remote: s.job.remote,
-          salary_min: s.job.salary_min,
-          salary_max: s.job.salary_max,
-          salary_currency: s.job.salary_currency,
-          tech_stack: s.job.tech_stack,
-          description: s.job.description,
-          posted_at: s.job.posted_at,
-          match_score: Number(s.overall.toFixed(3)),
-          status: "shortlisted",
-          task_id,
-          user_id,
-        })
-        .select("id")
-        .single();
-      if (insertErr || !insertedListing) {
-        await log(db, user_id, task_id, "lookup_listing", "failed", `${s.job.company} — ${s.job.title}`);
-        continue;
-      }
-      listing_id = insertedListing.id as string;
+    const listing_id = listingIds.get(`${s.job.source}:${s.job.external_id}`);
+    if (!listing_id) {
+      await log(db, user_id, task_id, "lookup_listing", "failed", `${s.job.company} — ${s.job.title}`);
+      continue;
     }
+    await db.from("job_listings").update({ status: "shortlisted" }).eq("id", listing_id);
 
     await log(db, user_id, task_id, "local_analyze_job", "success", `Local match=${(s.overall * 100).toFixed(0)}% for ${s.job.company} — ${s.job.title}`);
 
