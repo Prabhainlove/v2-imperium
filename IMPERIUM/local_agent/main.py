@@ -254,6 +254,11 @@ def run_job(job_id: str) -> None:
     if HEADLESS:
         opts.add_argument("--headless=new")
     opts.add_argument("--window-size=1280,860")
+    if USE_DEFAULT_CHROME and CHROME_USER_DATA_DIR:
+        opts.add_argument(f"--user-data-dir={CHROME_USER_DATA_DIR}")
+        if CHROME_PROFILE_DIR:
+            opts.add_argument(f"--profile-directory={CHROME_PROFILE_DIR}")
+        emit(job_id, "profile", f"Using Chrome profile: {CHROME_PROFILE_DIR} ({CHROME_USER_DATA_DIR})")
 
     driver = None
     try:
