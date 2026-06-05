@@ -612,35 +612,44 @@ export const evaluateApplication = createServerFn({ method: "POST" })
       .select("headline, skills, experience, target_role")
       .eq("id", userId)
       .maybeSingle();
-    const { analyzeJob } = await import("./brain/job-analysis.server");
-    const { evaluateApplicationReadiness } = await import("./brain/application-engine.server");
     const { analyzeAts } = await import("./rendercv.server");
 
     const skills = ((profile?.skills as string[] | null) ?? []) as string[];
     const expCount = ((profile?.experience as unknown[] | null) ?? []).length;
-    const job_score = await analyzeJob({
-      title: (listing?.title as string) || (app.job_title as string),
-      company: (listing?.company as string) || (app.company as string),
-      description: (listing?.description as string) || "",
-      tech_stack: ((listing?.tech_stack as string[] | null) ?? []) as string[],
-      location: (listing?.location as string) || "",
-      remote: Boolean(listing?.remote),
-      candidate_skills: skills,
-      candidate_role: (profile?.target_role as string) || (profile?.headline as string) || "Candidate",
-      candidate_experience: `${expCount} role(s)`,
-    });
-    const ats = analyzeAts(
-      (app.resume_md as string) || "",
-      ((listing?.tech_stack as string[] | null) ?? []).slice(0, 20),
+    const jobKeywords = ((listing?.tech_stack as string[] | null) ?? []) as string[];
+    const resumeText = (app.resume_md as string) || "";
+    const matchedSkills = skills.filter((skill) =>
+      `${listing?.description ?? ""} ${jobKeywords.join(" ")}`.toLowerCase().includes(skill.toLowerCase()),
     );
-    const readiness = await evaluateApplicationReadiness({
-      job_score,
-      resume_ats_score: ats.score,
-      resume_excerpt: (app.resume_md as string) || "",
-      cover_letter_excerpt: (app.cover_letter_md as string) || "",
-      job_title: (app.job_title as string) || "",
-      company: (app.company as string) || "",
-    });
+    const matchScore = Number(app.match_score ?? 0);
+    const job_score = {
+      match_score: matchScore,
+      confidence: 0.82,
+      recommendation: matchScore >= 0.65 ? "apply" : matchScore >= 0.4 ? "consider" : "skip",
+      required_match: skills.length ? matchedSkills.length / skills.length : matchScore,
+      preferred_match: matchScore,
+      missing_skills: jobKeywords.filter((k) => !skills.some((s) => s.toLowerCase() === k.toLowerCase())).slice(0, 8),
+      strength_alignment: matchedSkills.slice(0, 8),
+      risk: matchScore >= 0.65 ? "low" : matchScore >= 0.4 ? "medium" : "high",
+      difficulty: expCount > 2 ? "moderate" : "standard",
+      reasoning: "Local deterministic scoring based on title, skills, location, and ATS keyword coverage.",
+    };
+    const ats = analyzeAts(
+      resumeText,
+      jobKeywords.slice(0, 20),
+    );
+    const readinessScore = Math.round(matchScore * 55 + ats.score * 0.45);
+    const readiness = {
+      readiness_score: readinessScore,
+      success_probability: Math.max(0.2, Math.min(0.9, readinessScore / 100)),
+      final_recommendation: readinessScore >= 65 ? "submit" : readinessScore >= 45 ? "revise" : "hold",
+      reasoning: "Computed locally from match score and ATS keyword coverage. No AI provider is required.",
+      risks: [
+        ...(job_score.missing_skills.length ? [`Missing keywords: ${job_score.missing_skills.slice(0, 4).join(", ")}`] : []),
+        ...(ats.score < 50 ? ["Low ATS keyword coverage"] : []),
+      ],
+      recommended_improvements: ats.missing_keywords.slice(0, 5).map((k) => `Add evidence for ${k}`),
+    };
     return { job_score, ats, readiness };
   });
 
