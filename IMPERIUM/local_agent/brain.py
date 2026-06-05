@@ -104,14 +104,6 @@ def classify_page(snapshot: Dict[str, Any]) -> str:
     # LinkedIn URL takes precedence over button-text guesses, because the
     # search results page also has 'Easy Apply' badges AND a 'Next' pagination
     # button which would otherwise look like a wizard step.
-    is_linkedin_jobs_search = (
-        "linkedin.com/jobs/search" in url
-        or "linkedin.com/jobs/collections" in url
-        or ("linkedin.com/jobs" in url and job_cards >= 2 and not has_dialog)
-        or ("linkedin.com/jobs" in url and any(q in url for q in ("keywords=", "f_al=", "geoId=", "currentjobid=", "start=")) and not has_dialog)
-    )
-    if is_linkedin_jobs_search:
-        return "job_listing"
     # Easy Apply modal is only real if the modal dialog is actually present
     if "linkedin.com" in url:
         modal_source = dialog_text if has_dialog else ""
@@ -130,6 +122,15 @@ def classify_page(snapshot: Dict[str, Any]) -> str:
             return "easy_apply_step"
         if "linkedin.com/jobs/view" in url:
             return "job_detail"
+
+    is_linkedin_jobs_search = (
+        "linkedin.com/jobs/search" in url
+        or "linkedin.com/jobs/collections" in url
+        or ("linkedin.com/jobs" in url and job_cards >= 2 and not has_dialog)
+        or ("linkedin.com/jobs" in url and any(q in url for q in ("keywords=", "f_al=", "geoId=", "currentjobid=", "start=")) and not has_dialog)
+    )
+    if is_linkedin_jobs_search:
+        return "job_listing"
 
 
     # External ATS
