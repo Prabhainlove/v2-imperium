@@ -215,6 +215,51 @@ export async function runPipeline(input: PipelineInput) {
   scored.sort((a, b) => b.overall - a.overall);
   await log(db, user_id, task_id, "jobs_ranked", "success", `Top score ${scored[0]?.overall.toFixed(2) ?? "n/a"} across ${scored.length} jobs`);
 
+  const listingIds = new Map<string, string>();
+  for (const s of scored) {
+    const key = `${s.job.source}:${s.job.external_id}`;
+    const { data: existingRow } = await db
+      .from("job_listings")
+      .select("id")
+      .eq("source", s.job.source)
+      .eq("external_id", s.job.external_id)
+      .eq("user_id", user_id)
+      .maybeSingle();
+    if (existingRow?.id) {
+      listingIds.set(key, existingRow.id as string);
+      await db
+        .from("job_listings")
+        .update({ match_score: Number(s.overall.toFixed(3)), status: "discovered", task_id })
+        .eq("id", existingRow.id as string);
+      continue;
+    }
+    const { data: insertedListing, error: insertErr } = await db
+      .from("job_listings")
+      .insert({
+        source: s.job.source,
+        external_id: s.job.external_id,
+        url: s.job.url,
+        title: s.job.title,
+        company: s.job.company,
+        location: s.job.location,
+        remote: s.job.remote,
+        salary_min: s.job.salary_min,
+        salary_max: s.job.salary_max,
+        salary_currency: s.job.salary_currency,
+        tech_stack: s.job.tech_stack,
+        description: s.job.description,
+        posted_at: s.job.posted_at,
+        match_score: Number(s.overall.toFixed(3)),
+        status: "discovered",
+        task_id,
+        user_id,
+      })
+      .select("id")
+      .single();
+    if (!insertErr && insertedListing?.id) listingIds.set(key, insertedListing.id as string);
+  }
+  await log(db, user_id, task_id, "jobs_saved", "success", `${listingIds.size} jobs saved to tracker`);
+
   // --- Shortlist (search results are EPHEMERAL — only shortlisted jobs touch the DB) ---
   const shortlist = scored.filter((s) => s.overall >= 0.3).slice(0, input.max_applications);
   await log(db, user_id, task_id, "shortlist", "success", `${shortlist.length} qualified (≥0.30) selected for application prep`);
