@@ -455,6 +455,8 @@ class Handler(BaseHTTPRequestHandler):
             profile = body.get("profile") or {}
             if not isinstance(profile, dict):
                 return self._send_json(400, {"error": "profile must be an object"})
+            if not profile.get("resume_path") and os.environ.get("RESUME_PATH"):
+                profile["resume_path"] = os.environ["RESUME_PATH"]
             job_id = _new_run(job_url, profile)
             emit(job_id, "queued", f"Queued application for {job_url}")
             threading.Thread(target=run_job, args=(job_id,), daemon=True).start()
