@@ -321,7 +321,7 @@ export const approveApplication = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => IdInput.parse(input))
   .handler(async ({ data, context }) => {
     const { simulateSubmission } = await import("./pipeline.server");
-    return simulateSubmission(data.id, context.userId);
+    return simulateSubmission(data.id, context.userId, context.supabase);
   });
 
 export const skipApplicationFn = createServerFn({ method: "POST" })
@@ -329,7 +329,7 @@ export const skipApplicationFn = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => IdInput.parse(input))
   .handler(async ({ data, context }) => {
     const { skipApplication } = await import("./pipeline.server");
-    return skipApplication(data.id, context.userId);
+    return skipApplication(data.id, context.userId, context.supabase);
   });
 
 /* ---------- Activity ---------- */
@@ -702,6 +702,7 @@ export const runJobSearch = createServerFn({ method: "POST" })
     );
 
     const result = await runPipeline({
+      db: supabase,
       task_id,
       user_id: userId,
       role: data.role,
