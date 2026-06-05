@@ -535,7 +535,7 @@ p{margin:0 0 12px 0}
     <div class="name">${esc(f.candidate_name)}</div>
     ${f.candidate_title ? `<div class="title">${esc(f.candidate_title)}</div>` : ""}
   </div>
-  ${contact.length ? `<div class="contact">${contact.map(esc).join("<br/>")}</div>` : ""}
+  ${contact.length ? `<div class="contact">${contact.map((s) => esc(String(s))).join("<br/>")}</div>` : ""}
 </div>
 <div class="greeting"><p>Dear ${esc(f.hiring_manager || "Hiring Manager")},</p></div>
 ${paragraphs}
