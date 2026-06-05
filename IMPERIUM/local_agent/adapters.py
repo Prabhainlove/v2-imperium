@@ -37,6 +37,9 @@ Emit = Callable[..., None]  # emit(step, action, level="info", url="")
 def page_snapshot(driver) -> Dict[str, Any]:
     """Compact snapshot used by the brain to decide what to do."""
     buttons: List[str] = []
+    dialog_text = ""
+    job_cards = 0
+    has_easy_apply_button = False
     try:
         for b in driver.find_elements(By.CSS_SELECTOR, "button, [role=button], a"):
             try:
@@ -44,6 +47,23 @@ def page_snapshot(driver) -> Dict[str, Any]:
                 txt = (b.text or b.get_attribute("aria-label") or "").strip()
                 if txt and len(txt) < 80:
                     buttons.append(txt)
+                if "easy apply" in txt.lower():
+                    has_easy_apply_button = True
+            except WebDriverException:
+                continue
+    except WebDriverException:
+        pass
+    try:
+        job_cards = len(driver.find_elements(By.CSS_SELECTOR, "li.jobs-search-results__list-item, div.job-card-container, a[href*='/jobs/view/']"))
+    except WebDriverException:
+        pass
+    try:
+        dialogs = driver.find_elements(By.CSS_SELECTOR, "div[role='dialog'], .artdeco-modal, .jobs-easy-apply-modal")
+        for d in dialogs:
+            try:
+                if d.is_displayed():
+                    dialog_text = (d.text or "")[:3000]
+                    break
             except WebDriverException:
                 continue
     except WebDriverException:
@@ -63,6 +83,10 @@ def page_snapshot(driver) -> Dict[str, Any]:
         "title": driver.title,
         "buttons": buttons[:40],
         "input_count": inputs,
+        "job_cards": job_cards,
+        "has_easy_apply_button": has_easy_apply_button,
+        "has_dialog": bool(dialog_text),
+        "dialog_text": dialog_text,
         "body_text": body_text[:6000],
     }
 
