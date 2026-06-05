@@ -187,6 +187,22 @@ export async function runPipeline(input: PipelineInput) {
 
   await log(db, user_id, task_id, "search_started", "ok", `role=${input.role} location=${input.location} max_apps=${input.max_applications}`);
 
+  // --- Wipe previous discovered/shortlisted listings for this user.
+  // Per user request: every new agent run starts with a fresh job set.
+  // We preserve listings that are already attached to an application
+  // (status not in ['discovered','shortlisted']) so the tracker keeps history.
+  try {
+    await db
+      .from("job_listings")
+      .delete()
+      .eq("user_id", user_id)
+      .in("status", ["discovered", "shortlisted"]);
+    await log(db, user_id, task_id, "refresh_jobs", "success", "Cleared previous discovered jobs — fetching fresh");
+  } catch (e) {
+    await log(db, user_id, task_id, "refresh_jobs", "failed", e instanceof Error ? e.message : String(e));
+  }
+
+
   // --- Discovery (parallel, with availability gating) ---
   const raw: RawJob[] = [];
   const per_source: Record<string, { count: number; status: "ok" | "failed" | "skipped" }> = {};
