@@ -302,7 +302,7 @@ export async function runPipeline(input: PipelineInput) {
         location: input.location,
       },
     };
-    const { data: inserted, error: appErr } = await supabaseAdmin
+    const { data: inserted, error: appErr } = await db
       .from("applications")
       .insert({
         listing_id,
@@ -321,11 +321,11 @@ export async function runPipeline(input: PipelineInput) {
       .select("id")
       .single();
     if (appErr) {
-      await log(user_id, task_id, "prepare_application", "failed", appErr.message);
+      await log(db, user_id, task_id, "prepare_application", "failed", appErr.message);
       continue;
     }
     if (inserted?.id) {
-      await supabaseAdmin.from("application_timeline").insert({
+      await db.from("application_timeline").insert({
         user_id,
         application_id: inserted.id as string,
         event_type: "created",
@@ -334,7 +334,7 @@ export async function runPipeline(input: PipelineInput) {
         note: `Application package prepared for ${s.job.company} — ${s.job.title}`,
       });
     }
-    await log(user_id, task_id, "prepare_application", "success", `Package ready for ${s.job.company} — awaiting user approval`);
+    await log(db, user_id, task_id, "prepare_application", "success", `Package ready for ${s.job.company} — awaiting user approval`);
 
     matches.push({
       application_id: inserted?.id as string,
@@ -355,6 +355,7 @@ export async function runPipeline(input: PipelineInput) {
 
   const duration_seconds = Math.round((Date.now() - started) / 100) / 10;
   await log(
+    db,
     user_id,
     task_id,
     "user_review",
@@ -362,6 +363,7 @@ export async function runPipeline(input: PipelineInput) {
     `${matches.length} application packages awaiting user approval`,
   );
   await log(
+    db,
     user_id,
     task_id,
     "complete",
