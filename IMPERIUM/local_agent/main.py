@@ -1,20 +1,20 @@
 """
-Imperium Local Automation Agent — fully offline FastAPI edition.
+Imperium Local Automation Agent — pure-stdlib offline edition.
 
-No Supabase. No cloud. No API keys. Everything runs on this machine.
+No FastAPI, no Pydantic, no compiled deps. Works on Python 3.14 on a clean
+Windows machine without Rust / MSVC / Build Tools.
 
 Endpoints (default http://127.0.0.1:8000):
-    GET  /health                 → { ok, chrome, runs }
-    POST /apply                  → { job_id }              body: { job_url, profile? }
-    POST /approve                → { ok }                  body: { job_id }
-    POST /reject                 → { ok }                  body: { job_id }
-    GET  /status/{job_id}        → full run + events
-    GET  /runs                   → list of all runs (most recent first)
-    GET  /events/{job_id}        → just the events array (for polling)
+    GET  /health                 -> { ok, chrome, runs }
+    POST /apply                  -> { job_id }   body: { job_url, profile? }
+    POST /approve                -> { ok }       body: { job_id }
+    POST /reject                 -> { ok }       body: { job_id }
+    GET  /status/{job_id}        -> full run + events
+    GET  /events/{job_id}        -> { events, status, progress }
+    GET  /runs                   -> list of all runs (most recent first)
 
 Run:
     pip install -r requirements.txt
-    cp .env.example .env       # optional, defaults are fine
     python main.py
 """
 from __future__ import annotations
@@ -27,16 +27,16 @@ import time
 import traceback
 import uuid
 from datetime import datetime, timezone
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+from urllib.parse import urlparse
 
-from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
-import uvicorn
-
-load_dotenv()
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except Exception:  # noqa: BLE001
+    pass
 
 try:
     import undetected_chromedriver as uc
@@ -58,10 +58,9 @@ HOST = os.environ.get("HOST", "127.0.0.1")
 PORT = int(os.environ.get("PORT", "8000"))
 HEADLESS = os.environ.get("HEADLESS", "0") == "1"
 STATE_FILE = Path(os.environ.get("STATE_FILE", "./agent_state.json"))
-CORS_ORIGINS = [o.strip() for o in os.environ.get("CORS_ORIGINS", "*").split(",") if o.strip()]
 
 
-# ─────────────────────────── in-memory state ────────────────────────────
+# --------------------------- in-memory state ----------------------------
 
 _lock = threading.RLock()
 _runs: Dict[str, Dict[str, Any]] = {}
@@ -102,7 +101,7 @@ def _new_run(job_url: str, profile: Dict[str, Any]) -> str:
             "current_step": "queued",
             "current_action": "Waiting to start",
             "current_url": "",
-            "approved": None,           # None | True | False
+            "approved": None,
             "error": "",
             "created_at": _now(),
             "updated_at": _now(),
@@ -141,7 +140,7 @@ def emit(job_id: str, step: str, action: str, *, level: str = "info", url: str =
     print(f"[{level:>7}] {job_id[:8]} {step}: {action}")
 
 
-# ─────────────────────────── form filling ───────────────────────────────
+# --------------------------- form filling -------------------------------
 
 PROFILE_FIELD_MAP = {
     "first":     ["first name", "given name"],
@@ -212,7 +211,7 @@ def fill_application(driver, job_id: str, profile: Dict[str, Any]) -> int:
     return filled
 
 
-# ─────────────────────────── run executor ───────────────────────────────
+# --------------------------- run executor -------------------------------
 
 def run_job(job_id: str) -> None:
     if not SELENIUM_OK:
@@ -280,7 +279,7 @@ def run_job(job_id: str) -> None:
                 submit.click()
                 time.sleep(3)
                 _update(job_id, status="submitted", progress=100, current_step="submitted", current_action="Application submitted")
-                emit(job_id, "submitted", "Application submitted ✓", level="success")
+                emit(job_id, "submitted", "Application submitted", level="success")
             else:
                 _update(job_id, status="failed", error="No submit button found")
                 emit(job_id, "submit", "Could not find a submit button", level="error")
@@ -304,96 +303,133 @@ def run_job(job_id: str) -> None:
             except Exception: pass
 
 
-# ─────────────────────────── HTTP API ───────────────────────────────────
+# --------------------------- HTTP server --------------------------------
 
-app = FastAPI(title="Imperium Local Agent", version="2.0.0")
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=CORS_ORIGINS or ["*"],
-    allow_credentials=False,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+class Handler(BaseHTTPRequestHandler):
+    server_version = "ImperiumLocalAgent/3.0"
 
+    # silence default noisy logging; we print our own events
+    def log_message(self, format: str, *args: Any) -> None:  # noqa: A002
+        return
 
-class ApplyBody(BaseModel):
-    job_url: str = Field(..., min_length=4)
-    profile: Dict[str, Any] = Field(default_factory=dict)
+    # ---- helpers ----
 
+    def _send_json(self, status: int, payload: Any) -> None:
+        body = json.dumps(payload).encode("utf-8")
+        self.send_response(status)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+        self.end_headers()
+        self.wfile.write(body)
 
-class JobIdBody(BaseModel):
-    job_id: str
+    def _read_json(self) -> Dict[str, Any]:
+        length = int(self.headers.get("Content-Length") or 0)
+        if length <= 0:
+            return {}
+        raw = self.rfile.read(length)
+        try:
+            data = json.loads(raw.decode("utf-8"))
+        except Exception:
+            return {}
+        return data if isinstance(data, dict) else {}
 
+    # ---- CORS preflight ----
 
-@app.get("/health")
-def health() -> Dict[str, Any]:
-    return {
-        "ok": True,
-        "chrome": SELENIUM_OK,
-        "headless": HEADLESS,
-        "runs": len(_runs),
-        "version": "2.0.0",
-    }
+    def do_OPTIONS(self) -> None:  # noqa: N802
+        self.send_response(204)
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+        self.end_headers()
 
+    # ---- routing ----
 
-@app.post("/apply")
-def apply(body: ApplyBody) -> Dict[str, Any]:
-    job_id = _new_run(body.job_url, body.profile)
-    emit(job_id, "queued", f"Queued application for {body.job_url}")
-    t = threading.Thread(target=run_job, args=(job_id,), daemon=True)
-    t.start()
-    return {"job_id": job_id}
+    def do_GET(self) -> None:  # noqa: N802
+        path = urlparse(self.path).path.rstrip("/") or "/"
 
+        if path == "/health":
+            return self._send_json(200, {
+                "ok": True,
+                "chrome": SELENIUM_OK,
+                "headless": HEADLESS,
+                "runs": len(_runs),
+                "version": "3.0.0",
+            })
 
-@app.post("/approve")
-def approve(body: JobIdBody) -> Dict[str, bool]:
-    if body.job_id not in _runs:
-        raise HTTPException(404, "job not found")
-    _update(body.job_id, approved=True)
-    emit(body.job_id, "approve", "User approved", level="success")
-    return {"ok": True}
+        if path == "/runs":
+            items = list(_runs.values())
+            items.sort(key=lambda r: r.get("created_at", ""), reverse=True)
+            return self._send_json(200, [
+                {k: v for k, v in r.items() if k != "events"} for r in items
+            ])
 
+        if path.startswith("/status/"):
+            job_id = path[len("/status/"):]
+            run = _runs.get(job_id)
+            if not run:
+                return self._send_json(404, {"error": "job not found"})
+            return self._send_json(200, run)
 
-@app.post("/reject")
-def reject(body: JobIdBody) -> Dict[str, bool]:
-    if body.job_id not in _runs:
-        raise HTTPException(404, "job not found")
-    _update(body.job_id, approved=False)
-    emit(body.job_id, "reject", "User rejected", level="warn")
-    return {"ok": True}
+        if path.startswith("/events/"):
+            job_id = path[len("/events/"):]
+            run = _runs.get(job_id)
+            if not run:
+                return self._send_json(404, {"error": "job not found"})
+            return self._send_json(200, {
+                "events": run["events"],
+                "status": run["status"],
+                "progress": run["progress"],
+            })
 
+        self._send_json(404, {"error": "not found"})
 
-@app.get("/status/{job_id}")
-def status(job_id: str) -> Dict[str, Any]:
-    run = _runs.get(job_id)
-    if not run:
-        raise HTTPException(404, "job not found")
-    return run
+    def do_POST(self) -> None:  # noqa: N802
+        path = urlparse(self.path).path.rstrip("/") or "/"
+        body = self._read_json()
 
+        if path == "/apply":
+            job_url = (body.get("job_url") or "").strip()
+            if len(job_url) < 4:
+                return self._send_json(400, {"error": "job_url is required"})
+            profile = body.get("profile") or {}
+            if not isinstance(profile, dict):
+                return self._send_json(400, {"error": "profile must be an object"})
+            job_id = _new_run(job_url, profile)
+            emit(job_id, "queued", f"Queued application for {job_url}")
+            threading.Thread(target=run_job, args=(job_id,), daemon=True).start()
+            return self._send_json(200, {"job_id": job_id})
 
-@app.get("/events/{job_id}")
-def events(job_id: str) -> Dict[str, Any]:
-    run = _runs.get(job_id)
-    if not run:
-        raise HTTPException(404, "job not found")
-    return {"events": run["events"], "status": run["status"], "progress": run["progress"]}
+        if path in ("/approve", "/reject"):
+            job_id = (body.get("job_id") or "").strip()
+            if job_id not in _runs:
+                return self._send_json(404, {"error": "job not found"})
+            approved = path == "/approve"
+            _update(job_id, approved=approved)
+            emit(
+                job_id,
+                "approve" if approved else "reject",
+                "User approved" if approved else "User rejected",
+                level="success" if approved else "warn",
+            )
+            return self._send_json(200, {"ok": True})
 
+        self._send_json(404, {"error": "not found"})
 
-@app.get("/runs")
-def runs() -> List[Dict[str, Any]]:
-    items = list(_runs.values())
-    items.sort(key=lambda r: r.get("created_at", ""), reverse=True)
-    # strip events for list view
-    return [{k: v for k, v in r.items() if k != "events"} for r in items]
-
-
-# ─────────────────────────── entrypoint ─────────────────────────────────
 
 def main() -> None:
     _load_state()
-    print(f"[agent] Imperium Local Agent (offline) — http://{HOST}:{PORT}")
+    print(f"[agent] Imperium Local Agent (offline, stdlib) -- http://{HOST}:{PORT}")
     print(f"[agent] Chrome ready: {SELENIUM_OK} | headless={HEADLESS} | state={STATE_FILE}")
-    uvicorn.run(app, host=HOST, port=PORT, log_level="info")
+    server = ThreadingHTTPServer((HOST, PORT), Handler)
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        print("\n[agent] shutting down")
+    finally:
+        server.server_close()
 
 
 if __name__ == "__main__":
