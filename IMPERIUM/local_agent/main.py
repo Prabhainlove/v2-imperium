@@ -286,15 +286,35 @@ def run_job(job_id: str) -> None:
     if HEADLESS:
         opts.add_argument("--headless=new")
     opts.add_argument("--window-size=1280,860")
-    if USE_DEFAULT_CHROME and CHROME_USER_DATA_DIR:
+    opts.add_argument("--no-first-run")
+    opts.add_argument("--no-default-browser-check")
+    if CHROME_USER_DATA_DIR:
+        _clear_singleton_locks(CHROME_USER_DATA_DIR)
         opts.add_argument(f"--user-data-dir={CHROME_USER_DATA_DIR}")
         if CHROME_PROFILE_DIR:
             opts.add_argument(f"--profile-directory={CHROME_PROFILE_DIR}")
-        emit(job_id, "profile", f"Using Chrome profile: {CHROME_PROFILE_DIR} ({CHROME_USER_DATA_DIR})")
+        kind = "REAL Chrome profile" if USE_REAL_CHROME else "dedicated agent profile"
+        emit(job_id, "profile", f"Using {kind}: {CHROME_PROFILE_DIR} ({CHROME_USER_DATA_DIR})")
+        if USE_REAL_CHROME:
+            emit(job_id, "profile",
+                 "Make sure your normal Chrome is FULLY CLOSED (check the system tray) — "
+                 "Chrome refuses to open the same profile twice.", level="warn")
 
     driver = None
     try:
-        driver = uc.Chrome(options=opts)
+        try:
+            driver = uc.Chrome(options=opts)
+        except WebDriverException as exc:
+            msg = (exc.msg or "").lower()
+            if "chrome not reachable" in msg or "cannot connect to chrome" in msg:
+                hint = (
+                    "Chrome failed to start. Most common cause: your normal Chrome is "
+                    "still running and locking the profile. Close every Chrome window "
+                    "(and the tray icon), or unset USE_REAL_CHROME to use the dedicated "
+                    "agent profile at ~/.imperium_chrome_profile."
+                )
+                emit(job_id, "boot", hint, level="error")
+            raise
         _update(job_id, progress=20, current_step="navigate", current_action=f"Opening {url}", current_url=url)
         emit(job_id, "navigate", f"Opening {url}", url=url)
         driver.get(url)
