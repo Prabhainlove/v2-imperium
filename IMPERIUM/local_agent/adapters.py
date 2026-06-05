@@ -351,12 +351,12 @@ def fill_choice_controls(driver, emit: Emit, profile: Dict[str, Any],
     return filled
 
 
-def maybe_upload_resume(driver, emit: Emit, profile: Dict[str, Any]) -> bool:
+def maybe_upload_resume(driver, emit: Emit, profile: Dict[str, Any], root=None) -> bool:
     path = profile.get("resume_path") or profile.get("resume_file")
     if not path:
         return False
     try:
-        ups = driver.find_elements(By.CSS_SELECTOR, "input[type='file']")
+        ups = (root or driver).find_elements(By.CSS_SELECTOR, "input[type='file']")
         for u in ups:
             try:
                 name = (u.get_attribute("name") or u.get_attribute("id") or "").lower()
