@@ -120,9 +120,8 @@ function scoreJob(
   return { overall, title_score, skill_score, matched, missing, salary_match, experience_match, location_match };
 }
 
-// Legacy Lovable AI Gateway helper removed for portability.
-// Brain calls now route exclusively through OpenRouter / OpenAI / Anthropic
-// via routeBrainCall() in src/lib/imperium/brain/model-router.server.ts.
+// AI removed from the search/package pipeline for portability.
+// Matching, resume, cover letter, and readiness now run locally.
 
 function fallbackResume(input: PipelineInput, job: RawJob, matched: string[]): string {
   return [

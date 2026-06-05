@@ -150,7 +150,7 @@ function SettingsPage() {
                     {gh.error && <p className="text-sm text-destructive">{gh.error}</p>}
                     {gh.summary && (
                       <div className="rounded-md border border-border/60 bg-card/40 p-3 text-sm">
-                        <div className="text-xs uppercase tracking-wider text-muted-foreground">Brain summary</div>
+                        <div className="text-xs uppercase tracking-wider text-muted-foreground">Local summary</div>
                         <p className="mt-1">{gh.summary}</p>
                       </div>
                     )}
