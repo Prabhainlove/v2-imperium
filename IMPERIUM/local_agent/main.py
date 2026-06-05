@@ -59,6 +59,28 @@ PORT = int(os.environ.get("PORT", "8000"))
 HEADLESS = os.environ.get("HEADLESS", "0") == "1"
 STATE_FILE = Path(os.environ.get("STATE_FILE", "./agent_state.json"))
 
+# Chrome profile reuse. Set CHROME_USER_DATA_DIR to your real Chrome "User Data"
+# folder to reuse logged-in sessions (LinkedIn, Google, etc.).
+#   Windows: C:\Users\<you>\AppData\Local\Google\Chrome\User Data
+#   macOS:   /Users/<you>/Library/Application Support/Google/Chrome
+#   Linux:   /home/<you>/.config/google-chrome
+# CHROME_PROFILE_DIR is the sub-folder (e.g. "Default", "Profile 1").
+# IMPORTANT: fully close your normal Chrome before starting the agent, or
+# Chrome will refuse to open the profile twice.
+def _default_chrome_user_data_dir() -> str:
+    home = Path.home()
+    if os.name == "nt":
+        p = home / "AppData" / "Local" / "Google" / "Chrome" / "User Data"
+    elif sys.platform == "darwin":
+        p = home / "Library" / "Application Support" / "Google" / "Chrome"
+    else:
+        p = home / ".config" / "google-chrome"
+    return str(p)
+
+CHROME_USER_DATA_DIR = os.environ.get("CHROME_USER_DATA_DIR", _default_chrome_user_data_dir())
+CHROME_PROFILE_DIR = os.environ.get("CHROME_PROFILE_DIR", "Default")
+USE_DEFAULT_CHROME = os.environ.get("USE_DEFAULT_CHROME", "1") == "1"
+
 
 # --------------------------- in-memory state ----------------------------
 
@@ -232,6 +254,11 @@ def run_job(job_id: str) -> None:
     if HEADLESS:
         opts.add_argument("--headless=new")
     opts.add_argument("--window-size=1280,860")
+    if USE_DEFAULT_CHROME and CHROME_USER_DATA_DIR:
+        opts.add_argument(f"--user-data-dir={CHROME_USER_DATA_DIR}")
+        if CHROME_PROFILE_DIR:
+            opts.add_argument(f"--profile-directory={CHROME_PROFILE_DIR}")
+        emit(job_id, "profile", f"Using Chrome profile: {CHROME_PROFILE_DIR} ({CHROME_USER_DATA_DIR})")
 
     driver = None
     try:
