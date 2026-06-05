@@ -117,6 +117,30 @@ def click_first(driver, selectors: List[str], *, timeout: float = 6) -> bool:
     return False
 
 
+def click_xpath(driver, xpaths: List[str], *, timeout: float = 6) -> bool:
+    end = time.time() + timeout
+    while time.time() < end:
+        for xp in xpaths:
+            try:
+                for el in driver.find_elements(By.XPATH, xp):
+                    try:
+                        if not el.is_displayed() or not el.is_enabled():
+                            continue
+                        driver.execute_script("arguments[0].scrollIntoView({block:'center'});", el)
+                        time.sleep(0.2)
+                        try:
+                            el.click()
+                        except (ElementClickInterceptedException, WebDriverException):
+                            driver.execute_script("arguments[0].click();", el)
+                        return True
+                    except WebDriverException:
+                        continue
+            except WebDriverException:
+                continue
+        time.sleep(0.3)
+    return False
+
+
 def find_submit_button(driver):
     """Find a submit/apply button using many heuristics."""
     candidates = [
