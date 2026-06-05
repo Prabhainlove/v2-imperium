@@ -6,10 +6,12 @@
  *              -> stage as **Pending Review** (no auto submission).
  * Writes an activity_log row at every stage so the UI animates live.
  */
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { SOURCES, type RawJob } from "./sources.server";
 
+type ImperiumDb = { from: (table: string) => any };
+
 export interface PipelineInput {
+  db: ImperiumDb;
   task_id: string;
   user_id: string;
   role: string;
@@ -27,13 +29,14 @@ export interface PipelineInput {
 }
 
 async function log(
+  db: ImperiumDb,
   user_id: string,
   task_id: string,
   action: string,
   status: "ok" | "running" | "success" | "failed" | "completed" | "skipped" = "ok",
   detail = "",
 ) {
-  await supabaseAdmin.from("activity_log").insert({
+  await db.from("activity_log").insert({
     user_id,
     task_id,
     agent: "job_agent",
