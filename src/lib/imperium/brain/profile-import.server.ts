@@ -4,7 +4,6 @@
  *
  * Server-only. Uses the existing OpenRouter brain router for LLM extraction.
  */
-import { routeBrainCall } from "./model-router.server";
 
 export interface ProfilePatch {
   name?: string;
@@ -174,16 +173,35 @@ export async function extractProfileFromText(text: string): Promise<{
       "Could not read enough text from the document. Try uploading a different format (PDF, DOCX, or TXT).",
     );
   }
-  const truncated = cleaned.length > 18_000 ? cleaned.slice(0, 18_000) : cleaned;
-  const result = await routeBrainCall({
-    system: SYSTEM,
-    user: `Resume text:\n\n${truncated}`,
-    temperature: 0.1,
-    max_tokens: 2400,
-    json: true,
-  });
-  const patch = sanitizePatch(safeParseJson(result.content));
-  return { patch, model: result.model };
+  const lines = cleaned.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  const email = cleaned.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0] ?? "";
+  const phone = cleaned.match(/(?:\+?\d[\d\s().-]{7,}\d)/)?.[0]?.trim() ?? "";
+  const linkedin = cleaned.match(/https?:\/\/(?:www\.)?linkedin\.com\/in\/[^\s)]+/i)?.[0] ?? "";
+  const github = cleaned.match(/https?:\/\/(?:www\.)?github\.com\/[^\s)]+/i)?.[0] ?? "";
+  const skillsSource = cleaned.match(/(?:skills|technologies|tooling)[:\n]([\s\S]{0,700})/i)?.[1] ?? cleaned;
+  const skills = Array.from(new Set(
+    skillsSource
+      .split(/[,•|;\n]/)
+      .map((s) => s.replace(/^[-*]\s*/, "").trim())
+      .filter((s) => /^[A-Za-z][A-Za-z0-9+#./ -]{1,30}$/.test(s))
+      .slice(0, 24),
+  ));
+  const firstContentLine = lines.find((l) => !l.includes("@") && !/^https?:\/\//i.test(l) && l.length <= 80) ?? "";
+  const headline = lines.find((l) => /engineer|developer|manager|designer|analyst|architect|consultant/i.test(l)) ?? "";
+  return {
+    patch: sanitizePatch({
+      name: firstContentLine,
+      email,
+      phone,
+      headline,
+      target_role: headline,
+      summary: lines.slice(0, 6).join(" ").slice(0, 500),
+      linkedin_url: linkedin,
+      github_url: github,
+      skills,
+    }),
+    model: "local-parser",
+  };
 }
 
 /**
