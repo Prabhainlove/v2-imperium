@@ -575,20 +575,27 @@ export const analyzeJobListing = createServerFn({ method: "POST" })
       supabase.from("profiles").select("headline, skills, experience, target_role").eq("id", userId).maybeSingle(),
     ]);
     if (!listing) throw new Error("Listing not found");
-    const { analyzeJob } = await import("./brain/job-analysis.server");
     const skills = ((profile?.skills as string[] | null) ?? []) as string[];
     const expCount = ((profile?.experience as unknown[] | null) ?? []).length;
-    return analyzeJob({
-      title: (listing.title as string) || "",
-      company: (listing.company as string) || "",
-      description: (listing.description as string) || "",
-      tech_stack: ((listing.tech_stack as string[] | null) ?? []) as string[],
-      location: (listing.location as string) || "",
-      remote: Boolean(listing.remote),
-      candidate_skills: skills,
-      candidate_role: (profile?.target_role as string) || (profile?.headline as string) || "Candidate",
-      candidate_experience: `${expCount} role(s)`,
-    });
+    const techStack = ((listing.tech_stack as string[] | null) ?? []) as string[];
+    const jobText = `${listing.title ?? ""} ${listing.description ?? ""} ${techStack.join(" ")}`.toLowerCase();
+    const matched = skills.filter((s) => jobText.includes(s.toLowerCase()));
+    const missing = techStack.filter((k) => !skills.some((s) => s.toLowerCase() === k.toLowerCase())).slice(0, 8);
+    const matchScore = Number(listing.match_score ?? (skills.length ? matched.length / skills.length : 0.5));
+    return {
+      match_score: matchScore,
+      confidence: 0.82,
+      required_match: skills.length ? matched.length / skills.length : matchScore,
+      preferred_match: matchScore,
+      matched_skills: matched.slice(0, 8),
+      missing_skills: missing,
+      strength_alignment: matched.slice(0, 8),
+      risk: matchScore >= 0.65 ? "low" : matchScore >= 0.4 ? "medium" : "high",
+      difficulty: expCount > 2 ? "moderate" : "standard",
+      interview_potential: Math.max(0.2, Math.min(0.9, matchScore + 0.1)),
+      recommendation: matchScore >= 0.65 ? "apply" : matchScore >= 0.4 ? "consider" : "skip",
+      reasoning: "Local deterministic analysis from saved job text, tech stack, and profile skills.",
+    };
   });
 
 /* ---------- Brain: application readiness ---------- */
