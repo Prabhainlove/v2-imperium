@@ -134,12 +134,12 @@ def click_first(driver, selectors: List[str], *, timeout: float = 6, root=None) 
     return False
 
 
-def click_xpath(driver, xpaths: List[str], *, timeout: float = 6) -> bool:
+def click_xpath(driver, xpaths: List[str], *, timeout: float = 6, root=None) -> bool:
     end = time.time() + timeout
     while time.time() < end:
         for xp in xpaths:
             try:
-                for el in driver.find_elements(By.XPATH, xp):
+                for el in (root or driver).find_elements(By.XPATH, xp):
                     try:
                         if not el.is_displayed() or not el.is_enabled():
                             continue
