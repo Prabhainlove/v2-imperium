@@ -15,7 +15,7 @@
  */
 import type { BrainModelInfo } from "./types";
 
-type Provider = "openrouter" | "openai" | "anthropic" | "lovable";
+type Provider = "openrouter" | "openai" | "anthropic";
 
 /** Default chat-model chain per provider (most-capable → cheapest).
  *  OpenRouter is FIRST and uses free-tier models with automatic failover. */
@@ -30,9 +30,6 @@ const PROVIDER_MODELS: Record<Provider, BrainModelInfo[]> = {
   ],
   anthropic: [
     { id: "claude-3-5-haiku-latest", label: "Claude 3.5 Haiku", free: false },
-  ],
-  lovable: [
-    { id: "google/gemini-2.5-flash", label: "Gemini 2.5 Flash (Lovable)", free: false },
   ],
 };
 
@@ -175,30 +172,6 @@ function configFor(provider: Provider, apiKey: string): ProviderConfig {
         },
       };
 
-    case "lovable":
-      return {
-        url: "https://ai.gateway.lovable.dev/v1/chat/completions",
-        headers: {
-          "Content-Type": "application/json",
-          "Lovable-API-Key": apiKey,
-        },
-        buildBody: (modelId, input) => {
-          const body: Record<string, unknown> = {
-            model: modelId,
-            messages: [
-              { role: "system", content: input.system },
-              { role: "user", content: input.user },
-            ],
-            temperature: input.temperature ?? 0.4,
-            max_tokens: input.max_tokens ?? 1400,
-          };
-          if (input.json) body.response_format = { type: "json_object" };
-          return body;
-        },
-        extractContent: (json) =>
-          (json as { choices?: { message?: { content?: string } }[] }).choices?.[0]?.message
-            ?.content ?? "",
-      };
   }
 }
 
