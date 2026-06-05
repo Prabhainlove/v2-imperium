@@ -156,7 +156,7 @@ export function MasterResumeStudio({ userId: propUserId }: { userId?: string } =
     onSuccess: (r) => {
       setMd(r.optimized_md);
       toast.success(
-        `Brain optimized · ATS ${r.ats_score_before} → ${r.ats_score_after}`,
+        `Resume optimized locally · ATS ${r.ats_score_before} → ${r.ats_score_after}`,
       );
     },
     onError: (e: Error) => toast.error(e.message),
@@ -414,7 +414,7 @@ export function MasterResumeStudio({ userId: propUserId }: { userId?: string } =
                   ) : (
                     <Wand2 className="mr-1.5 h-3.5 w-3.5" />
                   )}
-                  Brain: Optimize for this job
+                  Optimize for this job
                 </Button>
                 {optimize.data && (
                   <Badge variant="outline" className="border-success/30 bg-success/10 text-success">
@@ -450,7 +450,7 @@ export function MasterResumeStudio({ userId: propUserId }: { userId?: string } =
               {optimize.data && (
                 <div className="rounded-md border border-primary/30 bg-primary/5 p-3">
                   <div className="mb-1 flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-primary">
-                    <Sparkles className="h-3 w-3" /> Brain edits
+                    <Sparkles className="h-3 w-3" /> Local edits
                   </div>
                   <p className="mb-2 text-xs text-muted-foreground">{optimize.data.reasoning}</p>
                   {optimize.data.improvements.length > 0 && (
