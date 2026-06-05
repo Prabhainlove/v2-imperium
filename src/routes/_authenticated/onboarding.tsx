@@ -18,7 +18,7 @@ export const Route = createFileRoute("/_authenticated/onboarding")({
   head: () => ({
     meta: [
       { title: "Welcome — Imperium" },
-      { name: "description", content: "Set up your Imperium profile so Brain can power every workflow." },
+      { name: "description", content: "Set up your Imperium profile so every workflow can use it locally." },
     ],
   }),
   component: OnboardingPage,
