@@ -151,7 +151,7 @@ export function MasterResumeStudio({ userId: propUserId }: { userId?: string } =
         job_description: jobDesc,
         job_title: jobTitle || "Target Role",
         company: company || "Target Company",
-        template: template === "elegant" || template === "minimal" ? "classic" : template,
+        template,
       }),
     onSuccess: (r) => {
       setMd(r.optimized_md);
