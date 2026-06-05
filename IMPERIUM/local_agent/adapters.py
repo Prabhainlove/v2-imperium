@@ -91,12 +91,29 @@ def page_snapshot(driver) -> Dict[str, Any]:
     }
 
 
-def click_first(driver, selectors: List[str], *, timeout: float = 6) -> bool:
+def _active_dialog(driver):
+    try:
+        for d in driver.find_elements(By.CSS_SELECTOR, "div[role='dialog'], .artdeco-modal, .jobs-easy-apply-modal"):
+            try:
+                if d.is_displayed():
+                    return d
+            except WebDriverException:
+                continue
+    except WebDriverException:
+        pass
+    return None
+
+
+def _active_form_root(driver):
+    return _active_dialog(driver) or driver
+
+
+def click_first(driver, selectors: List[str], *, timeout: float = 6, root=None) -> bool:
     end = time.time() + timeout
     while time.time() < end:
         for sel in selectors:
             try:
-                els = driver.find_elements(By.CSS_SELECTOR, sel)
+                els = (root or driver).find_elements(By.CSS_SELECTOR, sel)
                 for el in els:
                     try:
                         if not el.is_displayed() or not el.is_enabled():
