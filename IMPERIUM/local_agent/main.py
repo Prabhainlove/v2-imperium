@@ -1,42 +1,46 @@
 """
-Imperium Local Automation Agent — Selenium edition.
+Imperium Local Automation Agent — fully offline FastAPI edition.
 
-Polls Supabase `automation_runs` for queued rows belonging to your account
-and drives a real, visible Chrome window through job applications. Every
-field interaction is streamed back to `automation_events` so the web UI
-can show live status on /autopilot in real time (no screenshots — just
-structured live events).
+No Supabase. No cloud. No API keys. Everything runs on this machine.
 
-Run locally:
+Endpoints (default http://127.0.0.1:8000):
+    GET  /health                 → { ok, chrome, runs }
+    POST /apply                  → { job_id }              body: { job_url, profile? }
+    POST /approve                → { ok }                  body: { job_id }
+    POST /reject                 → { ok }                  body: { job_id }
+    GET  /status/{job_id}        → full run + events
+    GET  /runs                   → list of all runs (most recent first)
+    GET  /events/{job_id}        → just the events array (for polling)
+
+Run:
     pip install -r requirements.txt
-    cp .env.example .env   # fill in SUPABASE_URL + SERVICE_ROLE + AGENT_TOKEN
+    cp .env.example .env       # optional, defaults are fine
     python main.py
-
-The agent opens Chrome visibly by default so you can watch it apply.
-Set HEADLESS=1 in .env to run hidden.
 """
 from __future__ import annotations
 
+import json
 import os
 import sys
+import threading
 import time
 import traceback
-from typing import Any, Optional
+import uuid
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 from dotenv import load_dotenv
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, Field
+import uvicorn
 
 load_dotenv()
 
 try:
-    from supabase import Client, create_client
-except ImportError:
-    print("[agent] missing deps. Run: pip install -r requirements.txt", file=sys.stderr)
-    raise
-
-try:
     import undetected_chromedriver as uc
     from selenium.webdriver.common.by import By
-    from selenium.webdriver.common.keys import Keys
     from selenium.webdriver.support.ui import WebDriverWait
     from selenium.webdriver.support import expected_conditions as EC
     from selenium.common.exceptions import (
@@ -44,70 +48,116 @@ try:
         TimeoutException,
         WebDriverException,
     )
-except ImportError:
-    print("[agent] selenium missing. Run: pip install -r requirements.txt", file=sys.stderr)
-    raise
+    SELENIUM_OK = True
+except ImportError as exc:  # noqa: BLE001
+    print(f"[agent] selenium missing ({exc}). Run: pip install -r requirements.txt", file=sys.stderr)
+    SELENIUM_OK = False
 
 
-SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
-SUPABASE_SERVICE_ROLE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
-AGENT_TOKEN = os.environ.get("IMPERIUM_AGENT_TOKEN", "local-dev-token")
+HOST = os.environ.get("HOST", "127.0.0.1")
+PORT = int(os.environ.get("PORT", "8000"))
 HEADLESS = os.environ.get("HEADLESS", "0") == "1"
-POLL_SECONDS = float(os.environ.get("POLL_SECONDS", "3"))
-
-if not (SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY):
-    print("[agent] SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required in .env", file=sys.stderr)
-    sys.exit(1)
-
-sb: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+STATE_FILE = Path(os.environ.get("STATE_FILE", "./agent_state.json"))
+CORS_ORIGINS = [o.strip() for o in os.environ.get("CORS_ORIGINS", "*").split(",") if o.strip()]
 
 
-# ─────────────────────────── event streaming ────────────────────────────
+# ─────────────────────────── in-memory state ────────────────────────────
 
-def emit(run_id: str, user_id: str, step: str, action: str, *, level: str = "info", url: str = "") -> None:
-    """Stream a structured live event back to Supabase Realtime."""
+_lock = threading.RLock()
+_runs: Dict[str, Dict[str, Any]] = {}
+
+
+def _now() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def _load_state() -> None:
+    if not STATE_FILE.exists():
+        return
     try:
-        sb.table("automation_events").insert(
+        data = json.loads(STATE_FILE.read_text("utf-8"))
+        if isinstance(data, dict):
+            _runs.update(data)
+            print(f"[agent] restored {len(_runs)} runs from {STATE_FILE}")
+    except Exception as exc:  # noqa: BLE001
+        print(f"[agent] could not read state file: {exc}", file=sys.stderr)
+
+
+def _save_state() -> None:
+    try:
+        STATE_FILE.write_text(json.dumps(_runs, indent=2), "utf-8")
+    except Exception as exc:  # noqa: BLE001
+        print(f"[agent] could not write state file: {exc}", file=sys.stderr)
+
+
+def _new_run(job_url: str, profile: Dict[str, Any]) -> str:
+    job_id = str(uuid.uuid4())
+    with _lock:
+        _runs[job_id] = {
+            "id": job_id,
+            "job_url": job_url,
+            "profile": profile,
+            "status": "queued",
+            "progress": 0,
+            "current_step": "queued",
+            "current_action": "Waiting to start",
+            "current_url": "",
+            "approved": None,           # None | True | False
+            "error": "",
+            "created_at": _now(),
+            "updated_at": _now(),
+            "events": [],
+        }
+        _save_state()
+    return job_id
+
+
+def _update(job_id: str, **fields: Any) -> None:
+    with _lock:
+        run = _runs.get(job_id)
+        if not run:
+            return
+        run.update(fields)
+        run["updated_at"] = _now()
+        _save_state()
+
+
+def emit(job_id: str, step: str, action: str, *, level: str = "info", url: str = "") -> None:
+    with _lock:
+        run = _runs.get(job_id)
+        if run is None:
+            return
+        run["events"].append(
             {
-                "run_id": run_id,
-                "user_id": user_id,
+                "ts": _now(),
                 "step": step,
                 "action": action,
                 "level": level,
                 "url": url,
             }
-        ).execute()
-    except Exception as exc:  # noqa: BLE001
-        print(f"[agent] emit failed: {exc}", file=sys.stderr)
-    print(f"[{level:>7}] {step}: {action}")
-
-
-def update_run(run_id: str, **fields: Any) -> None:
-    try:
-        sb.table("automation_runs").update(fields).eq("id", run_id).execute()
-    except Exception as exc:  # noqa: BLE001
-        print(f"[agent] update_run failed: {exc}", file=sys.stderr)
+        )
+        run["updated_at"] = _now()
+        _save_state()
+    print(f"[{level:>7}] {job_id[:8]} {step}: {action}")
 
 
 # ─────────────────────────── form filling ───────────────────────────────
 
 PROFILE_FIELD_MAP = {
-    # canonical label keyword → profile column
-    "name": ["name", "full name", "your name"],
-    "first": ["first name", "given name"],
-    "last": ["last name", "surname", "family name"],
-    "email": ["email", "e-mail"],
-    "phone": ["phone", "mobile", "telephone"],
-    "location": ["location", "city", "address"],
-    "linkedin": ["linkedin"],
-    "github": ["github"],
+    "first":     ["first name", "given name"],
+    "last":      ["last name", "surname", "family name"],
+    "name":      ["full name", "your name", "name"],
+    "email":     ["email", "e-mail"],
+    "phone":     ["phone", "mobile", "telephone"],
+    "location":  ["location", "city", "address"],
+    "linkedin":  ["linkedin"],
+    "github":    ["github"],
     "portfolio": ["portfolio", "website"],
-    "summary": ["summary", "about you", "cover letter"],
+    "summary":   ["summary", "about you", "cover letter"],
 }
 
 
 def _label_for(el) -> str:
-    """Best-effort label text for an input element."""
     for attr in ("aria-label", "placeholder", "name", "id"):
         v = el.get_attribute(attr) or ""
         if v.strip():
@@ -118,40 +168,27 @@ def _label_for(el) -> str:
         return ""
 
 
-def _profile_value(label: str, profile: dict, name_parts: dict) -> Optional[str]:
+def _profile_value(label: str, profile: Dict[str, Any], name_parts: Dict[str, str]) -> Optional[str]:
     label = label.lower()
-    if any(k in label for k in PROFILE_FIELD_MAP["first"]):
-        return name_parts.get("first")
-    if any(k in label for k in PROFILE_FIELD_MAP["last"]):
-        return name_parts.get("last")
-    if any(k in label for k in PROFILE_FIELD_MAP["email"]):
-        return profile.get("email")
-    if any(k in label for k in PROFILE_FIELD_MAP["phone"]):
-        return profile.get("phone")
-    if any(k in label for k in PROFILE_FIELD_MAP["location"]):
-        return profile.get("location")
-    if any(k in label for k in PROFILE_FIELD_MAP["linkedin"]):
-        return profile.get("linkedin_url")
-    if any(k in label for k in PROFILE_FIELD_MAP["github"]):
-        return profile.get("github_url")
-    if any(k in label for k in PROFILE_FIELD_MAP["portfolio"]):
-        return profile.get("portfolio_url")
-    if any(k in label for k in PROFILE_FIELD_MAP["name"]):
-        return profile.get("name")
-    if any(k in label for k in PROFILE_FIELD_MAP["summary"]):
-        return profile.get("summary")
+    for key, needles in PROFILE_FIELD_MAP.items():
+        if any(n in label for n in needles):
+            if key == "first": return name_parts.get("first")
+            if key == "last":  return name_parts.get("last")
+            if key == "name":  return profile.get("name")
+            if key == "linkedin":  return profile.get("linkedin_url") or profile.get("linkedin")
+            if key == "github":    return profile.get("github_url") or profile.get("github")
+            if key == "portfolio": return profile.get("portfolio_url") or profile.get("portfolio")
+            return profile.get(key)
     return None
 
 
-def fill_application(driver, run: dict, profile: dict) -> None:
-    run_id = run["id"]
-    user_id = run["user_id"]
+def fill_application(driver, job_id: str, profile: Dict[str, Any]) -> int:
     full_name = (profile.get("name") or "").strip()
     parts = full_name.split(" ", 1)
     name_parts = {"first": parts[0] if parts else "", "last": parts[1] if len(parts) > 1 else ""}
 
     inputs = driver.find_elements(By.CSS_SELECTOR, "input, textarea")
-    emit(run_id, user_id, "scan", f"Found {len(inputs)} input fields", url=driver.current_url)
+    emit(job_id, "scan", f"Found {len(inputs)} input fields", url=driver.current_url)
 
     filled = 0
     for el in inputs:
@@ -167,40 +204,30 @@ def fill_application(driver, run: dict, profile: dict) -> None:
                 continue
             el.clear()
             el.send_keys(val)
-            emit(run_id, user_id, "fill", f"Filled '{label}' = {val}", level="success")
+            emit(job_id, "fill", f"Filled '{label}' = {val}", level="success")
             filled += 1
-            time.sleep(0.15)  # so the human can see it happen
+            time.sleep(0.15)
         except WebDriverException as exc:
-            emit(run_id, user_id, "fill", f"Skipped a field: {exc.msg}", level="warn")
-
-    update_run(run_id, progress=70, current_step="filled", current_action=f"Filled {filled} fields")
-    emit(run_id, user_id, "filled", f"Auto-filled {filled} field(s). Awaiting your approval to submit.", level="success")
+            emit(job_id, "fill", f"Skipped a field: {exc.msg}", level="warn")
+    return filled
 
 
 # ─────────────────────────── run executor ───────────────────────────────
 
-def run_once(run: dict) -> None:
-    run_id = run["id"]
-    user_id = run["user_id"]
-    url = (run.get("job_url") or "").strip()
-    if not url:
-        update_run(run_id, status="failed", error="No job_url provided")
+def run_job(job_id: str) -> None:
+    if not SELENIUM_OK:
+        _update(job_id, status="failed", error="Selenium not installed")
+        emit(job_id, "error", "Selenium is not installed on this machine", level="error")
         return
 
-    update_run(run_id, status="running", progress=5, current_step="boot", current_action="Starting Chrome")
-    emit(run_id, user_id, "boot", "Launching local Chrome with Selenium")
+    run = _runs.get(job_id)
+    if not run:
+        return
+    url = run["job_url"]
+    profile = run.get("profile") or {}
 
-    profile_row = (
-        sb.table("profiles")
-        .select(
-            "name,email,phone,location,headline,summary,"
-            "linkedin_url,github_url,portfolio_url"
-        )
-        .eq("id", user_id)
-        .maybe_single()
-        .execute()
-    )
-    profile = (profile_row.data or {}) if profile_row else {}
+    _update(job_id, status="running", progress=5, current_step="boot", current_action="Starting Chrome")
+    emit(job_id, "boot", "Launching local Chrome with Selenium")
 
     opts = uc.ChromeOptions()
     if HEADLESS:
@@ -210,111 +237,163 @@ def run_once(run: dict) -> None:
     driver = None
     try:
         driver = uc.Chrome(options=opts)
-        update_run(run_id, progress=20, current_step="navigate", current_action=f"Opening {url}", current_url=url)
-        emit(run_id, user_id, "navigate", f"Opening {url}", url=url)
+        _update(job_id, progress=20, current_step="navigate", current_action=f"Opening {url}", current_url=url)
+        emit(job_id, "navigate", f"Opening {url}", url=url)
         driver.get(url)
         WebDriverWait(driver, 20).until(EC.presence_of_element_located((By.TAG_NAME, "body")))
         time.sleep(1.5)
-        update_run(run_id, progress=40, current_step="loaded", current_action="Page loaded", current_url=driver.current_url)
-        emit(run_id, user_id, "loaded", "Page loaded", level="success", url=driver.current_url)
+        _update(job_id, progress=40, current_step="loaded", current_action="Page loaded", current_url=driver.current_url)
+        emit(job_id, "loaded", "Page loaded", level="success", url=driver.current_url)
 
-        fill_application(driver, run, profile)
+        filled = fill_application(driver, job_id, profile)
+        _update(job_id, progress=70, current_step="filled", current_action=f"Filled {filled} fields")
+        emit(job_id, "filled", f"Auto-filled {filled} field(s). Awaiting your approval to submit.", level="success")
 
-        update_run(run_id, status="awaiting_approval", progress=80, current_step="approval", current_action="Waiting for human approval")
-        emit(run_id, user_id, "approval", "Waiting for you to Approve & submit in the web app.", level="warn")
+        _update(job_id, status="awaiting_approval", progress=80, current_step="approval", current_action="Waiting for human approval")
+        emit(job_id, "approval", "Click Approve or Reject in the web app.", level="warn")
 
-        # Poll for approve/reject up to 10 minutes
         deadline = time.time() + 600
-        decision = None
+        decision: Optional[str] = None
         while time.time() < deadline:
-            time.sleep(2)
-            row = sb.table("automation_runs").select("approved,status").eq("id", run_id).single().execute()
-            data = row.data or {}
-            if data.get("status") == "cancelled":
-                emit(run_id, user_id, "cancel", "Cancelled by user", level="warn")
+            time.sleep(1)
+            r = _runs.get(job_id) or {}
+            if r.get("status") == "cancelled":
+                emit(job_id, "cancel", "Cancelled", level="warn")
                 return
-            if data.get("approved") is True:
+            if r.get("approved") is True:
                 decision = "approve"
                 break
-            if data.get("approved") is False:
+            if r.get("approved") is False:
                 decision = "reject"
                 break
 
         if decision == "approve":
-            try:
-                submit = None
-                for sel in [
-                    "button[type='submit']",
-                    "input[type='submit']",
-                    "button:contains('Submit')",
-                ]:
-                    try:
-                        submit = driver.find_element(By.CSS_SELECTOR, sel)
-                        break
-                    except NoSuchElementException:
-                        continue
-                if submit:
-                    emit(run_id, user_id, "submit", "Clicking submit", level="success")
-                    submit.click()
-                    time.sleep(3)
-                    update_run(run_id, status="submitted", progress=100, current_step="submitted", current_action="Application submitted")
-                    emit(run_id, user_id, "submitted", "Application submitted ✓", level="success")
-                else:
-                    update_run(run_id, status="failed", error="No submit button found")
-                    emit(run_id, user_id, "submit", "Could not find a submit button", level="error")
-            except WebDriverException as exc:
-                update_run(run_id, status="failed", error=str(exc))
-                emit(run_id, user_id, "submit", f"Submit failed: {exc.msg}", level="error")
+            submit = None
+            for sel in ["button[type='submit']", "input[type='submit']"]:
+                try:
+                    submit = driver.find_element(By.CSS_SELECTOR, sel)
+                    break
+                except NoSuchElementException:
+                    continue
+            if submit:
+                emit(job_id, "submit", "Clicking submit", level="success")
+                submit.click()
+                time.sleep(3)
+                _update(job_id, status="submitted", progress=100, current_step="submitted", current_action="Application submitted")
+                emit(job_id, "submitted", "Application submitted ✓", level="success")
+            else:
+                _update(job_id, status="failed", error="No submit button found")
+                emit(job_id, "submit", "Could not find a submit button", level="error")
         elif decision == "reject":
-            update_run(run_id, status="rejected", current_step="rejected", current_action="Rejected by user")
-            emit(run_id, user_id, "reject", "User rejected the application before submit", level="warn")
+            _update(job_id, status="rejected", current_step="rejected", current_action="Rejected by user")
+            emit(job_id, "reject", "Rejected before submit", level="warn")
         else:
-            update_run(run_id, status="failed", error="Approval timeout")
-            emit(run_id, user_id, "timeout", "Timed out waiting for approval", level="error")
+            _update(job_id, status="failed", error="Approval timeout")
+            emit(job_id, "timeout", "Timed out waiting for approval", level="error")
 
     except TimeoutException as exc:
-        update_run(run_id, status="failed", error=f"Timeout: {exc.msg}")
-        emit(run_id, user_id, "error", f"Page timed out: {exc.msg}", level="error")
+        _update(job_id, status="failed", error=f"Timeout: {exc.msg}")
+        emit(job_id, "error", f"Page timed out: {exc.msg}", level="error")
     except Exception as exc:  # noqa: BLE001
-        update_run(run_id, status="failed", error=str(exc))
-        emit(run_id, user_id, "error", f"Unhandled error: {exc}", level="error")
+        _update(job_id, status="failed", error=str(exc))
+        emit(job_id, "error", f"Unhandled error: {exc}", level="error")
         traceback.print_exc()
     finally:
         if driver:
-            try:
-                driver.quit()
-            except Exception:  # noqa: BLE001
-                pass
+            try: driver.quit()
+            except Exception: pass
 
 
-# ─────────────────────────── poll loop ───────────────────────────────────
+# ─────────────────────────── HTTP API ───────────────────────────────────
+
+app = FastAPI(title="Imperium Local Agent", version="2.0.0")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=CORS_ORIGINS or ["*"],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+class ApplyBody(BaseModel):
+    job_url: str = Field(..., min_length=4)
+    profile: Dict[str, Any] = Field(default_factory=dict)
+
+
+class JobIdBody(BaseModel):
+    job_id: str
+
+
+@app.get("/health")
+def health() -> Dict[str, Any]:
+    return {
+        "ok": True,
+        "chrome": SELENIUM_OK,
+        "headless": HEADLESS,
+        "runs": len(_runs),
+        "version": "2.0.0",
+    }
+
+
+@app.post("/apply")
+def apply(body: ApplyBody) -> Dict[str, Any]:
+    job_id = _new_run(body.job_url, body.profile)
+    emit(job_id, "queued", f"Queued application for {body.job_url}")
+    t = threading.Thread(target=run_job, args=(job_id,), daemon=True)
+    t.start()
+    return {"job_id": job_id}
+
+
+@app.post("/approve")
+def approve(body: JobIdBody) -> Dict[str, bool]:
+    if body.job_id not in _runs:
+        raise HTTPException(404, "job not found")
+    _update(body.job_id, approved=True)
+    emit(body.job_id, "approve", "User approved", level="success")
+    return {"ok": True}
+
+
+@app.post("/reject")
+def reject(body: JobIdBody) -> Dict[str, bool]:
+    if body.job_id not in _runs:
+        raise HTTPException(404, "job not found")
+    _update(body.job_id, approved=False)
+    emit(body.job_id, "reject", "User rejected", level="warn")
+    return {"ok": True}
+
+
+@app.get("/status/{job_id}")
+def status(job_id: str) -> Dict[str, Any]:
+    run = _runs.get(job_id)
+    if not run:
+        raise HTTPException(404, "job not found")
+    return run
+
+
+@app.get("/events/{job_id}")
+def events(job_id: str) -> Dict[str, Any]:
+    run = _runs.get(job_id)
+    if not run:
+        raise HTTPException(404, "job not found")
+    return {"events": run["events"], "status": run["status"], "progress": run["progress"]}
+
+
+@app.get("/runs")
+def runs() -> List[Dict[str, Any]]:
+    items = list(_runs.values())
+    items.sort(key=lambda r: r.get("created_at", ""), reverse=True)
+    # strip events for list view
+    return [{k: v for k, v in r.items() if k != "events"} for r in items]
+
+
+# ─────────────────────────── entrypoint ─────────────────────────────────
 
 def main() -> None:
-    print(f"[agent] Imperium Selenium agent running. token={AGENT_TOKEN!r} headless={HEADLESS}")
-    print(f"[agent] Polling {SUPABASE_URL} every {POLL_SECONDS}s …")
-    while True:
-        try:
-            rows = (
-                sb.table("automation_runs")
-                .select("*")
-                .eq("status", "queued")
-                .eq("agent_token", AGENT_TOKEN)
-                .order("created_at")
-                .limit(1)
-                .execute()
-            )
-            run = (rows.data or [None])[0]
-            if run:
-                print(f"[agent] picked up run {run['id']} → {run.get('job_url')}")
-                run_once(run)
-            else:
-                time.sleep(POLL_SECONDS)
-        except KeyboardInterrupt:
-            print("\n[agent] bye")
-            return
-        except Exception as exc:  # noqa: BLE001
-            print(f"[agent] poll error: {exc}", file=sys.stderr)
-            time.sleep(POLL_SECONDS * 2)
+    _load_state()
+    print(f"[agent] Imperium Local Agent (offline) — http://{HOST}:{PORT}")
+    print(f"[agent] Chrome ready: {SELENIUM_OK} | headless={HEADLESS} | state={STATE_FILE}")
+    uvicorn.run(app, host=HOST, port=PORT, log_level="info")
 
 
 if __name__ == "__main__":
