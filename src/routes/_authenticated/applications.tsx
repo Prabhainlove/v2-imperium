@@ -16,8 +16,7 @@ import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/imperium/page-header";
 import { StatusBadge } from "@/components/imperium/status-badge";
 import { MatchScore } from "@/components/imperium/match-score";
-import { getApplications } from "@/lib/imperium/client";
-import { artifactUrl } from "@/lib/imperium/client";
+import { fetchArtifactText, getApplications } from "@/lib/imperium/client";
 import { APPLICATION_STATUS_ORDER, formatRelativeTime } from "@/lib/imperium/format";
 
 export const Route = createFileRoute("/_authenticated/applications")({
@@ -70,6 +69,17 @@ function ApplicationsPage() {
   }, [apps, q, status]);
 
   const pendingCount = countsByStatus.get("Preparing") ?? 0;
+
+  const downloadArtifact = async (path: string, filename: string) => {
+    const content = await fetchArtifactText(path);
+    const blob = new Blob([content], { type: "text/markdown" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <div className="mx-auto w-full max-w-7xl space-y-5 p-4 md:p-6">
@@ -199,17 +209,21 @@ function ApplicationsPage() {
                       </Button>
                     )}
                     {a.resume_path && (
-                      <Button asChild variant="outline" size="sm">
-                        <a href={artifactUrl(a.resume_path)} target="_blank" rel="noopener noreferrer">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => downloadArtifact(a.resume_path!, `resume_${a.application_id.slice(0, 8)}.md`)}
+                      >
                           <FileText className="mr-1.5 h-3.5 w-3.5" /> Resume
-                        </a>
                       </Button>
                     )}
                     {a.cover_letter_path && (
-                      <Button asChild variant="outline" size="sm">
-                        <a href={artifactUrl(a.cover_letter_path)} target="_blank" rel="noopener noreferrer">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => downloadArtifact(a.cover_letter_path!, `cover-letter_${a.application_id.slice(0, 8)}.md`)}
+                      >
                           <Mail className="mr-1.5 h-3.5 w-3.5" /> Cover Letter
-                        </a>
                       </Button>
                     )}
                   </div>
