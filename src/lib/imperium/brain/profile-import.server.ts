@@ -39,57 +39,6 @@ export interface ProfilePatch {
   achievements?: string[];
 }
 
-const SYSTEM = `You are an expert resume parser. Extract structured candidate information from the provided text.
-Return ONLY a single valid JSON object with this exact shape (omit fields you cannot determine, never invent data):
-
-{
-  "name": string,
-  "email": string,
-  "phone": string,
-  "location": string,
-  "headline": string,                  // short professional headline / current title
-  "summary": string,                   // 2-4 sentence professional summary
-  "target_role": string,               // best-guess target role from headline / latest title
-  "seniority": "Intern"|"Junior"|"Mid"|"Senior"|"Staff"|"Principal"|"Lead"|"Manager"|"Director",
-  "linkedin_url": string,
-  "github_url": string,
-  "portfolio_url": string,
-  "skills": string[],                  // unique, normalized (e.g. "TypeScript", "PostgreSQL")
-  "experience": [{ "title": string, "company": string, "location": string,
-                   "start": "YYYY-MM", "end": "YYYY-MM" | "",
-                   "description": string }],
-  "education": [{ "school": string, "degree": string, "field": string,
-                  "start": "YYYY", "end": "YYYY" }],
-  "projects": [{ "name": string, "description": string, "stack": string[], "url": string }],
-  "certifications": [{ "name": string, "issuer": string, "year": string }],
-  "languages": [{ "name": string, "proficiency": "basic"|"conversational"|"fluent"|"native" }],
-  "achievements": string[]
-}
-
-Strict rules:
-- Output JSON only. No markdown fences, no commentary.
-- Use ISO month strings (YYYY-MM) for experience dates; use "" for current end date.
-- Deduplicate skills. Prefer canonical names.
-- Keep descriptions concise (<= 350 chars), focus on impact and tech.`;
-
-function safeParseJson(raw: string): ProfilePatch {
-  const cleaned = raw
-    .trim()
-    .replace(/^```(?:json)?\s*/i, "")
-    .replace(/\s*```$/i, "");
-  const start = cleaned.indexOf("{");
-  const end = cleaned.lastIndexOf("}");
-  if (start === -1 || end === -1) throw new Error("Model returned non-JSON content");
-  const slice = cleaned.slice(start, end + 1);
-  try {
-    return JSON.parse(slice) as ProfilePatch;
-  } catch (err) {
-    throw new Error(
-      `Failed to parse extraction JSON: ${err instanceof Error ? err.message : String(err)}`,
-    );
-  }
-}
-
 function sanitizePatch(p: ProfilePatch): ProfilePatch {
   const out: ProfilePatch = {};
   const str = (v: unknown) => (typeof v === "string" ? v.trim() : "");
