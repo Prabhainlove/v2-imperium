@@ -316,7 +316,7 @@ export async function runPipeline(input: PipelineInput) {
 
     await log(db, user_id, task_id, "local_analyze_job", "success", `Local match=${(s.overall * 100).toFixed(0)}% for ${s.job.company} — ${s.job.title}`);
 
-    const resume_md = fallbackResume(input, s.job, s.matched);
+    const resume_md = fallbackResume(input, s.job, s.matched, s.missing);
     await log(db, user_id, task_id, "local_resume", "success", `Resume generated locally for ${s.job.company}`);
 
     const cover_md = fallbackCover(input, s.job);
