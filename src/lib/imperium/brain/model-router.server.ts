@@ -172,30 +172,6 @@ function configFor(provider: Provider, apiKey: string): ProviderConfig {
         },
       };
 
-    case "lovable":
-      return {
-        url: "https://ai.gateway.lovable.dev/v1/chat/completions",
-        headers: {
-          "Content-Type": "application/json",
-          "Lovable-API-Key": apiKey,
-        },
-        buildBody: (modelId, input) => {
-          const body: Record<string, unknown> = {
-            model: modelId,
-            messages: [
-              { role: "system", content: input.system },
-              { role: "user", content: input.user },
-            ],
-            temperature: input.temperature ?? 0.4,
-            max_tokens: input.max_tokens ?? 1400,
-          };
-          if (input.json) body.response_format = { type: "json_object" };
-          return body;
-        },
-        extractContent: (json) =>
-          (json as { choices?: { message?: { content?: string } }[] }).choices?.[0]?.message
-            ?.content ?? "",
-      };
   }
 }
 
