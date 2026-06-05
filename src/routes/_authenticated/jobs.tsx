@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { Brain, Briefcase, ExternalLink, Filter, MapPin, Search } from "lucide-react";
+import { Briefcase, Calculator, ExternalLink, Filter, MapPin, Search } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -217,8 +217,8 @@ function JobsPage() {
                     className="w-full"
                     onClick={() => setExpanded(isOpen ? null : j.listing_id)}
                   >
-                    <Brain className="mr-1.5 h-3.5 w-3.5" />
-                    {isOpen ? "Hide Brain analysis" : "Ask Brain"}
+                    <Calculator className="mr-1.5 h-3.5 w-3.5" />
+                    {isOpen ? "Hide local analysis" : "Analyze"}
                   </Button>
 
                   {isOpen && <JobIntelligencePanel listingId={j.listing_id} />}
