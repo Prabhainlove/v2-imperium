@@ -157,9 +157,9 @@ function fallbackCover(input: PipelineInput, job: RawJob): string {
 
 export async function runPipeline(input: PipelineInput) {
   const started = Date.now();
-  const { task_id, user_id } = input;
+  const { task_id, user_id, db } = input;
 
-  await log(user_id, task_id, "search_started", "ok", `role=${input.role} location=${input.location} max_apps=${input.max_applications}`);
+  await log(db, user_id, task_id, "search_started", "ok", `role=${input.role} location=${input.location} max_apps=${input.max_applications}`);
 
   // --- Discovery (parallel, with availability gating) ---
   const raw: RawJob[] = [];
@@ -170,6 +170,7 @@ export async function runPipeline(input: PipelineInput) {
       if (!src.isAvailable()) {
         per_source[src.id] = { count: 0, status: "skipped" };
         await log(
+          db,
           user_id,
           task_id,
           `discover_${src.id}`,
@@ -178,23 +179,23 @@ export async function runPipeline(input: PipelineInput) {
         );
         return;
       }
-      await log(user_id, task_id, `discover_${src.id}`, "running", `Querying ${src.label}…`);
+      await log(db, user_id, task_id, `discover_${src.id}`, "running", `Querying ${src.label}…`);
       try {
         const jobs = await src.fetch(input.role, input.location);
         per_source[src.id] = { count: jobs.length, status: "ok" };
         raw.push(...jobs);
-        await log(user_id, task_id, `discover_${src.id}`, "success", `${jobs.length} jobs from ${src.label}`);
+        await log(db, user_id, task_id, `discover_${src.id}`, "success", `${jobs.length} jobs from ${src.label}`);
       } catch (err) {
         per_source[src.id] = { count: 0, status: "failed" };
-        await log(user_id, task_id, `discover_${src.id}`, "failed", err instanceof Error ? err.message : String(err));
+        await log(db, user_id, task_id, `discover_${src.id}`, "failed", err instanceof Error ? err.message : String(err));
       }
     }),
   );
 
-  await log(user_id, task_id, "jobs_retrieved", "success", `${raw.length} raw jobs from ${Object.values(per_source).filter((p) => p.status === "ok").length} sources`);
+  await log(db, user_id, task_id, "jobs_retrieved", "success", `${raw.length} raw jobs from ${Object.values(per_source).filter((p) => p.status === "ok").length} sources`);
 
   // --- Dedupe ---
-  await log(user_id, task_id, "deduplicate", "running", `${raw.length} raw jobs`);
+  await log(db, user_id, task_id, "deduplicate", "running", `${raw.length} raw jobs`);
   const seen = new Set<string>();
   const unique: RawJob[] = [];
   for (const j of raw) {
@@ -203,20 +204,20 @@ export async function runPipeline(input: PipelineInput) {
     seen.add(key);
     unique.push(j);
   }
-  await log(user_id, task_id, "deduplicate", "success", `${unique.length} unique jobs after dedupe`);
+  await log(db, user_id, task_id, "deduplicate", "success", `${unique.length} unique jobs after dedupe`);
 
   // --- Score ---
-  await log(user_id, task_id, "jobs_ranked", "running", `Scoring ${unique.length} jobs`);
+  await log(db, user_id, task_id, "jobs_ranked", "running", `Scoring ${unique.length} jobs`);
   const scored = unique.map((j) => ({
     job: j,
     ...scoreJob(j, input.role, input.skills, input.experience, input.location, input.desired_salary_min),
   }));
   scored.sort((a, b) => b.overall - a.overall);
-  await log(user_id, task_id, "jobs_ranked", "success", `Top score ${scored[0]?.overall.toFixed(2) ?? "n/a"} across ${scored.length} jobs`);
+  await log(db, user_id, task_id, "jobs_ranked", "success", `Top score ${scored[0]?.overall.toFixed(2) ?? "n/a"} across ${scored.length} jobs`);
 
   // --- Shortlist (search results are EPHEMERAL — only shortlisted jobs touch the DB) ---
   const shortlist = scored.filter((s) => s.overall >= 0.3).slice(0, input.max_applications);
-  await log(user_id, task_id, "shortlist", "success", `${shortlist.length} qualified (≥0.30) selected for application prep`);
+  await log(db, user_id, task_id, "shortlist", "success", `${shortlist.length} qualified (≥0.30) selected for application prep`);
 
   const matches: Array<{
     application_id?: string;
