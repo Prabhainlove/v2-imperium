@@ -536,7 +536,6 @@ export const optimizeMasterResume = createServerFn({ method: "POST" })
       .select("name, email, phone, summary, skills, experience")
       .eq("id", userId)
       .maybeSingle();
-    const { optimizeResume } = await import("./brain/resume-optimizer.server");
     const { extractKeywords } = await import("./resume-render");
     const jobKeywords = extractKeywords(data.job_description, 20);
     const candSkills = ((profile?.skills as string[] | null) ?? []) as string[];
@@ -546,22 +545,22 @@ export const optimizeMasterResume = createServerFn({ method: "POST" })
     const missing = jobKeywords.filter(
       (k) => !candSkills.some((s) => s.toLowerCase() === k.toLowerCase()),
     );
-    return optimizeResume({
-      candidate_name: (profile?.name as string) || "Candidate",
-      candidate_email: (profile?.email as string) || "",
-      candidate_phone: (profile?.phone as string) || "",
-      candidate_summary: (profile?.summary as string) || undefined,
-      candidate_skills: candSkills,
-      candidate_experience: `${((profile?.experience as unknown[] | null) ?? []).length} role(s)`,
-      job_title: data.job_title,
-      company: data.company,
-      job_description: data.job_description,
-      job_tech_stack: jobKeywords,
-      matched_skills: matched,
-      missing_skills: missing.slice(0, 10),
-      current_resume_md: data.resume_md,
-      template: data.template,
-    });
+    const before = jobKeywords.length
+      ? Math.round((jobKeywords.filter((k) => data.resume_md.toLowerCase().includes(k.toLowerCase())).length / jobKeywords.length) * 100)
+      : 70;
+    const keywordLine = missing.length ? `\n\n## Target Keywords\n- ${missing.slice(0, 10).join(", ")}` : "";
+    const optimized = `${data.resume_md.trim()}${keywordLine}`;
+    const after = jobKeywords.length
+      ? Math.round((jobKeywords.filter((k) => optimized.toLowerCase().includes(k.toLowerCase())).length / jobKeywords.length) * 100)
+      : before;
+    return {
+      optimized_md: optimized,
+      ats_score_before: before,
+      ats_score_after: after,
+      improvements: missing.length ? [`Added ${missing.slice(0, 10).length} missing job keywords.`] : ["Resume already covers the detected job keywords."],
+      added_keywords: missing.slice(0, 10),
+      reasoning: "Local keyword optimization. No AI provider is required.",
+    };
   });
 
 /* ---------- Brain: per-listing intelligence ---------- */
