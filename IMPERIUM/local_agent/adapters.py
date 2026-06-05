@@ -379,13 +379,34 @@ def maybe_upload_resume(driver, emit: Emit, profile: Dict[str, Any], root=None) 
 def linkedin_pick_first_job(driver, emit: Emit) -> bool:
     """On a /jobs/search page, click the first job card."""
     before = driver.current_url
-    ok = click_first(driver, [
-        "li.jobs-search-results__list-item a[href*='/jobs/view/']",
-        "div.job-card-container a[href*='/jobs/view/']",
-        "a.job-card-list__title",
-        "a.job-card-container__link",
-        "a[href*='/jobs/view/']",
-    ], timeout=8)
+    ok = False
+    try:
+        cards = driver.find_elements(By.CSS_SELECTOR, "li.jobs-search-results__list-item, div.job-card-container")
+        cards.sort(key=lambda c: 0 if "easy apply" in (c.text or "").lower() else 1)
+        for card in cards[:12]:
+            try:
+                link = card.find_element(By.CSS_SELECTOR, "a[href*='/jobs/view/']")
+                if link.is_displayed():
+                    driver.execute_script("arguments[0].scrollIntoView({block:'center'});", link)
+                    time.sleep(0.2)
+                    try:
+                        link.click()
+                    except WebDriverException:
+                        driver.execute_script("arguments[0].click();", link)
+                    ok = True
+                    break
+            except WebDriverException:
+                continue
+    except WebDriverException:
+        pass
+    if not ok:
+        ok = click_first(driver, [
+            "li.jobs-search-results__list-item a[href*='/jobs/view/']",
+            "div.job-card-container a[href*='/jobs/view/']",
+            "a.job-card-list__title",
+            "a.job-card-container__link",
+            "a[href*='/jobs/view/']",
+        ], timeout=8)
     if not ok:
         emit("listing", "Could not find a job card to click", level="warn")
         return False
