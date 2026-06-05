@@ -242,14 +242,14 @@ def _direct_profile_value(label: str, profile: Dict[str, Any], name_parts: Dict[
 
 
 def fill_visible_fields(driver, emit: Emit, profile: Dict[str, Any],
-                        job_context: str = "") -> int:
+                        job_context: str = "", root=None) -> int:
     """Generic form filler: profile-map first, LLM fallback for unknowns."""
     parts = (profile.get("name") or "").split(" ", 1)
     name_parts = {"first": parts[0] if parts else "",
                   "last":  parts[1] if len(parts) > 1 else ""}
 
     filled = 0
-    elements = driver.find_elements(By.CSS_SELECTOR, "input, textarea, select")
+    elements = (root or driver).find_elements(By.CSS_SELECTOR, "input, textarea, select")
     for el in elements:
         try:
             tag = el.tag_name.lower()
@@ -295,11 +295,11 @@ def fill_visible_fields(driver, emit: Emit, profile: Dict[str, Any],
 
 
 def fill_choice_controls(driver, emit: Emit, profile: Dict[str, Any],
-                         job_context: str = "") -> int:
+                         job_context: str = "", root=None) -> int:
     """Fill visible radio groups and safe required checkboxes."""
     filled = 0
     seen_radio_names = set()
-    for el in driver.find_elements(By.CSS_SELECTOR, "input[type='radio'], input[type='checkbox']"):
+    for el in (root or driver).find_elements(By.CSS_SELECTOR, "input[type='radio'], input[type='checkbox']"):
         try:
             t = (el.get_attribute("type") or "").lower()
             if not el.is_enabled() or el.is_selected():
@@ -325,7 +325,7 @@ def fill_choice_controls(driver, emit: Emit, profile: Dict[str, Any],
             name = el.get_attribute("name") or question
             if name in seen_radio_names:
                 continue
-            group = driver.find_elements(By.CSS_SELECTOR, f"input[type='radio'][name='{name}']") if el.get_attribute("name") else [el]
+            group = (root or driver).find_elements(By.CSS_SELECTOR, f"input[type='radio'][name='{name}']") if el.get_attribute("name") else [el]
             choices = []
             for r in group:
                 txt = _label_text(driver, r)
