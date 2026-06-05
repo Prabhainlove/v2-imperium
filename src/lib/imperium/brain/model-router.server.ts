@@ -31,9 +31,6 @@ const PROVIDER_MODELS: Record<Provider, BrainModelInfo[]> = {
   anthropic: [
     { id: "claude-3-5-haiku-latest", label: "Claude 3.5 Haiku", free: false },
   ],
-  lovable: [
-    { id: "google/gemini-2.5-flash", label: "Gemini 2.5 Flash (Lovable)", free: false },
-  ],
 };
 
 /** Exported for UI display. Returns the active chain based on configured keys. */
