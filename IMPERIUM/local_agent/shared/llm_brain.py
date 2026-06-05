@@ -1,12 +1,33 @@
 """
-Local LLM brain for the Imperium agent.
+shared/llm_brain.py
+===================
 
-Talks to a local Ollama server (default http://127.0.0.1:11434) using the
-OpenAI-compatible /v1/chat/completions endpoint. If Ollama is not reachable
-we silently fall back to heuristics so the agent still works.
+Purpose
+-------
+Thin client for a locally-running Ollama server. Provides three primitives
+used by the rest of the agent:
 
-Install once:
-    https://ollama.com  -> `ollama pull qwen2.5:7b`  (or llama3.2:3b for low RAM)
+- ``llm_available()`` — is the local model reachable?
+- ``classify_page(snapshot)`` — what kind of page are we on?
+- ``answer_question(question, profile, ...)`` — answer a form field.
+
+If Ollama is not installed/running, every call silently falls back to
+deterministic heuristics so the agent keeps working offline.
+
+Inputs
+------
+- ``OLLAMA_URL`` (default http://127.0.0.1:11434)
+- ``OLLAMA_MODEL`` (default qwen2.5:7b)
+- DOM ``snapshot`` dict produced by ``automation/form_parser.page_snapshot``.
+
+Outputs
+-------
+- A string label (one of ``PAGE_KINDS``) for ``classify_page``.
+- A short string or ``None`` for ``answer_question``.
+
+Responsibility
+--------------
+LLM I/O only. No Selenium, no state mutation.
 """
 from __future__ import annotations
 
@@ -84,7 +105,7 @@ PAGE_KINDS = [
 
 
 def classify_page(snapshot: Dict[str, Any]) -> str:
-    """Rule-first classifier. Hard URL/page-structure rules beat Ollama."""
+    """Rule-first classifier. Hard URL/page-structure rules beat the LLM."""
     url = (snapshot.get("url") or "").lower()
     title = (snapshot.get("title") or "").lower()
     text = (snapshot.get("body_text") or "").lower()[:4000]
@@ -97,14 +118,12 @@ def classify_page(snapshot: Dict[str, Any]) -> str:
         return "captcha"
     if "/uas/login" in url or "/login" in url or "sign in to linkedin" in text:
         return "login_wall"
-    if "application submitted" in text or "your application was sent" in text \
-       or "thanks for applying" in text or "we received your application" in text:
+    if any(s in text for s in (
+        "application submitted", "your application was sent",
+        "thanks for applying", "we received your application",
+    )):
         return "success"
 
-    # LinkedIn URL takes precedence over button-text guesses, because the
-    # search results page also has 'Easy Apply' badges AND a 'Next' pagination
-    # button which would otherwise look like a wizard step.
-    # Easy Apply modal is only real if the modal dialog is actually present
     if "linkedin.com" in url:
         modal_source = dialog_text if has_dialog else ""
         has_modal = bool(modal_source) and any(s in modal_source for s in (
@@ -127,23 +146,24 @@ def classify_page(snapshot: Dict[str, Any]) -> str:
         "linkedin.com/jobs/search" in url
         or "linkedin.com/jobs/collections" in url
         or ("linkedin.com/jobs" in url and job_cards >= 2 and not has_dialog)
-        or ("linkedin.com/jobs" in url and any(q in url for q in ("keywords=", "f_al=", "geoId=", "currentjobid=", "start=")) and not has_dialog)
+        or ("linkedin.com/jobs" in url
+            and any(q in url for q in ("keywords=", "f_al=", "geoid=", "currentjobid=", "start="))
+            and not has_dialog)
     )
     if is_linkedin_jobs_search:
         return "job_listing"
 
-
-    # External ATS
     host = url.split("/")[2] if "://" in url else url
-    if any(d in host for d in ("greenhouse.io", "lever.co", "ashbyhq.com",
-                                "workday", "smartrecruiters.com", "icims.com",
-                                "bamboohr.com", "jobvite.com", "myworkdayjobs.com")):
+    if any(d in host for d in (
+        "greenhouse.io", "lever.co", "ashbyhq.com", "workday",
+        "smartrecruiters.com", "icims.com", "bamboohr.com",
+        "jobvite.com", "myworkdayjobs.com",
+    )):
         return "external_form"
 
     if snapshot.get("input_count", 0) >= 2:
         return "external_form"
 
-    # Last resort: LLM
     out = _chat([
         {"role": "system", "content":
             "Classify the web page into exactly one label: " + ", ".join(PAGE_KINDS) +
@@ -162,7 +182,7 @@ def classify_page(snapshot: Dict[str, Any]) -> str:
 
 def answer_question(question: str, profile: Dict[str, Any],
                     job_context: str = "", choices: Optional[List[str]] = None) -> Optional[str]:
-    """Answer a free-text or single-choice application question using the LLM."""
+    """Answer a free-text or single-choice application question."""
     if not llm_available():
         return _heuristic_answer(question, profile, choices)
 
@@ -188,7 +208,6 @@ def answer_question(question: str, profile: Dict[str, Any],
     if parsed and parsed.get("answer"):
         ans = str(parsed["answer"]).strip()
         if choices:
-            # snap to closest choice
             low = ans.lower()
             for c in choices:
                 if c.lower() == low or c.lower() in low or low in c.lower():
@@ -198,15 +217,17 @@ def answer_question(question: str, profile: Dict[str, Any],
     return _heuristic_answer(question, profile, choices)
 
 
-def _heuristic_answer(q: str, profile: Dict[str, Any], choices: Optional[List[str]]) -> Optional[str]:
+def _heuristic_answer(q: str, profile: Dict[str, Any],
+                      choices: Optional[List[str]]) -> Optional[str]:
     q = q.lower()
     if choices:
-        # yes/no questions: prefer "Yes" unless about sponsorship / disability / felony
         neg = any(k in q for k in ("sponsor", "visa", "disabil", "felony", "convicted", "veteran"))
         for c in choices:
             cl = c.lower().strip()
-            if not neg and cl in ("yes", "y", "true"): return c
-            if neg and cl in ("no", "n", "false"): return c
+            if not neg and cl in ("yes", "y", "true"):
+                return c
+            if neg and cl in ("no", "n", "false"):
+                return c
         return choices[0]
     if "years" in q and "experience" in q:
         return "3"
