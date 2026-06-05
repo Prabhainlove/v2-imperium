@@ -18,7 +18,23 @@ const errorMiddleware = createMiddleware().server(async ({ next }) => {
   }
 });
 
+const csrfMiddleware = createMiddleware({ type: "request" }).server(
+  async ({ request, serverFnMeta, next }) => {
+    if (serverFnMeta) {
+      const site = request.headers.get("sec-fetch-site");
+      const origin = request.headers.get("origin");
+      const host = request.headers.get("host");
+      const sameOrigin = !origin || !host || new URL(origin).host === host;
+
+      if ((site && site !== "same-origin" && site !== "same-site") || !sameOrigin) {
+        return new Response("Invalid server function origin", { status: 403 });
+      }
+    }
+    return next();
+  },
+);
+
 export const startInstance = createStart(() => ({
   functionMiddleware: [attachSupabaseAuth],
-  requestMiddleware: [errorMiddleware],
+  requestMiddleware: [csrfMiddleware, errorMiddleware],
 }));
