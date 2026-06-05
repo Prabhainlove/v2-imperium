@@ -15,7 +15,7 @@
  */
 import type { BrainModelInfo } from "./types";
 
-type Provider = "openrouter" | "openai" | "anthropic" | "lovable";
+type Provider = "openrouter" | "openai" | "anthropic";
 
 /** Default chat-model chain per provider (most-capable → cheapest).
  *  OpenRouter is FIRST and uses free-tier models with automatic failover. */
