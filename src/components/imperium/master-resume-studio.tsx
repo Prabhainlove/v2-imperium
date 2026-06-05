@@ -7,7 +7,7 @@ import {
   FileUp,
   History,
   Loader2,
-  Printer,
+  // (Printer removed — PDF export is now via jsPDF in resume-render.ts)
   Save,
   Sparkles,
   Target,
