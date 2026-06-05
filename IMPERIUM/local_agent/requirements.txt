@@ -2,3 +2,4 @@ selenium==4.27.1
 undetected-chromedriver==3.5.5
 webdriver-manager==4.0.2
 python-dotenv==1.0.1
+requests==2.32.3
