@@ -1,8 +1,10 @@
 # Imperium Local Agent (offline)
 
 A fully offline job-application automation agent. No Supabase, no cloud,
-no API keys. It runs a local FastAPI server on `http://127.0.0.1:8000`
-and drives a real, visible Chrome window via Selenium.
+no API keys, **no compiled dependencies**. Pure Python standard library
+(`http.server` + `json` + `threading`) — works on Python 3.14 on a clean
+Windows machine without Rust, MSVC, or Build Tools. Drives a real, visible
+Chrome window via Selenium on `http://127.0.0.1:8000`.
 
 ## Install & run
 
