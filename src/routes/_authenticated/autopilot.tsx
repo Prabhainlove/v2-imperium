@@ -208,7 +208,7 @@ function AutopilotPage() {
     <div className="space-y-6 p-6">
       <PageHeader
         title="Autopilot"
-        description="Queue a job URL; the local Playwright agent on your machine opens a real Chromium window, fills the form, and pauses for your approval before submitting."
+        description="Queue a job URL; the local Selenium agent on your machine opens a real Chrome window, fills the form, streams every action live, and pauses for your approval before submitting."
       />
 
       <Card className="p-4">
