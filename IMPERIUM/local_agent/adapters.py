@@ -518,9 +518,13 @@ def external_form_flow(driver, emit: Emit, profile: Dict[str, Any]) -> str:
 def run_adapter(kind: str, driver, emit: Emit, profile: Dict[str, Any]) -> str:
     if kind == "job_listing":
         if linkedin_pick_first_job(driver, emit):
-            WebDriverWait(driver, 8).until(
-                lambda d: "/jobs/view/" in d.current_url or
-                          d.find_elements(By.CSS_SELECTOR, "button.jobs-apply-button"))
+            try:
+                WebDriverWait(driver, 10).until(
+                    lambda d: "/jobs/view/" in d.current_url
+                    or d.find_elements(By.CSS_SELECTOR, "button.jobs-apply-button, button[aria-label*='Easy Apply' i], button[aria-label*='Apply' i]")
+                )
+            except TimeoutException:
+                emit("listing", "Job opened, but Apply button did not appear yet", level="warn")
             kind = "job_detail"
         else:
             return "needs_human"
