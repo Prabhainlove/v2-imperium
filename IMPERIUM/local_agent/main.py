@@ -67,7 +67,7 @@ STATE_FILE = Path(os.environ.get("STATE_FILE", "./agent_state.json"))
 # CHROME_PROFILE_DIR is the sub-folder (e.g. "Default", "Profile 1").
 # IMPORTANT: fully close your normal Chrome before starting the agent, or
 # Chrome will refuse to open the profile twice.
-def _default_chrome_user_data_dir() -> str:
+def _real_chrome_user_data_dir() -> str:
     home = Path.home()
     if os.name == "nt":
         p = home / "AppData" / "Local" / "Google" / "Chrome" / "User Data"
@@ -77,9 +77,41 @@ def _default_chrome_user_data_dir() -> str:
         p = home / ".config" / "google-chrome"
     return str(p)
 
-CHROME_USER_DATA_DIR = os.environ.get("CHROME_USER_DATA_DIR", _default_chrome_user_data_dir())
+
+def _dedicated_chrome_user_data_dir() -> str:
+    # A persistent profile owned by the agent. Survives restarts, keeps
+    # LinkedIn / Google logins, and never collides with your real Chrome.
+    return str(Path.home() / ".imperium_chrome_profile")
+
+
+# USE_REAL_CHROME=1  -> reuse your real Chrome "User Data" (you MUST fully
+#                      close Chrome first; not recommended).
+# Default            -> dedicated persistent profile at ~/.imperium_chrome_profile
+USE_REAL_CHROME = os.environ.get("USE_REAL_CHROME", "0") == "1"
+# Back-compat with previous env var name:
+if os.environ.get("USE_DEFAULT_CHROME") == "1":
+    USE_REAL_CHROME = True
+
+CHROME_USER_DATA_DIR = os.environ.get(
+    "CHROME_USER_DATA_DIR",
+    _real_chrome_user_data_dir() if USE_REAL_CHROME else _dedicated_chrome_user_data_dir(),
+)
 CHROME_PROFILE_DIR = os.environ.get("CHROME_PROFILE_DIR", "Default")
-USE_DEFAULT_CHROME = os.environ.get("USE_DEFAULT_CHROME", "1") == "1"
+
+
+def _clear_singleton_locks(user_data_dir: str) -> None:
+    """Remove stale Chrome lock files that block a fresh launch."""
+    try:
+        base = Path(user_data_dir)
+        if not base.exists():
+            base.mkdir(parents=True, exist_ok=True)
+            return
+        for name in ("SingletonLock", "SingletonCookie", "SingletonSocket"):
+            for p in base.glob(name):
+                try: p.unlink()
+                except Exception: pass
+    except Exception as exc:  # noqa: BLE001
+        print(f"[agent] could not clear singleton locks: {exc}", file=sys.stderr)
 
 
 # --------------------------- in-memory state ----------------------------
