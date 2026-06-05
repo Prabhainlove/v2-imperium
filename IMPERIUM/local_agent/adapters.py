@@ -158,7 +158,7 @@ def click_xpath(driver, xpaths: List[str], *, timeout: float = 6, root=None) -> 
     return False
 
 
-def find_submit_button(driver):
+def find_submit_button(driver, root=None):
     """Find a submit/apply button using many heuristics."""
     candidates = [
         "button[aria-label*='Submit application' i]",
@@ -170,7 +170,7 @@ def find_submit_button(driver):
     ]
     for sel in candidates:
         try:
-            for el in driver.find_elements(By.CSS_SELECTOR, sel):
+            for el in (root or driver).find_elements(By.CSS_SELECTOR, sel):
                 if el.is_displayed() and el.is_enabled():
                     return el
         except WebDriverException:
@@ -184,7 +184,7 @@ def find_submit_button(driver):
               "'abcdefghijklmnopqrstuvwxyz'))='submit'"
               " or contains(translate(normalize-space(.),"
               "'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'apply now'))]")
-        for el in driver.find_elements(By.XPATH, xp):
+        for el in (root or driver).find_elements(By.XPATH, xp):
             if el.is_displayed() and el.is_enabled():
                 return el
     except WebDriverException:
