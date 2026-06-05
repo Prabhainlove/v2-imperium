@@ -402,16 +402,31 @@ def linkedin_pick_first_job(driver, emit: Emit) -> bool:
 
 
 def linkedin_click_easy_apply(driver, emit: Emit) -> bool:
+    before_url = driver.current_url
+    before_handles = list(driver.window_handles)
     if click_first(driver, [
         "button.jobs-apply-button",
         "button[aria-label*='Easy Apply' i]",
         "button[aria-label*='Apply' i]",
         "button[data-control-name='jobdetails_topcard_inapply']",
     ], timeout=8):
-        emit("easy_apply", "Opened Easy Apply modal", level="success")
-        time.sleep(1.5)
-        return True
-    emit("easy_apply", "No Easy Apply button (external apply required)", level="warn")
+        time.sleep(2)
+        try:
+            if len(driver.window_handles) > len(before_handles):
+                driver.switch_to.window(driver.window_handles[-1])
+                emit("external", "Opened external application tab", level="success", url=driver.current_url)
+                return False
+        except WebDriverException:
+            pass
+        if _active_dialog(driver):
+            emit("easy_apply", "Opened Easy Apply modal", level="success")
+            return True
+        if "linkedin.com" not in driver.current_url or driver.current_url != before_url:
+            emit("external", "Opened external application page", level="success", url=driver.current_url)
+            return False
+        emit("easy_apply", "Clicked Apply, but no modal opened yet", level="warn")
+        return False
+    emit("easy_apply", "No Apply button found", level="warn")
     return False
 
 
@@ -514,6 +529,13 @@ def run_adapter(kind: str, driver, emit: Emit, profile: Dict[str, Any]) -> str:
         if "linkedin.com" in driver.current_url:
             if linkedin_click_easy_apply(driver, emit):
                 return linkedin_easy_apply_loop(driver, emit, profile)
+            try:
+                if len(driver.window_handles) > 1:
+                    driver.switch_to.window(driver.window_handles[-1])
+            except WebDriverException:
+                pass
+            if "linkedin.com" not in driver.current_url:
+                return external_form_flow(driver, emit, profile)
             return "needs_human"
         return external_form_flow(driver, emit, profile)
 
