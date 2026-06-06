@@ -296,7 +296,7 @@ export function buildResumeFromProfile(ctx: AgentContext, job?: JobBrief): strin
 
 export function buildCoverFromProfile(ctx: AgentContext, job: JobBrief): string {
   const p = ctx.personal;
-  const topProjects = ctx.projects.slice(0, 2);
+  const topProjects = rankProjects(ctx, job).slice(0, 2);
   const edu = ctx.education[0];
   const matched = alignedSkills(ctx, job).matched.slice(0, 5);
 
@@ -317,7 +317,7 @@ export function buildCoverFromProfile(ctx: AgentContext, job: JobBrief): string 
   const proofParagraph = projectProof
     ? `${projectProof}. These projects are the best proof of my ability to turn product requirements into working software.`
     : matched.length
-      ? `My profile-backed strengths include ${matched.join(", ")}, supported by coursework and project execution.`
+      ? `My job-aligned strengths include ${matched.join(", ")}, supported by coursework and project execution.`
       : `My profile shows strong foundations in software engineering, full-stack development, and problem solving.`;
 
   const closing = `I would value the opportunity to bring this project-first execution mindset to ${job.company}. Thank you for your time and consideration.`;
