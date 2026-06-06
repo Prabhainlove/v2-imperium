@@ -88,6 +88,47 @@ export const getProfile = createServerFn({ method: "GET" })
     return { status: "ok", profile };
   });
 
+/**
+ * getAgentContext — returns the EXACT structured payload every Imperium
+ * agent receives before generating a resume, cover letter, or match.
+ * Backed by Profile (single source of truth). Used by /profile-preview so
+ * the user can see byte-for-byte what the agents see.
+ */
+export const getAgentContext = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase, userId } = context;
+    const { data } = await supabase
+      .from("profiles")
+      .select(PROFILE_V2_COLUMNS)
+      .eq("id", userId)
+      .maybeSingle();
+    const profile = rowToProfile(userId, data as Record<string, unknown> | null);
+    const { buildAgentContext } = await import("./profile/agent-context");
+    const { computeCompleteness } = await import("./profile/completeness");
+    const ctx = buildAgentContext(profile as never);
+    const completeness = computeCompleteness(profile as never);
+    return {
+      profile,
+      completeness,
+      agent_context: {
+        personal: ctx.personal,
+        career: ctx.career,
+        skills: ctx.skills,
+        projects: ctx.projects,
+        experience: ctx.experience,
+        education: ctx.education,
+        certifications: ctx.certifications,
+        languages: ctx.languages,
+        achievements: ctx.achievements,
+        is_fresher: ctx.is_fresher,
+        vocabulary_size: ctx.vocabulary.size,
+      },
+    };
+  });
+
+
+
 const SaveProfileInput = z
   .object({
     name: z.string().optional(),
@@ -531,14 +572,31 @@ export const optimizeMasterResume = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => OptimizeMasterInput.parse(input))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    const { data: profile } = await supabase
+    const { data: profileRow } = await supabase
       .from("profiles")
-      .select("name, email, phone, summary, skills, experience")
+      .select(PROFILE_V2_COLUMNS)
       .eq("id", userId)
       .maybeSingle();
+    const profile = rowToProfile(userId, profileRow as Record<string, unknown> | null);
     const { extractKeywords } = await import("./resume-render");
+    const { buildAgentContext } = await import("./profile/agent-context");
+    const { buildResumeFromProfile } = await import("./profile/generators");
+    const { validateAgainstProfile, stripHallucinations } = await import("./profile/agent-context");
+
     const jobKeywords = extractKeywords(data.job_description, 20);
-    const candSkills = ((profile?.skills as string[] | null) ?? []) as string[];
+    const ctx = buildAgentContext(profile as never);
+    // Profile-first generation. Tailored to the job's title/company; never
+    // appends invented keyword lists.
+    const optimized = buildResumeFromProfile(ctx, {
+      title: data.job_title,
+      company: data.company,
+      description: data.job_description,
+    });
+    // Validate against profile vocabulary; strip any hallucinated tech terms.
+    const report = validateAgainstProfile(optimized, ctx);
+    const safe = report.ok ? optimized : stripHallucinations(optimized, ctx);
+
+    const candSkills = ctx.skills;
     const matched = candSkills.filter((s) =>
       data.job_description.toLowerCase().includes(s.toLowerCase()),
     );
@@ -548,18 +606,20 @@ export const optimizeMasterResume = createServerFn({ method: "POST" })
     const before = jobKeywords.length
       ? Math.round((jobKeywords.filter((k) => data.resume_md.toLowerCase().includes(k.toLowerCase())).length / jobKeywords.length) * 100)
       : 70;
-    const keywordLine = missing.length ? `\n\n## Target Keywords\n- ${missing.slice(0, 10).join(", ")}` : "";
-    const optimized = `${data.resume_md.trim()}${keywordLine}`;
     const after = jobKeywords.length
-      ? Math.round((jobKeywords.filter((k) => optimized.toLowerCase().includes(k.toLowerCase())).length / jobKeywords.length) * 100)
+      ? Math.round((jobKeywords.filter((k) => safe.toLowerCase().includes(k.toLowerCase())).length / jobKeywords.length) * 100)
       : before;
     return {
-      optimized_md: optimized,
+      optimized_md: safe,
       ats_score_before: before,
       ats_score_after: after,
-      improvements: missing.length ? [`Added ${missing.slice(0, 10).length} missing job keywords.`] : ["Resume already covers the detected job keywords."],
-      added_keywords: missing.slice(0, 10),
-      reasoning: "Local keyword optimization. No AI provider is required.",
+      improvements: [
+        `Rebuilt resume from profile (${ctx.projects.length} projects, ${ctx.skills.length} skills, ${ctx.education.length} education entries).`,
+        matched.length ? `Aligned ${matched.length} profile skills with the job description.` : "No direct skill overlap detected — review profile skills.",
+        report.ok ? "Validation passed — no hallucinated technologies." : `Stripped ${report.hallucinated.length} hallucinated term(s) the profile does not support.`,
+      ],
+      added_keywords: matched,
+      reasoning: "Profile-first generation. Job description only customizes ordering and the targeting line — no invented experience or tech.",
     };
   });
 
@@ -684,19 +744,52 @@ export const runJobSearch = createServerFn({ method: "POST" })
     const { supabase, userId, claims } = context;
     const task_id = `t_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 
-    // Persist latest profile snapshot for the user
-    const skillList = data.skills.split(",").map((s) => s.trim()).filter(Boolean);
+    // PROFILE IS THE SOURCE OF TRUTH.
+    // Read the saved profile first. Only fill in *missing* fields from the
+    // search form — never overwrite existing rich profile data with a thin
+    // form submission.
+    const { data: existing } = await supabase
+      .from("profiles")
+      .select(PROFILE_V2_COLUMNS)
+      .eq("id", userId)
+      .maybeSingle();
+    const existingProfile = rowToProfile(userId, existing as Record<string, unknown> | null);
     const fallbackEmail = (claims?.email as string | undefined) ?? "";
+    const formSkills = data.skills.split(",").map((s) => s.trim()).filter(Boolean);
+
+    const merged = {
+      id: userId,
+      name: existingProfile?.name || data.name || "Candidate",
+      email: existingProfile?.email || data.email || fallbackEmail,
+      phone: existingProfile?.phone || data.phone || "",
+      location: existingProfile?.location || data.location,
+      headline: existingProfile?.headline || data.role,
+      summary: existingProfile?.summary || data.resume_text.slice(0, 1000),
+      target_role: existingProfile?.target_role || data.role,
+      skills: existingProfile?.skills?.length ? existingProfile.skills : formSkills,
+      experience: existingProfile?.experience ?? [],
+      education: existingProfile?.education ?? [],
+      projects: existingProfile?.projects ?? [],
+      certifications: existingProfile?.certifications ?? [],
+      languages: existingProfile?.languages ?? [],
+      achievements: existingProfile?.achievements ?? [],
+      linkedin_url: existingProfile?.linkedin_url ?? "",
+      github_url: existingProfile?.github_url ?? "",
+      portfolio_url: existingProfile?.portfolio_url ?? "",
+    };
+
+    // Persist non-destructively (only the fields we *do* know).
     await supabase.from("profiles").upsert(
       {
         id: userId,
-        name: data.name || "Candidate",
-        email: data.email || fallbackEmail,
-        phone: data.phone,
-        location: data.location,
-        headline: data.role,
-        summary: data.resume_text.slice(0, 1000),
-        skills: skillList,
+        name: merged.name,
+        email: merged.email,
+        phone: merged.phone,
+        location: merged.location,
+        headline: merged.headline,
+        summary: merged.summary,
+        target_role: merged.target_role,
+        skills: merged.skills,
       },
       { onConflict: "id" },
     );
@@ -708,13 +801,8 @@ export const runJobSearch = createServerFn({ method: "POST" })
       role: data.role,
       location: data.location,
       experience: data.experience,
-      skills: skillList,
-      candidate: {
-        name: data.name || "Candidate",
-        email: data.email || fallbackEmail || "candidate@example.com",
-        phone: data.phone,
-        summary: data.resume_text.slice(0, 1000),
-      },
+      skills: merged.skills,
+      profile: merged as never,
       max_applications: data.max_applications,
     });
 
