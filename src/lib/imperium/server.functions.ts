@@ -342,7 +342,7 @@ export const getApplication = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => IdInput.parse(input))
   .handler(async ({ data, context }) => {
-    const { supabase } = context;
+    const { supabase, userId } = context;
     const { data: row, error } = await supabase
       .from("applications")
       .select("*")
@@ -350,10 +350,25 @@ export const getApplication = createServerFn({ method: "GET" })
       .maybeSingle();
     if (error) throw new Error(error.message);
     if (!row) throw new Error("Application not found");
+    const [{ data: listing }, { data: profileRow }] = await Promise.all([
+      supabase.from("job_listings").select("*").eq("id", row.listing_id as string).maybeSingle(),
+      supabase.from("profiles").select(PROFILE_V2_COLUMNS).eq("id", userId).maybeSingle(),
+    ]);
+    const profile = rowToProfile(userId, profileRow as Record<string, unknown> | null);
+    const { buildAgentContext } = await import("./profile/agent-context");
+    const { buildResumeFromProfile, buildCoverFromProfile } = await import("./profile/generators");
+    const ctx = buildAgentContext(profile as never);
+    const job = {
+      title: (listing?.title as string) || (row.job_title as string) || "Target Role",
+      company: (listing?.company as string) || (row.company as string) || "Target Company",
+      description: (listing?.description as string) || "",
+      tech_stack: ((listing?.tech_stack as string[] | null) ?? []) as string[],
+      location: (listing?.location as string) || "",
+    };
     return {
       ...mapApp(row),
-      resume_md: (row.resume_md as string) ?? "",
-      cover_letter_md: (row.cover_letter_md as string) ?? "",
+      resume_md: buildResumeFromProfile(ctx, job),
+      cover_letter_md: buildCoverFromProfile(ctx, job),
     };
   });
 
