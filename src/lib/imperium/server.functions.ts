@@ -524,15 +524,29 @@ export const getArtifact = createServerFn({ method: "GET" })
     const m = data.path.match(/^application:([^:]+):(resume|cover)$/);
     if (!m) throw new Error("Invalid artifact path");
     const [, appId, kind] = m;
-    const { supabase } = context;
+    const { supabase, userId } = context;
     const { data: row, error } = await supabase
       .from("applications")
-      .select("resume_md, cover_letter_md")
+      .select("*")
       .eq("id", appId)
       .maybeSingle();
     if (error) throw new Error(error.message);
     if (!row) throw new Error("Application not found");
-    return { content: kind === "resume" ? row.resume_md : row.cover_letter_md };
+    const [{ data: listing }, { data: profileRow }] = await Promise.all([
+      supabase.from("job_listings").select("*").eq("id", row.listing_id as string).maybeSingle(),
+      supabase.from("profiles").select(PROFILE_V2_COLUMNS).eq("id", userId).maybeSingle(),
+    ]);
+    const { buildAgentContext } = await import("./profile/agent-context");
+    const { buildResumeFromProfile, buildCoverFromProfile } = await import("./profile/generators");
+    const ctx = buildAgentContext(rowToProfile(userId, profileRow as Record<string, unknown> | null) as never);
+    const job = {
+      title: (listing?.title as string) || (row.job_title as string) || "Target Role",
+      company: (listing?.company as string) || (row.company as string) || "Target Company",
+      description: (listing?.description as string) || "",
+      tech_stack: ((listing?.tech_stack as string[] | null) ?? []) as string[],
+      location: (listing?.location as string) || "",
+    };
+    return { content: kind === "resume" ? buildResumeFromProfile(ctx, job) : buildCoverFromProfile(ctx, job) };
   });
 
 /* ---------- Rendered Resume (RenderCV-style) ---------- */
