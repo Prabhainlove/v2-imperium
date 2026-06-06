@@ -114,6 +114,16 @@ function OnboardingPage() {
         <p className="text-sm text-muted-foreground">
           The deeper your profile, the smarter every workflow becomes. You can refine everything later in Settings.
         </p>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() =>
+            setDraft((d) => (d ? { ...d, ...SAMPLE_PROFILE, id: d.id, onboarded: d.onboarded } : d))
+          }
+        >
+          Load sample profile (Dinesh Kumar)
+        </Button>
       </div>
 
       <div className="space-y-2">
