@@ -26,12 +26,16 @@ interface Props {
 function mergePatch(current: ImperiumProfile, patch: Patch): Patch {
   const out: Patch = {};
   const cur = current as unknown as Record<string, unknown>;
+  const isBadSummary = (value: unknown) => {
+    const text = typeof value === "string" ? value.trim() : "";
+    return !text || /^\[resume file uploaded:/i.test(text) || /^role alignment for .+profile-backed strengths in/i.test(text);
+  };
   for (const [k, v] of Object.entries(patch) as [keyof Patch, unknown][]) {
     if (v === undefined || v === null) continue;
     if (typeof v === "string") {
       if (!v.trim()) continue;
       const existing = cur[k as string];
-      if (typeof existing !== "string" || !existing.trim()) {
+      if (k === "summary" ? isBadSummary(existing) : typeof existing !== "string" || !existing.trim()) {
         (out as Record<string, unknown>)[k] = v.trim();
       }
     } else if (Array.isArray(v)) {
