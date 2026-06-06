@@ -11,6 +11,7 @@ import {
   Send,
   Settings as SettingsIcon,
   Target,
+  UserCheck,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import {
@@ -30,6 +31,7 @@ import { toast } from "sonner";
 
 const primaryNav = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard, exact: true },
+  { title: "Profile Preview", url: "/profile-preview", icon: UserCheck },
   { title: "Job Search", url: "/search", icon: Search },
   { title: "Jobs", url: "/jobs", icon: Briefcase },
   { title: "Applications", url: "/applications", icon: Send },

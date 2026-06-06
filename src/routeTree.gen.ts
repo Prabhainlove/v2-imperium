@@ -17,6 +17,7 @@ import { Route as AuthenticatedSkillsRouteImport } from './routes/_authenticated
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedSearchRouteImport } from './routes/_authenticated/search'
 import { Route as AuthenticatedResumeRouteImport } from './routes/_authenticated/resume'
+import { Route as AuthenticatedProfilePreviewRouteImport } from './routes/_authenticated/profile-preview'
 import { Route as AuthenticatedOnboardingRouteImport } from './routes/_authenticated/onboarding'
 import { Route as AuthenticatedJobsRouteImport } from './routes/_authenticated/jobs'
 import { Route as AuthenticatedInterviewsRouteImport } from './routes/_authenticated/interviews'
@@ -66,6 +67,12 @@ const AuthenticatedResumeRoute = AuthenticatedResumeRouteImport.update({
   path: '/resume',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedProfilePreviewRoute =
+  AuthenticatedProfilePreviewRouteImport.update({
+    id: '/profile-preview',
+    path: '/profile-preview',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedOnboardingRoute = AuthenticatedOnboardingRouteImport.update({
   id: '/onboarding',
   path: '/onboarding',
@@ -126,6 +133,7 @@ export interface FileRoutesByFullPath {
   '/interviews': typeof AuthenticatedInterviewsRoute
   '/jobs': typeof AuthenticatedJobsRoute
   '/onboarding': typeof AuthenticatedOnboardingRoute
+  '/profile-preview': typeof AuthenticatedProfilePreviewRoute
   '/resume': typeof AuthenticatedResumeRoute
   '/search': typeof AuthenticatedSearchRoute
   '/settings': typeof AuthenticatedSettingsRoute
@@ -144,6 +152,7 @@ export interface FileRoutesByTo {
   '/interviews': typeof AuthenticatedInterviewsRoute
   '/jobs': typeof AuthenticatedJobsRoute
   '/onboarding': typeof AuthenticatedOnboardingRoute
+  '/profile-preview': typeof AuthenticatedProfilePreviewRoute
   '/resume': typeof AuthenticatedResumeRoute
   '/search': typeof AuthenticatedSearchRoute
   '/settings': typeof AuthenticatedSettingsRoute
@@ -164,6 +173,7 @@ export interface FileRoutesById {
   '/_authenticated/interviews': typeof AuthenticatedInterviewsRoute
   '/_authenticated/jobs': typeof AuthenticatedJobsRoute
   '/_authenticated/onboarding': typeof AuthenticatedOnboardingRoute
+  '/_authenticated/profile-preview': typeof AuthenticatedProfilePreviewRoute
   '/_authenticated/resume': typeof AuthenticatedResumeRoute
   '/_authenticated/search': typeof AuthenticatedSearchRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
@@ -184,6 +194,7 @@ export interface FileRouteTypes {
     | '/interviews'
     | '/jobs'
     | '/onboarding'
+    | '/profile-preview'
     | '/resume'
     | '/search'
     | '/settings'
@@ -202,6 +213,7 @@ export interface FileRouteTypes {
     | '/interviews'
     | '/jobs'
     | '/onboarding'
+    | '/profile-preview'
     | '/resume'
     | '/search'
     | '/settings'
@@ -221,6 +233,7 @@ export interface FileRouteTypes {
     | '/_authenticated/interviews'
     | '/_authenticated/jobs'
     | '/_authenticated/onboarding'
+    | '/_authenticated/profile-preview'
     | '/_authenticated/resume'
     | '/_authenticated/search'
     | '/_authenticated/settings'
@@ -291,6 +304,13 @@ declare module '@tanstack/react-router' {
       path: '/resume'
       fullPath: '/resume'
       preLoaderRoute: typeof AuthenticatedResumeRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/profile-preview': {
+      id: '/_authenticated/profile-preview'
+      path: '/profile-preview'
+      fullPath: '/profile-preview'
+      preLoaderRoute: typeof AuthenticatedProfilePreviewRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/onboarding': {
@@ -368,6 +388,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedInterviewsRoute: typeof AuthenticatedInterviewsRoute
   AuthenticatedJobsRoute: typeof AuthenticatedJobsRoute
   AuthenticatedOnboardingRoute: typeof AuthenticatedOnboardingRoute
+  AuthenticatedProfilePreviewRoute: typeof AuthenticatedProfilePreviewRoute
   AuthenticatedResumeRoute: typeof AuthenticatedResumeRoute
   AuthenticatedSearchRoute: typeof AuthenticatedSearchRoute
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
@@ -384,6 +405,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedInterviewsRoute: AuthenticatedInterviewsRoute,
   AuthenticatedJobsRoute: AuthenticatedJobsRoute,
   AuthenticatedOnboardingRoute: AuthenticatedOnboardingRoute,
+  AuthenticatedProfilePreviewRoute: AuthenticatedProfilePreviewRoute,
   AuthenticatedResumeRoute: AuthenticatedResumeRoute,
   AuthenticatedSearchRoute: AuthenticatedSearchRoute,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
@@ -403,3 +425,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
