@@ -53,7 +53,7 @@ export function validateProfileLinks(p: {
   for (const [key, raw, label] of fields) {
     if (raw && raw.trim()) {
       if (isValidLink(raw)) {
-        (out as Record<string, unknown>)[key] = raw.trim();
+        (out as unknown as Record<string, string>)[key as string] = raw.trim();
       } else {
         warnings.push(`${label} URL looks like a placeholder — fix it in Profile to include it on resume.`);
       }
