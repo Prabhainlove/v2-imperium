@@ -38,7 +38,7 @@ function parseResume(md: string): ParsedResume {
   let current: { heading: string; lines: string[] } | null = null;
   for (; i < lines.length; i++) {
     const line = lines[i];
-    const h = line.match(/^#{2,3}\s+(.*)/);
+    const h = line.match(/^##\s+(.*)/);
     if (h) {
       if (current) sections.push(current);
       current = { heading: h[1].trim(), lines: [] };
@@ -79,7 +79,7 @@ function renderLines(lines: string[]): string {
       flush();
       const body = line.replace(/^###\s+/, "");
       // Split on " · " or " — " for date alignment if a tab/right segment exists
-      const parts = body.split(/\s+·\s+|\s+—\s+/);
+      const parts = body.split(/\s+\|\s+|\s+·\s+|\s+—\s+/);
       if (parts.length >= 2) {
         const left = parts.slice(0, -1).join(" — ");
         const right = parts[parts.length - 1];
