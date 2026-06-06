@@ -67,7 +67,7 @@ function ResumeStudioPage() {
     if (!selectedAppId && generated.length > 0) setSelectedAppId(generated[0].application_id);
   }, [generated, selectedAppId]);
 
-  const [template, setTemplate] = useState<Template>("classic");
+  const [template, setTemplate] = useState<Template>("jake-ats");
 
   const rendered = useQuery({
     queryKey: ["rendered-resume", selectedAppId, template],
