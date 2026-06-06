@@ -88,6 +88,47 @@ export const getProfile = createServerFn({ method: "GET" })
     return { status: "ok", profile };
   });
 
+/**
+ * getAgentContext — returns the EXACT structured payload every Imperium
+ * agent receives before generating a resume, cover letter, or match.
+ * Backed by Profile (single source of truth). Used by /profile-preview so
+ * the user can see byte-for-byte what the agents see.
+ */
+export const getAgentContext = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase, userId } = context;
+    const { data } = await supabase
+      .from("profiles")
+      .select(PROFILE_V2_COLUMNS)
+      .eq("id", userId)
+      .maybeSingle();
+    const profile = rowToProfile(userId, data as Record<string, unknown> | null);
+    const { buildAgentContext } = await import("./profile/agent-context");
+    const { computeCompleteness } = await import("./profile/completeness");
+    const ctx = buildAgentContext(profile as never);
+    const completeness = computeCompleteness(profile as never);
+    return {
+      profile,
+      completeness,
+      agent_context: {
+        personal: ctx.personal,
+        career: ctx.career,
+        skills: ctx.skills,
+        projects: ctx.projects,
+        experience: ctx.experience,
+        education: ctx.education,
+        certifications: ctx.certifications,
+        languages: ctx.languages,
+        achievements: ctx.achievements,
+        is_fresher: ctx.is_fresher,
+        vocabulary_size: ctx.vocabulary.size,
+      },
+    };
+  });
+
+
+
 const SaveProfileInput = z
   .object({
     name: z.string().optional(),
