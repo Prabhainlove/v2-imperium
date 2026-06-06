@@ -147,6 +147,7 @@ function generateCover(ctx: AgentContext, job: RawJob): string {
 export async function runPipeline(input: PipelineInput) {
   const started = Date.now();
   const { task_id, user_id, db } = input;
+  const ctx = buildAgentContext(input.profile);
 
   await log(db, user_id, task_id, "search_started", "ok", `role=${input.role} location=${input.location} max_apps=${input.max_applications}`);
 
@@ -295,11 +296,11 @@ export async function runPipeline(input: PipelineInput) {
 
     await log(db, user_id, task_id, "local_analyze_job", "success", `Local match=${(s.overall * 100).toFixed(0)}% for ${s.job.company} — ${s.job.title}`);
 
-    const resume_md = fallbackResume(input, s.job, s.matched, s.missing);
-    await log(db, user_id, task_id, "local_resume", "success", `Resume generated locally for ${s.job.company}`);
+    const resume_md = generateResume(ctx, s.job);
+    await log(db, user_id, task_id, "local_resume", "success", `Profile-first resume generated for ${s.job.company}`);
 
-    const cover_md = fallbackCover(input, s.job);
-    await log(db, user_id, task_id, "local_cover_letter", "success", `Cover letter generated locally for ${s.job.company}`);
+    const cover_md = generateCover(ctx, s.job);
+    await log(db, user_id, task_id, "local_cover_letter", "success", `Profile-first cover letter generated for ${s.job.company}`);
 
 
     // Application — staged as Pending Review (NEVER auto-submit)
@@ -311,10 +312,10 @@ export async function runPipeline(input: PipelineInput) {
       experience_match: Number(s.experience_match.toFixed(2)),
       location_match: Number(s.location_match.toFixed(2)),
       application_fields: {
-        full_name: input.candidate.name,
-        email: input.candidate.email,
-        phone: input.candidate.phone,
-        location: input.location,
+        full_name: ctx.personal.name,
+        email: ctx.personal.email,
+        phone: ctx.personal.phone,
+        location: ctx.personal.location || input.location,
       },
     };
     const { data: inserted, error: appErr } = await db
