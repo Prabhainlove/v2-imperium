@@ -43,7 +43,7 @@ export const Route = createFileRoute("/_authenticated/resume")({
   component: ResumeStudioPage,
 });
 
-type Template = "classic" | "modern" | "compact";
+type Template = "jake-ats" | "classic" | "modern" | "compact";
 
 function ResumeStudioPage() {
   const profile = useQuery({
