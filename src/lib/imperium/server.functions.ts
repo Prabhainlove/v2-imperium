@@ -532,19 +532,29 @@ export const renderApplicationResume = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     const { renderResumeHtml, analyzeAts } = await import("./rendercv.server");
+    const { buildAgentContext } = await import("./profile/agent-context");
+    const { buildResumeFromProfile } = await import("./profile/generators");
     const [{ data: app }, { data: profile }] = await Promise.all([
       supabase.from("applications").select("*").eq("id", data.application_id).maybeSingle(),
-      supabase.from("profiles").select("*").eq("id", userId).maybeSingle(),
+      supabase.from("profiles").select(PROFILE_V2_COLUMNS).eq("id", userId).maybeSingle(),
     ]);
     if (!app) throw new Error("Application not found");
     const { data: listing } = await supabase
       .from("job_listings")
-      .select("tech_stack, description, title")
+      .select("tech_stack, description, title, company, location")
       .eq("id", app.listing_id as string)
       .maybeSingle();
 
-    const resume_md = (app.resume_md as string) || "";
-    const original_md = (profile?.summary as string) ?? "";
+    const profileDto = rowToProfile(userId, profile as Record<string, unknown> | null);
+    const ctx = buildAgentContext(profileDto as never);
+    const resume_md = buildResumeFromProfile(ctx, {
+      title: (listing?.title as string) || (app.job_title as string) || "Target Role",
+      company: (listing?.company as string) || (app.company as string) || "Target Company",
+      description: (listing?.description as string) || "",
+      tech_stack: ((listing?.tech_stack as string[] | null) ?? []) as string[],
+      location: (listing?.location as string) || "",
+    });
+    const original_md = (profileDto?.summary as string) ?? "";
     const keywords = ((listing?.tech_stack as string[] | null) ?? []).slice(0, 20);
     const html = renderResumeHtml(resume_md, data.template);
     const ats = analyzeAts(resume_md, keywords, original_md);
