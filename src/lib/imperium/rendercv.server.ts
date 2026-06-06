@@ -96,6 +96,7 @@ body{font-family:'Times New Roman',Times,serif;color:#111;padding:0.6in 0.7in;li
 h1{font-size:22pt;font-weight:bold;margin:0 0 4px}
 .contact{font-size:10.5pt;color:#222;margin-bottom:14px}
 h2{font-size:11pt;font-weight:bold;text-transform:uppercase;letter-spacing:.04em;border-bottom:1.2px solid #111;padding-bottom:2px;margin:14px 0 6px}
+.role{display:flex;justify-content:space-between;gap:14px;margin:8px 0 2px}.role-right{white-space:nowrap;font-style:italic;color:#333}
 p{margin:3px 0}
 ul{margin:4px 0 6px 22px}
 li{margin:2px 0;line-height:1.4}
@@ -106,6 +107,7 @@ body{font-family:'Calibri','Helvetica Neue',Arial,sans-serif;color:#222;padding:
 h1{font-size:24pt;font-weight:600;color:#0b2647;text-align:center;margin:0 0 4px}
 .contact{font-size:10.5pt;color:#444;text-align:center;border-bottom:2px solid #1a3a6e;padding-bottom:10px;margin-bottom:14px}
 h2{font-size:11.5pt;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#0b2647;border-bottom:1px solid #c8d3e5;padding-bottom:3px;margin:14px 0 6px}
+.role{display:flex;justify-content:space-between;gap:14px;margin:8px 0 2px}.role-right{white-space:nowrap;font-style:italic;color:#555}
 p{margin:3px 0}
 ul{margin:4px 0 8px 20px}
 li{margin:2px 0;line-height:1.4}
@@ -116,6 +118,7 @@ body{font-family:Arial,Helvetica,sans-serif;color:#111;padding:0.45in 0.55in;lin
 h1{font-size:18pt;font-weight:bold;margin:0 0 2px}
 .contact{font-size:9.5pt;color:#333;margin-bottom:10px}
 h2{font-size:10pt;font-weight:bold;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #111;padding-bottom:1px;margin:10px 0 4px}
+.role{display:flex;justify-content:space-between;gap:10px;margin:5px 0 1px}.role-right{white-space:nowrap;font-style:italic;color:#333}
 p{margin:2px 0}
 ul{margin:2px 0 4px 18px}
 li{margin:1px 0;line-height:1.3}
