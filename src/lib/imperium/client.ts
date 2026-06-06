@@ -1,5 +1,6 @@
 /** Imperium client — thin wrappers around TanStack server functions. */
 import * as fns from "./server.functions";
+import { extractTextFromFile } from "./profile/file-parse";
 import type {
   ActivityLogEntry,
   AgentInfo,
@@ -15,11 +16,16 @@ import type {
 import type { ImperiumProfile, GithubIntel } from "./profile/types";
 
 async function readFileAsText(file: File): Promise<string> {
-  const lower = file.name.toLowerCase();
-  if (lower.endsWith(".pdf") || lower.endsWith(".docx") || lower.endsWith(".doc")) {
-    return `[Resume file uploaded: ${file.name} — ${(file.size / 1024).toFixed(1)} KB]`;
+  try {
+    return await extractTextFromFile(file);
+  } catch (error) {
+    console.error("Resume extraction failed", error);
+    throw new Error(
+      error instanceof Error
+        ? error.message
+        : "Could not read the resume. Upload a text-based PDF, DOCX, TXT, or MD file.",
+    );
   }
-  try { return await file.text(); } catch { return ""; }
 }
 
 export const getHealth = (_signal?: AbortSignal) =>
