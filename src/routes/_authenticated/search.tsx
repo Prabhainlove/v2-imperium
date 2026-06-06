@@ -104,10 +104,10 @@ function SearchPage() {
     retry: false,
   });
 
-  const [role, setRole] = useState("AI Engineer");
-  const [location, setLocation] = useState("Germany");
-  const [experience, setExperience] = useState("3 years");
-  const [skills, setSkills] = useState("Python, PyTorch, LLMs, FastAPI");
+  const [role, setRole] = useState("");
+  const [location, setLocation] = useState("");
+  const [experience, setExperience] = useState("Fresher");
+  const [skills, setSkills] = useState("");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -298,7 +298,7 @@ function SearchPage() {
                       id="role"
                       value={role}
                       onChange={(e) => setRole(e.target.value)}
-                      placeholder="AI Engineer"
+                      placeholder="Full Stack / AI Engineer"
                       className="pl-8"
                       required
                     />
@@ -313,7 +313,7 @@ function SearchPage() {
                       id="loc"
                       value={location}
                       onChange={(e) => setLocation(e.target.value)}
-                      placeholder="Germany"
+                      placeholder="Hyderabad, Bangalore, Remote"
                       className="pl-8"
                       required
                     />
@@ -326,7 +326,7 @@ function SearchPage() {
                     id="exp"
                     value={experience}
                     onChange={(e) => setExperience(e.target.value)}
-                    placeholder="3 years"
+                    placeholder="Fresher"
                     className="mt-1"
                   />
                 </div>
@@ -350,7 +350,7 @@ function SearchPage() {
                     value={skills}
                     onChange={(e) => setSkills(e.target.value)}
                     rows={2}
-                    placeholder="Python, PyTorch, LLMs"
+                    placeholder="React, TypeScript, Node.js, PostgreSQL"
                     className="mt-1 resize-none"
                   />
                 </div>

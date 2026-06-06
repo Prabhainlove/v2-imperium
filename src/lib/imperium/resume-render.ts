@@ -7,6 +7,9 @@
  */
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
+import { buildAgentContext } from "./profile/agent-context";
+import { buildResumeFromProfile } from "./profile/generators";
+import { SAMPLE_PROFILE } from "./profile/types";
 
 export type ResumeTemplate = "classic" | "modern" | "compact";
 
@@ -38,7 +41,7 @@ function parseResume(md: string): ParsedResume {
   let current: { heading: string; lines: string[] } | null = null;
   for (; i < lines.length; i++) {
     const line = lines[i];
-    const h = line.match(/^#{2,3}\s+(.*)/);
+    const h = line.match(/^##\s+(.*)/);
     if (h) {
       if (current) sections.push(current);
       current = { heading: h[1].trim(), lines: [] };
@@ -79,7 +82,7 @@ function renderLines(lines: string[]): string {
       flush();
       const body = line.replace(/^###\s+/, "");
       // Split on " · " or " — " for date alignment if a tab/right segment exists
-      const parts = body.split(/\s+·\s+|\s+—\s+/);
+      const parts = body.split(/\s+\|\s+|\s+·\s+|\s+—\s+/);
       if (parts.length >= 2) {
         const left = parts.slice(0, -1).join(" — ");
         const right = parts[parts.length - 1];
@@ -264,53 +267,7 @@ export interface ProfileLike {
 }
 
 export function profileToResumeMarkdown(p: ProfileLike): string {
-  const out: string[] = [];
-  out.push(`# ${p.name || "Your Name"}`);
-  const contactBits = [p.email, p.phone, p.location].filter(Boolean);
-  if (contactBits.length) out.push(contactBits.join(" | "));
-  const linkBits = [p.linkedin_url, p.github_url, p.portfolio_url].filter(Boolean);
-  if (linkBits.length) out.push(linkBits.join(" | "));
-  if (p.summary) {
-    out.push("", "## Summary", p.summary);
-  }
-  if (p.experience && p.experience.length) {
-    out.push("", "## Experience");
-    for (const e of p.experience) {
-      const left = [e.company, e.title].filter(Boolean).join(" — ");
-      const dates = [e.start, e.current ? "Present" : e.end].filter(Boolean).join(" – ");
-      out.push(`### ${left}${dates ? ` · ${dates}` : ""}`);
-      if (e.location) out.push(`*${e.location}*`);
-      if (e.description) out.push(e.description);
-      for (const h of e.highlights ?? []) out.push(`- ${h}`);
-    }
-  }
-  if (p.skills && p.skills.length) {
-    out.push("", "## Skills", p.skills.join(" · "));
-  }
-  if (p.education && p.education.length) {
-    out.push("", "## Education");
-    for (const ed of p.education) {
-      const left = [ed.school, ed.degree, ed.field].filter(Boolean).join(" — ");
-      const dates = [ed.start, ed.end].filter(Boolean).join(" – ");
-      out.push(`### ${left}${dates ? ` · ${dates}` : ""}`);
-      if (ed.gpa) out.push(`GPA: ${ed.gpa}`);
-      if (ed.description) out.push(ed.description);
-    }
-  }
-  if (p.certifications && p.certifications.length) {
-    out.push("", "## Certifications");
-    for (const c of p.certifications) {
-      out.push(`- ${[c.name, c.issuer, c.year].filter(Boolean).join(" · ")}`);
-    }
-  }
-  if (p.languages && p.languages.length) {
-    out.push(
-      "",
-      "## Languages",
-      p.languages.map((l) => `${l.name}${l.proficiency ? ` (${l.proficiency})` : ""}`).join(" · "),
-    );
-  }
-  return out.join("\n");
+  return buildResumeFromProfile(buildAgentContext(p as never));
 }
 
 /* ───────── Readability + ATS heuristics (kept for studio) ───────── */
@@ -423,79 +380,9 @@ export function quickAts(resumeMd: string, jobDescription: string): QuickAts {
   return { score, matched, missing };
 }
 
-/* ───────── Demo profile (Resume Worded "First Last" sample) ───────── */
+/* ───────── Demo profile: Dinesh profile only, no fake candidate data ───────── */
 
-export const DEMO_PROFILE: ProfileLike = {
-  name: "Alex Morgan",
-  email: "alex.morgan@example.com",
-  phone: "+1 (415) 555-0188",
-  location: "San Francisco, CA",
-  headline: "Senior Product Manager · Fintech & SaaS",
-  summary:
-    "Senior product manager with 7+ years of experience shipping data-driven SaaS and fintech products. Track record of leading cross-functional teams, driving $4M+ in incremental revenue, and reducing churn through analytics-led roadmaps.",
-  linkedin_url: "linkedin.com/in/alex-morgan",
-  github_url: "github.com/alexmorgan",
-  portfolio_url: "alexmorgan.dev",
-  skills: [
-    "Product Strategy", "Roadmap Planning", "A/B Testing", "SQL", "Python",
-    "Jira", "Figma", "User Research", "OKRs", "Stakeholder Management",
-    "Agile / Scrum", "Tableau", "Mixpanel", "Amplitude",
-  ],
-  experience: [
-    {
-      title: "Senior Product Manager",
-      company: "Resume Worded & Co.",
-      location: "San Francisco, CA",
-      start: "Oct 2021",
-      current: true,
-      highlights: [
-        "Led a cross-functional team of 10 across 3 locations, ranging from entry-level analysts to vice presidents, to deliver a new analytics suite.",
-        "Launched flagship pricing module that grew office revenue by 200% in the first nine months (20% of total company revenue).",
-        "Designed training and peer-mentoring program for the incoming class of 25 analysts in 2024; reduced onboarding time for new hires by 50%.",
-        "Achieved $200K reduction in department overspend by establishing ROI metrics and budget controls to improve prioritization of the $4MM department budget.",
-      ],
-    },
-    {
-      title: "Associate Product Manager",
-      company: "Instamake",
-      location: "San Francisco, CA",
-      start: "Jun 2018",
-      end: "Sep 2021",
-      highlights: [
-        "Spearheaded a major pricing restructure by redirecting focus on consumer willingness to pay instead of product cost; implemented a three-tiered pricing model that increased average sale by 35% and margin by 12%.",
-        "Promoted within 12 months due to strong performance and organizational impact (one year ahead of schedule).",
-        "Identified initiatives to reduce return rates by 10%, resulting in an eventual $75K cost savings.",
-      ],
-    },
-  ],
-  education: [
-    {
-      school: "Resume Worded Business School",
-      degree: "Master of Business Administration",
-      field: "Business Analytics",
-      start: "Aug 2016",
-      end: "May 2018",
-      description:
-        "Awards: Bill & Melinda Gates Fellow (only 5 awarded to class), Director's List 2017 (top 10%). Leadership: Resume Worded Investment Club (Board Member), Consulting Club (Engagement Manager).",
-    },
-    {
-      school: "Resume Worded University",
-      degree: "B.S.",
-      field: "Business Analytics",
-      start: "Aug 2012",
-      end: "May 2016",
-    },
-  ],
-  certifications: [
-    { name: "Certified Scrum Master", issuer: "Scrum Alliance", year: "2023" },
-    { name: "Tableau Desktop Specialist", issuer: "Tableau", year: "2022" },
-  ],
-  languages: [
-    { name: "English", proficiency: "native" },
-    { name: "Spanish", proficiency: "fluent" },
-    { name: "Mandarin", proficiency: "conversational" },
-  ],
-};
+export const DEMO_PROFILE: ProfileLike = SAMPLE_PROFILE;
 
 /* ───────── Cover letter rendering ───────── */
 

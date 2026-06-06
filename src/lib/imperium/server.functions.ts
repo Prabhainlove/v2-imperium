@@ -342,7 +342,7 @@ export const getApplication = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => IdInput.parse(input))
   .handler(async ({ data, context }) => {
-    const { supabase } = context;
+    const { supabase, userId } = context;
     const { data: row, error } = await supabase
       .from("applications")
       .select("*")
@@ -350,10 +350,25 @@ export const getApplication = createServerFn({ method: "GET" })
       .maybeSingle();
     if (error) throw new Error(error.message);
     if (!row) throw new Error("Application not found");
+    const [{ data: listing }, { data: profileRow }] = await Promise.all([
+      supabase.from("job_listings").select("*").eq("id", row.listing_id as string).maybeSingle(),
+      supabase.from("profiles").select(PROFILE_V2_COLUMNS).eq("id", userId).maybeSingle(),
+    ]);
+    const profile = rowToProfile(userId, profileRow as Record<string, unknown> | null);
+    const { buildAgentContext } = await import("./profile/agent-context");
+    const { buildResumeFromProfile, buildCoverFromProfile } = await import("./profile/generators");
+    const ctx = buildAgentContext(profile as never);
+    const job = {
+      title: (listing?.title as string) || (row.job_title as string) || "Target Role",
+      company: (listing?.company as string) || (row.company as string) || "Target Company",
+      description: (listing?.description as string) || "",
+      tech_stack: ((listing?.tech_stack as string[] | null) ?? []) as string[],
+      location: (listing?.location as string) || "",
+    };
     return {
       ...mapApp(row),
-      resume_md: (row.resume_md as string) ?? "",
-      cover_letter_md: (row.cover_letter_md as string) ?? "",
+      resume_md: buildResumeFromProfile(ctx, job),
+      cover_letter_md: buildCoverFromProfile(ctx, job),
     };
   });
 
@@ -484,7 +499,8 @@ export const getCareerIntelligence = createServerFn({ method: "GET" })
     const avg =
       (jobs ?? []).reduce((acc, j) => acc + Number(j.match_score ?? 0), 0) /
       Math.max(1, jobs?.length ?? 1);
-    const skills = ((profile?.skills as string[] | null) ?? []) as string[];
+    const profileRecord = profile as Record<string, unknown> | null;
+    const skills = ((profileRecord?.skills as string[] | null) ?? []) as string[];
     return {
       market_insights: [
         `${jobs?.length ?? 0} saved/discovered jobs available for local comparison.`,
@@ -509,15 +525,29 @@ export const getArtifact = createServerFn({ method: "GET" })
     const m = data.path.match(/^application:([^:]+):(resume|cover)$/);
     if (!m) throw new Error("Invalid artifact path");
     const [, appId, kind] = m;
-    const { supabase } = context;
+    const { supabase, userId } = context;
     const { data: row, error } = await supabase
       .from("applications")
-      .select("resume_md, cover_letter_md")
+      .select("*")
       .eq("id", appId)
       .maybeSingle();
     if (error) throw new Error(error.message);
     if (!row) throw new Error("Application not found");
-    return { content: kind === "resume" ? row.resume_md : row.cover_letter_md };
+    const [{ data: listing }, { data: profileRow }] = await Promise.all([
+      supabase.from("job_listings").select("*").eq("id", row.listing_id as string).maybeSingle(),
+      supabase.from("profiles").select(PROFILE_V2_COLUMNS).eq("id", userId).maybeSingle(),
+    ]);
+    const { buildAgentContext } = await import("./profile/agent-context");
+    const { buildResumeFromProfile, buildCoverFromProfile } = await import("./profile/generators");
+    const ctx = buildAgentContext(rowToProfile(userId, profileRow as Record<string, unknown> | null) as never);
+    const job = {
+      title: (listing?.title as string) || (row.job_title as string) || "Target Role",
+      company: (listing?.company as string) || (row.company as string) || "Target Company",
+      description: (listing?.description as string) || "",
+      tech_stack: ((listing?.tech_stack as string[] | null) ?? []) as string[],
+      location: (listing?.location as string) || "",
+    };
+    return { content: kind === "resume" ? buildResumeFromProfile(ctx, job) : buildCoverFromProfile(ctx, job) };
   });
 
 /* ---------- Rendered Resume (RenderCV-style) ---------- */
@@ -532,19 +562,29 @@ export const renderApplicationResume = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     const { renderResumeHtml, analyzeAts } = await import("./rendercv.server");
+    const { buildAgentContext } = await import("./profile/agent-context");
+    const { buildResumeFromProfile } = await import("./profile/generators");
     const [{ data: app }, { data: profile }] = await Promise.all([
       supabase.from("applications").select("*").eq("id", data.application_id).maybeSingle(),
-      supabase.from("profiles").select("*").eq("id", userId).maybeSingle(),
+      supabase.from("profiles").select(PROFILE_V2_COLUMNS).eq("id", userId).maybeSingle(),
     ]);
     if (!app) throw new Error("Application not found");
     const { data: listing } = await supabase
       .from("job_listings")
-      .select("tech_stack, description, title")
+      .select("tech_stack, description, title, company, location")
       .eq("id", app.listing_id as string)
       .maybeSingle();
 
-    const resume_md = (app.resume_md as string) || "";
-    const original_md = (profile?.summary as string) ?? "";
+    const profileDto = rowToProfile(userId, profile as Record<string, unknown> | null);
+    const ctx = buildAgentContext(profileDto as never);
+    const resume_md = buildResumeFromProfile(ctx, {
+      title: (listing?.title as string) || (app.job_title as string) || "Target Role",
+      company: (listing?.company as string) || (app.company as string) || "Target Company",
+      description: (listing?.description as string) || "",
+      tech_stack: ((listing?.tech_stack as string[] | null) ?? []) as string[],
+      location: (listing?.location as string) || "",
+    });
+    const original_md = (profileDto?.summary as string) ?? "";
     const keywords = ((listing?.tech_stack as string[] | null) ?? []).slice(0, 20);
     const html = renderResumeHtml(resume_md, data.template);
     const ats = analyzeAts(resume_md, keywords, original_md);
@@ -634,8 +674,9 @@ export const analyzeJobListing = createServerFn({ method: "POST" })
       supabase.from("profiles").select("headline, skills, experience, target_role").eq("id", userId).maybeSingle(),
     ]);
     if (!listing) throw new Error("Listing not found");
-    const skills = ((profile?.skills as string[] | null) ?? []) as string[];
-    const expCount = ((profile?.experience as unknown[] | null) ?? []).length;
+    const profileRecord = profile as Record<string, unknown> | null;
+    const skills = ((profileRecord?.skills as string[] | null) ?? []) as string[];
+    const expCount = ((profileRecord?.experience as unknown[] | null) ?? []).length;
     const techStack = ((listing.tech_stack as string[] | null) ?? []) as string[];
     const jobText = `${listing.title ?? ""} ${listing.description ?? ""} ${techStack.join(" ")}`.toLowerCase();
     const matched = skills.filter((s) => jobText.includes(s.toLowerCase()));
@@ -676,15 +717,24 @@ export const evaluateApplication = createServerFn({ method: "POST" })
       .maybeSingle();
     const { data: profile } = await supabase
       .from("profiles")
-      .select("headline, skills, experience, target_role")
+      .select(PROFILE_V2_COLUMNS)
       .eq("id", userId)
       .maybeSingle();
     const { analyzeAts } = await import("./rendercv.server");
+    const { buildAgentContext } = await import("./profile/agent-context");
+    const { buildResumeFromProfile } = await import("./profile/generators");
+    const profileRecord = profile as Record<string, unknown> | null;
 
-    const skills = ((profile?.skills as string[] | null) ?? []) as string[];
-    const expCount = ((profile?.experience as unknown[] | null) ?? []).length;
+    const skills = ((profileRecord?.skills as string[] | null) ?? []) as string[];
+    const expCount = ((profileRecord?.experience as unknown[] | null) ?? []).length;
     const jobKeywords = ((listing?.tech_stack as string[] | null) ?? []) as string[];
-    const resumeText = (app.resume_md as string) || "";
+    const resumeText = buildResumeFromProfile(buildAgentContext(rowToProfile(userId, profileRecord) as never), {
+      title: (listing?.title as string) || (app.job_title as string) || "Target Role",
+      company: (listing?.company as string) || (app.company as string) || "Target Company",
+      description: (listing?.description as string) || "",
+      tech_stack: jobKeywords,
+      location: (listing?.location as string) || "",
+    });
     const matchedSkills = skills.filter((skill) =>
       `${listing?.description ?? ""} ${jobKeywords.join(" ")}`.toLowerCase().includes(skill.toLowerCase()),
     );
@@ -1129,9 +1179,10 @@ export const getSkillGap = createServerFn({ method: "GET" })
         .order("discovered_at", { ascending: false })
         .limit(60),
     ]);
-    const candidate_skills = ((profile?.skills as string[] | null) ?? []) as string[];
+    const profileRecord = profile as Record<string, unknown> | null;
+    const candidate_skills = ((profileRecord?.skills as string[] | null) ?? []) as string[];
     const target_role =
-      (profile?.target_role as string) || (profile?.headline as string) || "Candidate";
+      (profileRecord?.target_role as string) || (profileRecord?.headline as string) || "Candidate";
     const recent_job_titles = (jobs ?? [])
       .map((j) => j.title as string)
       .filter(Boolean)

@@ -32,6 +32,9 @@ export interface ProjectItem {
   description?: string;
   stack?: string[];
   url?: string;
+  start?: string;
+  end?: string;
+  current?: boolean;
   highlights?: string[];
 }
 
@@ -177,9 +180,9 @@ export const SAMPLE_PROFILE: Omit<ImperiumProfile, "id"> = {
   ],
   experience: [],
   education: [
-    { school: "Loyola College", degree: "Master of Computer Applications (MCA)", field: "Computer Applications", gpa: "9.5/10" },
-    { school: "Pragathi Degree College", degree: "Bachelor of Science", field: "MPCS", gpa: "8.8/10" },
-    { school: "Sri Gayatri Junior College", degree: "Intermediate", field: "MEC", gpa: "91%" },
+    { school: "Loyola College", degree: "Master of Computer Applications (MCA)", field: "Computer Applications", gpa: "9.5/10", start: "2024", end: "2026" },
+    { school: "Pragathi Degree College", degree: "Bachelor of Science", field: "MPCS", gpa: "8.8/10", start: "2021", end: "2024" },
+    { school: "Sri Gayatri Junior College", degree: "Intermediate", field: "MEC", gpa: "91%", start: "2019", end: "2021" },
   ],
   projects: [
     {
@@ -187,6 +190,8 @@ export const SAMPLE_PROFILE: Omit<ImperiumProfile, "id"> = {
       description: "AI-powered Business OS for productivity, automation, and workflow management.",
       stack: ["React", "TypeScript", "Node.js", "PostgreSQL"],
       url: "https://github.com/dineshkumar/imperium",
+      start: "Jan 2025",
+      current: true,
       highlights: [
         "Built modular AI agent architecture (task execution, knowledge retrieval, business intelligence).",
         "Designed scalable frontend and backend with secure API integrations.",
@@ -198,6 +203,8 @@ export const SAMPLE_PROFILE: Omit<ImperiumProfile, "id"> = {
       description: "AI-powered knowledge management platform for storing and retrieving business info.",
       stack: ["React", "Node.js", "PostgreSQL", "AI APIs"],
       url: "https://github.com/dineshkumar/keymind",
+      start: "Nov 2024",
+      end: "Feb 2025",
       highlights: [
         "Implemented intelligent search and context-aware document retrieval.",
         "Built responsive dashboards and optimized database performance.",
@@ -208,6 +215,8 @@ export const SAMPLE_PROFILE: Omit<ImperiumProfile, "id"> = {
       description: "Real-time financial analytics platform with interactive dashboards.",
       stack: ["React", "Node.js", "PostgreSQL"],
       url: "https://github.com/dineshkumar/finance-dashboard",
+      start: "Aug 2024",
+      end: "Oct 2024",
       highlights: [
         "Built automated reporting and data visualization modules.",
         "Implemented authentication, role management, and DB optimization.",
