@@ -742,7 +742,7 @@ export const runJobSearch = createServerFn({ method: "POST" })
       location: data.location,
       experience: data.experience,
       skills: merged.skills,
-      profile: merged,
+      profile: merged as never,
       max_applications: data.max_applications,
     });
 
