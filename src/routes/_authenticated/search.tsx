@@ -261,7 +261,7 @@ function SearchPage() {
   // Autopilot: jump to /applications when the pipeline reaches the review stage.
   useWorkflowAutopilot({
     entries: activity.data,
-    enabled: !!result || running,
+    enabled: running && !result,
     reviewPath: "/applications",
   });
 
