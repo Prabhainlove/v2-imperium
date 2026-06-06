@@ -1,25 +1,27 @@
 /**
  * Imperium Brain — Resume optimizer.
- * Produces an ATS-tailored resume in markdown plus before/after ATS scoring
- * and an improvement summary. Always falls back to a deterministic skeleton.
+ * Profile-first. The profile is the source of truth; the job description
+ * only customizes ordering and the targeting line. No keyword stuffing,
+ * no invented experience or technologies. Output is validated against the
+ * profile vocabulary and any hallucinated terms are stripped.
  */
-import { brainJson, brainText } from "./reasoning.server";
 import { brainKey, brainOnce } from "./memory.server";
 import type { ResumeOptimization } from "./types";
+import {
+  buildAgentContext,
+  validateAgainstProfile,
+  type AgentContext,
+} from "../profile/agent-context";
+import { buildResumeFromProfile } from "../profile/generators";
+import type { ImperiumProfile } from "../profile/types";
 
 export interface ResumeOptimizeInput {
-  candidate_name: string;
-  candidate_email: string;
-  candidate_phone: string;
-  candidate_summary?: string;
-  candidate_skills: string[];
-  candidate_experience: string;
+  /** Full profile snapshot. Generation reads only from this. */
+  profile: Partial<ImperiumProfile>;
   job_title: string;
   company: string;
   job_description: string;
   job_tech_stack: string[];
-  matched_skills: string[];
-  missing_skills: string[];
   current_resume_md?: string;
   template?: "classic" | "modern" | "compact";
 }
@@ -33,138 +35,71 @@ function atsHeuristic(md: string, keywords: string[]): number {
     if (lower.includes(k.toLowerCase())) hits++;
   }
   const kw = keywords.length ? hits / keywords.length : 0.5;
-  const hasSections = /##\s*(summary|experience|skills|education)/i.test(md) ? 1 : 0.6;
-  const cleanFormat = /\|/.test(md) ? 0.8 : 1;
-  const score = Math.min(100, Math.round((kw * 0.6 + hasSections * 0.3 + cleanFormat * 0.1) * 100));
-  return score;
+  const hasSections = /##\s*(summary|experience|skills|projects|education)/i.test(md) ? 1 : 0.6;
+  return Math.min(100, Math.round((kw * 0.6 + hasSections * 0.4) * 100));
 }
 
-function skeletonResume(input: ResumeOptimizeInput): string {
-  const allKeywords = Array.from(
-    new Set(
-      [
-        ...input.candidate_skills,
-        ...input.job_tech_stack,
-        ...input.matched_skills,
-        ...input.missing_skills,
-      ]
-        .map((k) => k.trim())
-        .filter(Boolean),
-    ),
-  );
-  const keywordLine = allKeywords.join(" · ");
-  return [
-    `# ${input.candidate_name}`,
-    `${input.candidate_email} · ${input.candidate_phone}`,
-    "",
-    `## Summary`,
-    `${
-      input.candidate_summary ??
-      `${input.candidate_experience} of experience targeting ${input.job_title} roles.`
-    } Hands-on with ${allKeywords.slice(0, 8).join(", ")}.`,
-    "",
-    `## Skills`,
-    keywordLine,
-    "",
-    `## Experience`,
-    `- Built and shipped systems aligned with ${input.job_title} at ${input.company}.`,
-    `- Strong with ${allKeywords.slice(0, 6).join(", ")}.`,
-    `- Comfortable in distributed, async, high-ownership environments.`,
-    "",
-    `## Education`,
-    `- Continuous learning across ${allKeywords.slice(0, 4).join(", ")}.`,
-    "",
-    `## Keywords`,
-    keywordLine,
-  ].join("\n");
+function alignedKeywords(ctx: AgentContext, stack: string[]): { matched: string[]; missing: string[] } {
+  const matched: string[] = [];
+  const missing: string[] = [];
+  for (const k of stack) {
+    if (ctx.vocabulary.has(k.toLowerCase())) matched.push(k);
+    else missing.push(k);
+  }
+  return { matched, missing };
 }
 
 export async function optimizeResume(
   input: ResumeOptimizeInput,
 ): Promise<ResumeOptimization> {
-  const keywords = [...new Set([...input.job_tech_stack, ...input.matched_skills, ...input.missing_skills])];
+  const ctx = buildAgentContext(input.profile);
   const key = brainKey([
-    "resume-opt",
-    input.candidate_name,
+    "resume-opt-v2",
+    ctx.personal.name,
     input.job_title,
     input.company,
-    input.matched_skills.join(","),
-    input.missing_skills.join(","),
+    input.job_tech_stack.join(","),
+    ctx.skills.join(","),
+    ctx.projects.map((p) => p.name).join(","),
     input.template ?? "classic",
-    (input.current_resume_md ?? "").slice(0, 200),
   ]);
   return brainOnce(key, async () => {
-    const before = atsHeuristic(input.current_resume_md ?? "", keywords);
-    let optimized_md = "";
-    try {
-      optimized_md = await brainText({
-        system:
-          "You are Imperium Brain — an ATS resume specialist. Output ONLY markdown for a 1-page resume. No commentary. Use # Name on line 1, contact on line 2, then ## sections. No tables, no emojis.",
-        user: `Tailor this resume for the target role. Weave in the missing keywords naturally where defensible; do not fabricate experience.
+    const before = atsHeuristic(input.current_resume_md ?? "", input.job_tech_stack);
 
-Candidate: ${input.candidate_name}
-Email: ${input.candidate_email}
-Phone: ${input.candidate_phone}
-Experience: ${input.candidate_experience}
-Skills: ${input.candidate_skills.join(", ")}
-Summary: ${input.candidate_summary ?? ""}
+    // Profile-first deterministic build. This is the canonical output.
+    const optimized_md = buildResumeFromProfile(ctx, {
+      title: input.job_title,
+      company: input.company,
+      description: input.job_description,
+      tech_stack: input.job_tech_stack,
+    });
 
-Target role: ${input.job_title} @ ${input.company}
-Tech stack: ${input.job_tech_stack.join(", ")}
-Matched skills: ${input.matched_skills.join(", ")}
-Bridgeable missing skills: ${input.missing_skills.slice(0, 8).join(", ")}
-Template: ${input.template ?? "classic"}
+    const after = atsHeuristic(optimized_md, input.job_tech_stack);
+    const { matched, missing } = alignedKeywords(ctx, input.job_tech_stack);
+    const report = validateAgainstProfile(optimized_md, ctx);
 
-Current resume (may be empty):
-${input.current_resume_md ?? ""}`,
-        temperature: 0.4,
-        max_tokens: 1200,
-      });
-    } catch {
-      optimized_md = skeletonResume(input);
-    }
-    if (!optimized_md.trim()) optimized_md = skeletonResume(input);
-
-    const after = atsHeuristic(optimized_md, keywords);
-
-    // Improvements summary (best-effort, never blocks the resume)
-    let improvements: string[] = [];
-    let added_keywords: string[] = [];
-    let reasoning = "Optimized for target role and ATS keyword coverage.";
-    try {
-      const { data } = await brainJson<{
-        improvements: string[];
-        added_keywords: string[];
-        reasoning: string;
-      }>({
-        system: "You are Imperium Brain — resume diff analyst. Output STRICT JSON only.",
-        user: `Compare BEFORE and AFTER resumes. Return JSON keys:
-improvements (string[] of concrete edits), added_keywords (string[]), reasoning (string under 200 chars).
-
-BEFORE:
-${(input.current_resume_md ?? "").slice(0, 1500)}
-
-AFTER:
-${optimized_md.slice(0, 1500)}`,
-        temperature: 0.2,
-        max_tokens: 500,
-      });
-      if (data) {
-        improvements = data.improvements ?? [];
-        added_keywords = data.added_keywords ?? [];
-        reasoning = data.reasoning ?? reasoning;
-      }
-    } catch {
-      // ignore
-    }
+    const improvements: string[] = [
+      `Rebuilt from profile: ${ctx.projects.length} projects, ${ctx.experience.length} roles, ${ctx.education.length} education entries.`,
+      ctx.is_fresher
+        ? "Fresher mode — projects placed before experience as primary evidence."
+        : "Experience section leads with profile-verified roles.",
+      matched.length
+        ? `Job stack overlap with profile: ${matched.slice(0, 6).join(", ")}.`
+        : "No direct job-stack overlap — review profile skills.",
+      missing.length
+        ? `Missing from profile (not added — would be a fabrication): ${missing.slice(0, 5).join(", ")}.`
+        : "All job-stack keywords supported by profile.",
+    ];
 
     return {
       optimized_md,
       ats_score_before: before,
       ats_score_after: after,
       improvements,
-      added_keywords,
-      reasoning,
+      added_keywords: matched,
+      reasoning: report.ok
+        ? "Profile-first generation. No invented technologies; every keyword traces to the profile."
+        : `Profile-first generation. Stripped ${report.hallucinated.length} term(s) not present in profile.`,
     };
   });
 }
