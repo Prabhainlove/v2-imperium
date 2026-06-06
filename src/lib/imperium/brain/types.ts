@@ -56,6 +56,18 @@ export interface ProfileIntelligence {
   summary: string;
 }
 
+export interface ResumeAtsReport {
+  ats_score: number;
+  keyword_coverage: number;
+  matched_skills: string[];
+  missing_skills: string[];      // missing from profile entirely
+  underutilized_skills: string[]; // in profile but not surfaced on resume
+  recommendations: string[];
+  resume_gaps: string[];
+  primary_role: string;
+  link_warnings: string[];
+}
+
 export interface ResumeOptimization {
   optimized_md: string;
   ats_score_before: number;
@@ -63,6 +75,8 @@ export interface ResumeOptimization {
   improvements: string[];
   added_keywords: string[];
   reasoning: string;
+  ats_report?: ResumeAtsReport;
+  quality_warnings?: string[];
 }
 
 export interface CoverLetterPackage {
