@@ -218,7 +218,8 @@ export async function extractProfileFromText(text: string): Promise<{
   }
   const lines = cleaned.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
   const email = cleaned.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0] ?? "";
-  const phone = cleaned.match(/(?:\+?\d[\d\s().-]{7,}\d)/)?.[0]?.trim() ?? "";
+  const phoneLine = lines.find((l) => /phone|mobile|contact|^\+?\d[\d\s().-]{7,}\d$/i.test(l) && !/cgpa|gpa|percentage|20\d{2}/i.test(l)) ?? "";
+  const phone = phoneLine.match(/(?:\+?\d[\d\s().-]{7,}\d)/)?.[0]?.trim() ?? "";
   const linkedin = cleaned.match(/https?:\/\/(?:www\.)?linkedin\.com\/in\/[^\s)]+/i)?.[0] ?? "";
   const github = cleaned.match(/https?:\/\/(?:www\.)?github\.com\/[^\s)]+/i)?.[0] ?? "";
   const summaryBlock = sectionText(lines, ["profile summary", "summary", "objective"]);
@@ -227,7 +228,7 @@ export async function extractProfileFromText(text: string): Promise<{
   const projectsBlock = sectionText(lines, ["projects", "academic projects"]);
   const skills = parseSkills(skillsSource);
   const firstContentLine = lines.find((l) => !l.includes("@") && !/^https?:\/\//i.test(l) && l.length <= 80) ?? "";
-  const headline = lines.find((l) => /engineer|developer|manager|designer|analyst|architect|consultant/i.test(l)) ?? "";
+  const headline = lines.find((l) => !/^[•*\-–—]/.test(l) && /\b(engineer|developer|manager|designer|analyst|architect|consultant)\b/i.test(l)) ?? "";
   return {
     patch: sanitizePatch({
       name: firstContentLine,
