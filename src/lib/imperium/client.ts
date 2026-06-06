@@ -29,6 +29,24 @@ export const getAgents = (_signal?: AbortSignal) =>
 
 export const getProfile = () =>
   fns.getProfile() as unknown as Promise<{ status: string; profile: ImperiumProfile | null }>;
+export const getAgentContext = () =>
+  fns.getAgentContext() as unknown as Promise<{
+    profile: ImperiumProfile | null;
+    completeness: import("./profile/completeness").ProfileCompleteness;
+    agent_context: {
+      personal: ImperiumProfile extends infer _T ? Record<string, unknown> : never;
+      career: Record<string, unknown>;
+      skills: string[];
+      projects: unknown[];
+      experience: unknown[];
+      education: unknown[];
+      certifications: unknown[];
+      languages: unknown[];
+      achievements: string[];
+      is_fresher: boolean;
+      vocabulary_size: number;
+    };
+  }>;
 export const saveProfile = (payload: Partial<ImperiumProfile>) =>
   fns.saveProfile({ data: payload as Record<string, unknown> }) as unknown as Promise<{
     status: string; profile: ImperiumProfile | null;
