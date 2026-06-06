@@ -71,6 +71,27 @@ function evidenceScore(text: string, terms: string[]): number {
   return terms.reduce((score, term) => score + (lower.includes(term.toLowerCase()) ? 1 : 0), 0);
 }
 
+function normalizeSkill(value: string): string {
+  return value.toLowerCase().replace(/\.js\b/g, "").replace(/[^a-z0-9+#]+/g, " ").trim();
+}
+
+function skillMatchesText(skill: string, text: string): boolean {
+  const s = normalizeSkill(skill);
+  const haystack = normalizeSkill(text);
+  if (!s) return false;
+  if (haystack.includes(s)) return true;
+  const aliases: Record<string, string[]> = {
+    react: ["reactjs", "frontend", "ui"],
+    node: ["nodejs", "backend", "api"],
+    postgres: ["postgresql", "sql"],
+    postgresql: ["postgres", "sql"],
+    javascript: ["js"],
+    typescript: ["ts"],
+    "rest apis": ["rest", "api", "apis"],
+  };
+  return (aliases[s] ?? []).some((alias) => haystack.includes(alias));
+}
+
 function rankProjects(ctx: AgentContext, job?: JobBrief) {
   const terms = jobTerms(job);
   return [...ctx.projects].sort((a, b) => {
@@ -82,13 +103,11 @@ function rankProjects(ctx: AgentContext, job?: JobBrief) {
 
 /** Intersect profile skills with job text, preserving profile casing. */
 function alignedSkills(ctx: AgentContext, job: JobBrief): { matched: string[]; rest: string[] } {
-  const stack = (job.tech_stack ?? []).map((s) => s.toLowerCase());
-  const desc = `${job.title} ${job.description ?? ""}`.toLowerCase();
+  const jobText = `${job.title} ${job.description ?? ""} ${(job.tech_stack ?? []).join(" ")}`;
   const matched: string[] = [];
   const rest: string[] = [];
   for (const s of ctx.skills) {
-    const ls = s.toLowerCase();
-    if (stack.includes(ls) || desc.includes(ls)) matched.push(s);
+    if (skillMatchesText(s, jobText)) matched.push(s);
     else rest.push(s);
   }
   return { matched: unique(matched), rest: unique(rest) };
