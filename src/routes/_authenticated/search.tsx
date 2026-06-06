@@ -104,10 +104,10 @@ function SearchPage() {
     retry: false,
   });
 
-  const [role, setRole] = useState("AI Engineer");
-  const [location, setLocation] = useState("Germany");
-  const [experience, setExperience] = useState("3 years");
-  const [skills, setSkills] = useState("Python, PyTorch, LLMs, FastAPI");
+  const [role, setRole] = useState("");
+  const [location, setLocation] = useState("");
+  const [experience, setExperience] = useState("Fresher");
+  const [skills, setSkills] = useState("");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
