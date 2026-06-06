@@ -721,11 +721,12 @@ export const evaluateApplication = createServerFn({ method: "POST" })
     const { analyzeAts } = await import("./rendercv.server");
     const { buildAgentContext } = await import("./profile/agent-context");
     const { buildResumeFromProfile } = await import("./profile/generators");
+    const profileRecord = profile as Record<string, unknown> | null;
 
-    const skills = ((profile?.skills as string[] | null) ?? []) as string[];
-    const expCount = ((profile?.experience as unknown[] | null) ?? []).length;
+    const skills = ((profileRecord?.skills as string[] | null) ?? []) as string[];
+    const expCount = ((profileRecord?.experience as unknown[] | null) ?? []).length;
     const jobKeywords = ((listing?.tech_stack as string[] | null) ?? []) as string[];
-    const resumeText = buildResumeFromProfile(buildAgentContext(rowToProfile(userId, profile as Record<string, unknown> | null) as never), {
+    const resumeText = buildResumeFromProfile(buildAgentContext(rowToProfile(userId, profileRecord) as never), {
       title: (listing?.title as string) || (app.job_title as string) || "Target Role",
       company: (listing?.company as string) || (app.company as string) || "Target Company",
       description: (listing?.description as string) || "",
