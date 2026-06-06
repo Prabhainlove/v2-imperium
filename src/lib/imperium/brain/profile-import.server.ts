@@ -178,16 +178,30 @@ function parseEducation(block: string): ProfilePatch["education"] {
 
 function parseProjects(block: string): ProfilePatch["projects"] {
   if (!block) return [];
-  const chunks = block.split(/\n(?=(?:[•*\-–—]?\s*)?[A-Z][A-Za-z0-9 &:/()_-]{3,80}(?:\||:|–|—|-)?)/).map((c) => c.trim()).filter(Boolean);
-  return chunks.slice(0, 8).map((chunk) => {
-    const lines = chunk.split(/\n+/).map(cleanListItem).filter(Boolean);
+  const rawLines = block.split(/\n+/).map((l) => l.trim()).filter(Boolean);
+  const chunks: string[][] = [];
+  let current: string[] = [];
+  for (const raw of rawLines) {
+    const isBullet = /^[•*\-–—]\s+/.test(raw);
+    const cleaned = cleanListItem(raw);
+    const looksLikeTitle = !isBullet && cleaned.length <= 90 && !/[.!?]$/.test(cleaned);
+    if (looksLikeTitle && current.length) {
+      chunks.push(current);
+      current = [cleaned];
+    } else {
+      current.push(cleaned);
+    }
+  }
+  if (current.length) chunks.push(current);
+  return chunks.slice(0, 8).map((lines) => {
     const first = lines[0] ?? "Project";
     const [namePart, ...restParts] = first.split(/\s+[|:–—-]\s+/);
-    const joined = [restParts.join(" "), ...lines.slice(1)].filter(Boolean).join(" ");
+    const detailLines = [restParts.join(" "), ...lines.slice(1)].filter(Boolean);
+    const chunk = lines.join("\n");
     const stack = parseSkills(chunk).slice(0, 8);
     const url = chunk.match(/https?:\/\/[^\s)]+/i)?.[0];
-    const highlights = lines.slice(1).filter((l) => l.length > 20).slice(0, 4);
-    return { name: namePart.trim() || first, description: joined.slice(0, 260), stack, url, ...(highlights.length ? { highlights } : {}) };
+    const highlights = detailLines.filter((l) => l.length > 20).slice(0, 4);
+    return { name: namePart.trim() || first, description: detailLines.join(" ").slice(0, 260), stack, url, ...(highlights.length ? { highlights } : {}) };
   }).filter((p) => p.name.length > 2);
 }
 
