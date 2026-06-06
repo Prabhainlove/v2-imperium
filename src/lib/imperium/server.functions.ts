@@ -531,14 +531,31 @@ export const optimizeMasterResume = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => OptimizeMasterInput.parse(input))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    const { data: profile } = await supabase
+    const { data: profileRow } = await supabase
       .from("profiles")
-      .select("name, email, phone, summary, skills, experience")
+      .select(PROFILE_V2_COLUMNS)
       .eq("id", userId)
       .maybeSingle();
+    const profile = rowToProfile(userId, profileRow as Record<string, unknown> | null);
     const { extractKeywords } = await import("./resume-render");
+    const { buildAgentContext } = await import("./profile/agent-context");
+    const { buildResumeFromProfile } = await import("./profile/generators");
+    const { validateAgainstProfile, stripHallucinations } = await import("./profile/agent-context");
+
     const jobKeywords = extractKeywords(data.job_description, 20);
-    const candSkills = ((profile?.skills as string[] | null) ?? []) as string[];
+    const ctx = buildAgentContext(profile);
+    // Profile-first generation. Tailored to the job's title/company; never
+    // appends invented keyword lists.
+    const optimized = buildResumeFromProfile(ctx, {
+      title: data.job_title,
+      company: data.company,
+      description: data.job_description,
+    });
+    // Validate against profile vocabulary; strip any hallucinated tech terms.
+    const report = validateAgainstProfile(optimized, ctx);
+    const safe = report.ok ? optimized : stripHallucinations(optimized, ctx);
+
+    const candSkills = ctx.skills;
     const matched = candSkills.filter((s) =>
       data.job_description.toLowerCase().includes(s.toLowerCase()),
     );
@@ -548,18 +565,20 @@ export const optimizeMasterResume = createServerFn({ method: "POST" })
     const before = jobKeywords.length
       ? Math.round((jobKeywords.filter((k) => data.resume_md.toLowerCase().includes(k.toLowerCase())).length / jobKeywords.length) * 100)
       : 70;
-    const keywordLine = missing.length ? `\n\n## Target Keywords\n- ${missing.slice(0, 10).join(", ")}` : "";
-    const optimized = `${data.resume_md.trim()}${keywordLine}`;
     const after = jobKeywords.length
-      ? Math.round((jobKeywords.filter((k) => optimized.toLowerCase().includes(k.toLowerCase())).length / jobKeywords.length) * 100)
+      ? Math.round((jobKeywords.filter((k) => safe.toLowerCase().includes(k.toLowerCase())).length / jobKeywords.length) * 100)
       : before;
     return {
-      optimized_md: optimized,
+      optimized_md: safe,
       ats_score_before: before,
       ats_score_after: after,
-      improvements: missing.length ? [`Added ${missing.slice(0, 10).length} missing job keywords.`] : ["Resume already covers the detected job keywords."],
-      added_keywords: missing.slice(0, 10),
-      reasoning: "Local keyword optimization. No AI provider is required.",
+      improvements: [
+        `Rebuilt resume from profile (${ctx.projects.length} projects, ${ctx.skills.length} skills, ${ctx.education.length} education entries).`,
+        matched.length ? `Aligned ${matched.length} profile skills with the job description.` : "No direct skill overlap detected — review profile skills.",
+        report.ok ? "Validation passed — no hallucinated technologies." : `Stripped ${report.hallucinated.length} hallucinated term(s) the profile does not support.`,
+      ],
+      added_keywords: matched,
+      reasoning: "Profile-first generation. Job description only customizes ordering and the targeting line — no invented experience or tech.",
     };
   });
 
