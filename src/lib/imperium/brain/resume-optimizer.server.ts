@@ -23,7 +23,7 @@ export interface ResumeOptimizeInput {
   job_description: string;
   job_tech_stack: string[];
   current_resume_md?: string;
-  template?: "classic" | "modern" | "compact";
+  template?: "jake-ats" | "classic" | "modern" | "compact";
 }
 
 function atsHeuristic(md: string, keywords: string[]): number {
