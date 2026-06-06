@@ -553,7 +553,7 @@ export const getArtifact = createServerFn({ method: "GET" })
 /* ---------- Rendered Resume (RenderCV-style) ---------- */
 const RenderResumeInput = z.object({
   application_id: z.string().min(1),
-  template: z.enum(["jake-ats", "classic", "modern", "compact"]).default("classic"),
+  template: z.enum(["jake-ats", "classic", "modern", "compact"]).default("jake-ats"),
 });
 
 export const renderApplicationResume = createServerFn({ method: "POST" })
@@ -604,7 +604,7 @@ const OptimizeMasterInput = z.object({
   job_description: z.string().min(1),
   job_title: z.string().default("Target Role"),
   company: z.string().default("Target Company"),
-  template: z.enum(["jake-ats", "classic", "modern", "compact"]).default("classic"),
+  template: z.enum(["jake-ats", "classic", "modern", "compact"]).default("jake-ats"),
 });
 
 export const optimizeMasterResume = createServerFn({ method: "POST" })
