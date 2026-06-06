@@ -543,7 +543,7 @@ export const optimizeMasterResume = createServerFn({ method: "POST" })
     const { validateAgainstProfile, stripHallucinations } = await import("./profile/agent-context");
 
     const jobKeywords = extractKeywords(data.job_description, 20);
-    const ctx = buildAgentContext(profile);
+    const ctx = buildAgentContext(profile as never);
     // Profile-first generation. Tailored to the job's title/company; never
     // appends invented keyword lists.
     const optimized = buildResumeFromProfile(ctx, {
