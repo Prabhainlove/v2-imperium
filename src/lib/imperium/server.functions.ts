@@ -499,7 +499,8 @@ export const getCareerIntelligence = createServerFn({ method: "GET" })
     const avg =
       (jobs ?? []).reduce((acc, j) => acc + Number(j.match_score ?? 0), 0) /
       Math.max(1, jobs?.length ?? 1);
-    const skills = ((profile?.skills as string[] | null) ?? []) as string[];
+    const profileRecord = profile as Record<string, unknown> | null;
+    const skills = ((profileRecord?.skills as string[] | null) ?? []) as string[];
     return {
       market_insights: [
         `${jobs?.length ?? 0} saved/discovered jobs available for local comparison.`,
@@ -673,8 +674,9 @@ export const analyzeJobListing = createServerFn({ method: "POST" })
       supabase.from("profiles").select("headline, skills, experience, target_role").eq("id", userId).maybeSingle(),
     ]);
     if (!listing) throw new Error("Listing not found");
-    const skills = ((profile?.skills as string[] | null) ?? []) as string[];
-    const expCount = ((profile?.experience as unknown[] | null) ?? []).length;
+    const profileRecord = profile as Record<string, unknown> | null;
+    const skills = ((profileRecord?.skills as string[] | null) ?? []) as string[];
+    const expCount = ((profileRecord?.experience as unknown[] | null) ?? []).length;
     const techStack = ((listing.tech_stack as string[] | null) ?? []) as string[];
     const jobText = `${listing.title ?? ""} ${listing.description ?? ""} ${techStack.join(" ")}`.toLowerCase();
     const matched = skills.filter((s) => jobText.includes(s.toLowerCase()));
@@ -1177,9 +1179,10 @@ export const getSkillGap = createServerFn({ method: "GET" })
         .order("discovered_at", { ascending: false })
         .limit(60),
     ]);
-    const candidate_skills = ((profile?.skills as string[] | null) ?? []) as string[];
+    const profileRecord = profile as Record<string, unknown> | null;
+    const candidate_skills = ((profileRecord?.skills as string[] | null) ?? []) as string[];
     const target_role =
-      (profile?.target_role as string) || (profile?.headline as string) || "Candidate";
+      (profileRecord?.target_role as string) || (profileRecord?.headline as string) || "Candidate";
     const recent_job_titles = (jobs ?? [])
       .map((j) => j.title as string)
       .filter(Boolean)
