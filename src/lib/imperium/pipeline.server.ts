@@ -94,7 +94,7 @@ function scoreJob(
   const title_score = role_terms.length ? title_hits / role_terms.length : 0;
 
   // Skill match
-  const wanted = skills.map((s) => s.toLowerCase().trim()).filter(Boolean);
+  const wanted = skills.map((s) => s.trim()).filter(Boolean);
   const matched: string[] = [];
   const missing: string[] = [];
   for (const s of wanted) {
