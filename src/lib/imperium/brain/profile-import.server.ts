@@ -32,8 +32,9 @@ export interface ProfilePatch {
     field?: string;
     start?: string;
     end?: string;
+    gpa?: string;
   }[];
-  projects?: { name: string; description?: string; stack?: string[]; url?: string }[];
+  projects?: { name: string; description?: string; stack?: string[]; url?: string; highlights?: string[] }[];
   certifications?: { name: string; issuer?: string; year?: string }[];
   languages?: { name: string; proficiency?: string }[];
   achievements?: string[];
@@ -81,6 +82,7 @@ function sanitizePatch(p: ProfilePatch): ProfilePatch {
         field: str(e.field),
         start: str(e.start),
         end: str(e.end),
+        gpa: str(e.gpa),
       }));
   }
   if (Array.isArray(p.projects)) {
@@ -91,6 +93,7 @@ function sanitizePatch(p: ProfilePatch): ProfilePatch {
         description: str(e.description),
         stack: strArr(e.stack),
         url: str(e.url),
+        highlights: strArr(e.highlights),
       }));
   }
   if (Array.isArray(p.certifications)) {
@@ -169,7 +172,7 @@ function parseEducation(block: string): ProfilePatch["education"] {
         .replace(/[|,–—-]+/g, " ")
         .replace(/\s+/g, " ")
         .trim();
-      return { school: school || line, degree: degree || undefined, start: years?.[1], end: years?.[2], field: "", ...(gpa ? { description: `CGPA/Percentage: ${gpa}` } : {}) };
+      return { school: school || line, degree: degree || undefined, start: years?.[1], end: years?.[2], field: "", gpa: gpa || undefined };
     });
 }
 
