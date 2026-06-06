@@ -715,15 +715,23 @@ export const evaluateApplication = createServerFn({ method: "POST" })
       .maybeSingle();
     const { data: profile } = await supabase
       .from("profiles")
-      .select("headline, skills, experience, target_role")
+      .select(PROFILE_V2_COLUMNS)
       .eq("id", userId)
       .maybeSingle();
     const { analyzeAts } = await import("./rendercv.server");
+    const { buildAgentContext } = await import("./profile/agent-context");
+    const { buildResumeFromProfile } = await import("./profile/generators");
 
     const skills = ((profile?.skills as string[] | null) ?? []) as string[];
     const expCount = ((profile?.experience as unknown[] | null) ?? []).length;
     const jobKeywords = ((listing?.tech_stack as string[] | null) ?? []) as string[];
-    const resumeText = (app.resume_md as string) || "";
+    const resumeText = buildResumeFromProfile(buildAgentContext(rowToProfile(userId, profile as Record<string, unknown> | null) as never), {
+      title: (listing?.title as string) || (app.job_title as string) || "Target Role",
+      company: (listing?.company as string) || (app.company as string) || "Target Company",
+      description: (listing?.description as string) || "",
+      tech_stack: jobKeywords,
+      location: (listing?.location as string) || "",
+    });
     const matchedSkills = skills.filter((skill) =>
       `${listing?.description ?? ""} ${jobKeywords.join(" ")}`.toLowerCase().includes(skill.toLowerCase()),
     );
