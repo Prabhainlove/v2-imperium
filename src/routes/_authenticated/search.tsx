@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -97,6 +97,7 @@ function inferStageFromAction(action: string): StageKey | null {
 
 function SearchPage() {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   const profile = useQuery({
     queryKey: ["profile"],
@@ -240,6 +241,16 @@ function SearchPage() {
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       queryClient.invalidateQueries({ queryKey: ["jobs"] });
       queryClient.invalidateQueries({ queryKey: ["applications"] });
+      const firstApplication = data.matches?.find((m) => m.application_id)?.application_id;
+      if ((data.summary?.application_packages ?? 0) > 0) {
+        window.setTimeout(() => {
+          navigate(
+            firstApplication
+              ? { to: "/review/$id", params: { id: firstApplication } }
+              : { to: "/applications" },
+          );
+        }, 900);
+      }
     },
     onError: (err: Error) => {
       toast.error(err.message);
