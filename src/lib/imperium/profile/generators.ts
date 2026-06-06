@@ -49,6 +49,37 @@ function unique(values: string[]): string[] {
   return out;
 }
 
+function cleanSummaryText(value?: string): string {
+  const text = (value ?? "").trim();
+  if (!text) return "";
+  if (/^\[resume file uploaded:/i.test(text)) return "";
+  if (/^role alignment for .+profile-backed strengths in/i.test(text)) return "";
+  return text;
+}
+
+function jobTerms(job?: JobBrief): string[] {
+  if (!job) return [];
+  return unique(
+    `${job.title} ${job.description ?? ""} ${(job.tech_stack ?? []).join(" ")}`
+      .split(/[^A-Za-z0-9+#.]+/)
+      .filter((s) => s.length > 2 && !/^(and|the|with|for|you|our|are|will|from|this|that|have|has|full|time|work|role|job)$/i.test(s)),
+  ).slice(0, 80);
+}
+
+function evidenceScore(text: string, terms: string[]): number {
+  const lower = text.toLowerCase();
+  return terms.reduce((score, term) => score + (lower.includes(term.toLowerCase()) ? 1 : 0), 0);
+}
+
+function rankProjects(ctx: AgentContext, job?: JobBrief) {
+  const terms = jobTerms(job);
+  return [...ctx.projects].sort((a, b) => {
+    const aText = `${a.name} ${a.description ?? ""} ${(a.stack ?? []).join(" ")} ${(a.highlights ?? []).join(" ")}`;
+    const bText = `${b.name} ${b.description ?? ""} ${(b.stack ?? []).join(" ")} ${(b.highlights ?? []).join(" ")}`;
+    return evidenceScore(bText, terms) - evidenceScore(aText, terms);
+  });
+}
+
 /** Intersect profile skills with job text, preserving profile casing. */
 function alignedSkills(ctx: AgentContext, job: JobBrief): { matched: string[]; rest: string[] } {
   const stack = (job.tech_stack ?? []).map((s) => s.toLowerCase());
@@ -85,18 +116,29 @@ function strengthenBullet(raw: string): string {
 
 function summaryBullets(ctx: AgentContext, job?: JobBrief): string[] {
   const p = ctx.personal;
-  const bullets = (p.summary || p.headline || "")
+  const bullets = cleanSummaryText(p.summary)
     .split(/(?<=\.)\s+|\n+/)
     .map((s) => s.trim().replace(/^[•*-]\s*/, ""))
     .filter(Boolean)
-    .slice(0, 4);
+    .slice(0, 2);
   if (job) {
     const matched = alignedSkills(ctx, job).matched.slice(0, 5);
+    const topProjects = rankProjects(ctx, job).slice(0, 2).map((p) => p.name);
+    const edu = ctx.education[0];
+    bullets.unshift(
+      `${ctx.is_fresher ? "Fresher" : "Software"} candidate targeting ${job.title}${job.company ? ` at ${job.company}` : ""}, with profile-backed evidence from ${topProjects.length ? `projects including ${topProjects.join(" and ")}` : "education, skills, and project work"}.`,
+    );
     if (matched.length) {
-      bullets.push(`Role alignment for ${job.title}: profile-backed strengths in ${matched.join(", ")}.`);
+      bullets.push(`Job-aligned technical strengths: ${matched.join(", ")}.`);
     }
+    if (edu) bullets.push(`Education foundation: ${[edu.degree, edu.field, edu.school].filter(Boolean).join(" — ")}.`);
+  } else if (!bullets.length && (p.headline || ctx.projects.length || ctx.education.length)) {
+    const topProjects = ctx.projects.slice(0, 2).map((pr) => pr.name);
+    bullets.push(
+      `${p.headline || "Software engineering candidate"} with project evidence${topProjects.length ? ` from ${topProjects.join(" and ")}` : ""}.`,
+    );
   }
-  return unique(bullets);
+  return unique(bullets).slice(0, 4);
 }
 
 function relevantCoursework(ctx: AgentContext): string[] {
@@ -167,12 +209,20 @@ export function buildResumeFromProfile(ctx: AgentContext, job?: JobBrief): strin
   const renderProjects = () => {
     if (!ctx.projects.length) return;
     lines.push("## Projects");
-    for (const project of ctx.projects) {
+    const orderedProjects = rankProjects(ctx, job);
+    const matchedJobSkills = job ? alignedSkills(ctx, job).matched : [];
+    for (const project of orderedProjects) {
       const dates = fmtRange(project.start, project.end, project.current);
       const stack = project.stack?.length ? ` | ${project.stack.join(", ")}` : "";
       lines.push(`### ${project.name}${stack}${dates ? ` | ${dates}` : ""}`);
       if (project.url) lines.push(`GitHub: ${cleanUrl(project.url)}`);
       if (project.description) lines.push(project.description);
+      const projectSkillHits = matchedJobSkills.filter((s) =>
+        `${project.name} ${project.description ?? ""} ${(project.stack ?? []).join(" ")} ${(project.highlights ?? []).join(" ")}`
+          .toLowerCase()
+          .includes(s.toLowerCase()),
+      );
+      if (projectSkillHits.length) lines.push(`- Job relevance: demonstrates ${projectSkillHits.slice(0, 4).join(", ")} through shipped project work.`);
       for (const h of (project.highlights ?? []).slice(0, 4)) {
         const bullet = strengthenBullet(h);
         if (bullet) lines.push(`- ${bullet}`);
