@@ -10,7 +10,7 @@ import {
   CareerSection, EducationSection, ExperienceSection, LinksSection,
   PersonalSection, ProjectsSection, SkillsSection,
 } from "@/components/imperium/profile-sections";
-import { EMPTY_PROFILE, type ImperiumProfile } from "@/lib/imperium/profile/types";
+import { EMPTY_PROFILE, SAMPLE_PROFILE, type ImperiumProfile } from "@/lib/imperium/profile/types";
 import { computeCompleteness } from "@/lib/imperium/profile/completeness";
 import { getProfile, saveProfile } from "@/lib/imperium/client";
 
@@ -52,11 +52,13 @@ function OnboardingPage() {
         navigate({ to: "/dashboard", replace: true });
         return;
       }
+      // First-run: pre-fill with SAMPLE_PROFILE so the form is demo-ready.
+      // Returning users keep their saved profile.
       const base: ImperiumProfile = res.profile
         ? (res.profile as ImperiumProfile)
-        : { id: userRes.user.id, ...EMPTY_PROFILE };
-      if (!base.name) base.name = (userRes.user.user_metadata?.name as string) ?? "";
-      if (!base.email) base.email = userRes.user.email ?? "";
+        : { id: userRes.user.id, ...SAMPLE_PROFILE };
+      if (!base.name) base.name = (userRes.user.user_metadata?.name as string) ?? SAMPLE_PROFILE.name;
+      if (!base.email) base.email = userRes.user.email ?? SAMPLE_PROFILE.email;
       setDraft(base);
       setLoading(false);
     })();
