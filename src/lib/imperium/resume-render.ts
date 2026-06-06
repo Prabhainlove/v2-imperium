@@ -11,9 +11,10 @@ import { buildAgentContext } from "./profile/agent-context";
 import { buildResumeFromProfile } from "./profile/generators";
 import { SAMPLE_PROFILE } from "./profile/types";
 
-export type ResumeTemplate = "classic" | "modern" | "compact";
+export type ResumeTemplate = "jake-ats" | "classic" | "modern" | "compact";
 
 export const RESUME_TEMPLATES: { id: ResumeTemplate; label: string; desc: string }[] = [
+  { id: "jake-ats", label: "Jake (ATS)", desc: "FAANG-intern reference. Latin Modern serif, single column, ALL-CAPS section bars. Default." },
   { id: "classic", label: "Classic", desc: "Resume-Worded style. Serif, single column, ALL-CAPS section bars." },
   { id: "modern", label: "Modern", desc: "Sans-serif with role title under name. Still 100% ATS-safe." },
   { id: "compact", label: "Compact", desc: "Dense one-page layout for senior CVs." },
@@ -161,15 +162,33 @@ li{margin:1px 0;font-size:10pt;line-height:1.3}
 strong{font-weight:bold}
 `;
 
+const jakeAtsCss = `
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Latin Modern Roman','Computer Modern','Times New Roman',Times,serif;color:#111;padding:0.5in 0.55in;line-height:1.3;font-size:10.5pt;background:#fff;width:8.5in}
+header{margin-bottom:8px;text-align:center}
+h1{font-size:20pt;font-weight:bold;letter-spacing:0.02em;margin:0 0 2px 0}
+.contact{font-size:10pt;color:#111}
+section{margin-top:8px}
+h2{font-size:11pt;font-weight:bold;text-transform:uppercase;letter-spacing:0.05em;border-bottom:1.2px solid #111;padding-bottom:1px;margin:10px 0 3px 0}
+.role{display:flex;justify-content:space-between;align-items:baseline;margin:5px 0 1px 0;font-size:10.5pt}
+.role-right{font-style:italic;font-size:10pt;color:#222;white-space:nowrap;padding-left:10px}
+p{margin:2px 0;font-size:10.5pt}
+ul{margin:2px 0 4px 18px}
+li{margin:1px 0;font-size:10.5pt;line-height:1.35}
+strong{font-weight:bold}
+em{font-style:italic}
+`;
+
 const templateCss: Record<ResumeTemplate, string> = {
+  "jake-ats": jakeAtsCss,
   classic: classicCss,
   modern: modernCss,
   compact: compactCss,
 };
 
-export function renderResumeHtml(md: string, template: ResumeTemplate = "classic"): string {
+export function renderResumeHtml(md: string, template: ResumeTemplate = "jake-ats"): string {
   const parsed = parseResume(md);
-  const css = templateCss[template] ?? classicCss;
+  const css = templateCss[template] ?? jakeAtsCss;
   const body = parsed.sections
     .map((s) => `<section><h2>${esc(s.heading)}</h2>${renderLines(s.lines)}</section>`)
     .join("");

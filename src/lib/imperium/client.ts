@@ -100,7 +100,7 @@ export const getNotifications = (_params: { limit?: number } = {}) =>
 export const markNotificationRead = async (_id: string) => ({ status: "ok" });
 export const renderApplicationResume = (
   application_id: string,
-  template: "classic" | "modern" | "compact" = "classic",
+  template: "jake-ats" | "classic" | "modern" | "compact" = "jake-ats",
 ) =>
   fns.renderApplicationResume({ data: { application_id, template } }) as unknown as Promise<RenderedResume>;
 
@@ -116,7 +116,7 @@ export const optimizeMasterResume = (payload: {
   job_description: string;
   job_title?: string;
   company?: string;
-  template?: "classic" | "modern" | "compact";
+  template?: "jake-ats" | "classic" | "modern" | "compact";
 }) =>
   fns.optimizeMasterResume({ data: payload }) as unknown as Promise<
     import("./brain/types").ResumeOptimization

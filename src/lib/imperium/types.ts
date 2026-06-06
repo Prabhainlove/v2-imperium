@@ -243,7 +243,7 @@ export interface AtsAnalysis {
 
 export interface RenderedResume {
   application_id: string;
-  template: "classic" | "modern" | "compact";
+  template: "jake-ats" | "classic" | "modern" | "compact";
   original_md: string;
   optimized_md: string;
   rendered_html: string;

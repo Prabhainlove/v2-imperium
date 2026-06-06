@@ -43,7 +43,7 @@ export const Route = createFileRoute("/_authenticated/resume")({
   component: ResumeStudioPage,
 });
 
-type Template = "classic" | "modern" | "compact";
+type Template = "jake-ats" | "classic" | "modern" | "compact";
 
 function ResumeStudioPage() {
   const profile = useQuery({
@@ -67,7 +67,7 @@ function ResumeStudioPage() {
     if (!selectedAppId && generated.length > 0) setSelectedAppId(generated[0].application_id);
   }, [generated, selectedAppId]);
 
-  const [template, setTemplate] = useState<Template>("classic");
+  const [template, setTemplate] = useState<Template>("jake-ats");
 
   const rendered = useQuery({
     queryKey: ["rendered-resume", selectedAppId, template],

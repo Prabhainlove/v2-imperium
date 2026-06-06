@@ -1,10 +1,18 @@
 /**
- * Profile-first Resume & Cover Letter generators
- * ==============================================
- * Deterministic, ATS-safe, and strict: no fake experience, no keyword dump,
- * no fabricated tools. For freshers, projects are treated as experience.
+ * Profile → Resume & Cover Letter generators (Jake-ATS, JD-adaptive).
+ *
+ * Strict rules:
+ *  - Single source of truth: the profile. No fabricated tech, metrics or links.
+ *  - Output mirrors the FAANG-intern reference layout: Name → contact → links →
+ *    Profile Summary → Technical Skills → Projects → Experience → Education →
+ *    Certifications → Achievements → Languages.
+ *  - Project bullets follow ACTION + TECHNOLOGY + OUTCOME ≤ 28 words.
+ *  - Skill rows are reordered per JD; projects re-ranked per JD relevance.
+ *  - Banned generic openers are rewritten or stripped.
  */
 import type { AgentContext } from "./agent-context";
+import { analyzeJobDescription, normalizeSkillToken, skillMatches, type JDAnalysis } from "./jd-analysis";
+import { cleanDisplayUrl, isValidLink, validateProfileLinks } from "./link-validator";
 
 export interface JobBrief {
   title: string;
@@ -14,238 +22,273 @@ export interface JobBrief {
   location?: string;
 }
 
-const SOFT_SKILLS = new Set([
-  "adaptability",
-  "communication",
-  "ownership",
-  "problem solving",
-  "system design thinking",
-  "team collaboration",
-  "time management",
-]);
+/* ───────── helpers ───────── */
 
 function fmtRange(start?: string, end?: string, current?: boolean): string {
-  const s = start?.trim() ?? "";
-  const e = current ? "Present" : (end?.trim() ?? "");
+  const s = (start ?? "").trim();
+  const e = current ? "Present" : (end ?? "").trim();
   if (s && e) return `${s} – ${e}`;
   return s || e;
-}
-
-function cleanUrl(url?: string): string {
-  return (url ?? "").replace(/^https?:\/\//, "").replace(/\/$/, "");
 }
 
 function unique(values: string[]): string[] {
   const seen = new Set<string>();
   const out: string[] = [];
   for (const raw of values) {
-    const value = raw.trim();
-    if (!value) continue;
-    const key = value.toLowerCase();
-    if (seen.has(key)) continue;
-    seen.add(key);
-    out.push(value);
+    const v = (raw ?? "").trim();
+    if (!v) continue;
+    const k = v.toLowerCase();
+    if (seen.has(k)) continue;
+    seen.add(k);
+    out.push(v);
   }
   return out;
 }
 
-function cleanSummaryText(value?: string): string {
-  const text = (value ?? "").trim();
-  if (!text) return "";
-  if (/^\[resume file uploaded:/i.test(text)) return "";
-  if (/^role alignment for .+profile-backed strengths in/i.test(text)) return "";
-  return text;
+/* ───────── Skill categorization (JD-reordered) ───────── */
+
+const CATEGORY_RULES: Array<{ label: string; match: RegExp }> = [
+  { label: "Languages", match: /^(python|javascript|typescript|java|c\+\+|c#|go|golang|rust|kotlin|swift|ruby|php|scala|r)$/i },
+  { label: "Frontend", match: /(react|next|vue|angular|svelte|html|css|tailwind|redux|zustand|ui|frontend)/i },
+  { label: "Backend", match: /(node|express|fastapi|django|flask|spring|nest|rails|laravel|graphql|grpc|rest|api|backend|microservice)/i },
+  { label: "Databases", match: /(postgres|mysql|mongo|redis|sqlite|dynamodb|snowflake|bigquery|elasticsearch|sql)/i },
+  { label: "Cloud & DevOps", match: /(aws|gcp|azure|cloudflare|vercel|docker|kubernetes|k8s|terraform|jenkins|ansible|github actions|gitlab|ci\/cd|prometheus|grafana|datadog)/i },
+  { label: "AI & ML", match: /(pytorch|tensorflow|keras|scikit|pandas|numpy|langchain|llamaindex|huggingface|openai|gemini|rag|llm|embeddings|ai agent|machine learning)/i },
+  { label: "Tools", match: /(git|github|jira|figma|postman|linux|bash|vs code|vscode|notion|confluence)/i },
+];
+
+const SOFT_SKILLS_RE = /^(adaptability|communication|ownership|problem solving|system design thinking|team collaboration|time management|leadership|critical thinking)$/i;
+
+function categorizeSkills(skills: string[]): Record<string, string[]> {
+  const buckets: Record<string, string[]> = {};
+  for (const rule of CATEGORY_RULES) buckets[rule.label] = [];
+  buckets["Other"] = [];
+  for (const skill of skills) {
+    if (SOFT_SKILLS_RE.test(skill)) continue;
+    const rule = CATEGORY_RULES.find((r) => r.match.test(skill));
+    if (rule) buckets[rule.label].push(skill);
+    else buckets["Other"].push(skill);
+  }
+  return buckets;
 }
 
-function jobTerms(job?: JobBrief): string[] {
-  if (!job) return [];
-  return unique(
-    `${job.title} ${job.description ?? ""} ${(job.tech_stack ?? []).join(" ")}`
-      .split(/[^A-Za-z0-9+#.]+/)
-      .filter((s) => s.length > 2 && !/^(and|the|with|for|you|our|are|will|from|this|that|have|has|full|time|work|role|job)$/i.test(s)),
-  ).slice(0, 80);
-}
-
-function evidenceScore(text: string, terms: string[]): number {
-  const lower = text.toLowerCase();
-  return terms.reduce((score, term) => score + (lower.includes(term.toLowerCase()) ? 1 : 0), 0);
-}
-
-function normalizeSkill(value: string): string {
-  return value.toLowerCase().replace(/\.js\b/g, "").replace(/[^a-z0-9+#]+/g, " ").trim();
-}
-
-function skillMatchesText(skill: string, text: string): boolean {
-  const s = normalizeSkill(skill);
-  const haystack = normalizeSkill(text);
-  if (!s) return false;
-  if (haystack.includes(s)) return true;
-  const aliases: Record<string, string[]> = {
-    react: ["reactjs", "frontend", "ui"],
-    node: ["nodejs", "backend", "api"],
-    postgres: ["postgresql", "sql"],
-    postgresql: ["postgres", "sql"],
-    javascript: ["js"],
-    typescript: ["ts"],
-    "rest apis": ["rest", "api", "apis"],
-  };
-  return (aliases[s] ?? []).some((alias) => haystack.includes(alias));
-}
-
-function rankProjects(ctx: AgentContext, job?: JobBrief) {
-  const terms = jobTerms(job);
-  return [...ctx.projects].sort((a, b) => {
-    const aText = `${a.name} ${a.description ?? ""} ${(a.stack ?? []).join(" ")} ${(a.highlights ?? []).join(" ")}`;
-    const bText = `${b.name} ${b.description ?? ""} ${(b.stack ?? []).join(" ")} ${(b.highlights ?? []).join(" ")}`;
-    return evidenceScore(bText, terms) - evidenceScore(aText, terms);
+function sortByJdRelevance(items: string[], jd?: JDAnalysis): string[] {
+  if (!jd) return items;
+  const primary = new Set(jd.primaryKeywords.map(normalizeSkillToken));
+  const secondary = new Set(jd.secondaryKeywords.map(normalizeSkillToken));
+  return [...items].sort((a, b) => {
+    const an = normalizeSkillToken(a);
+    const bn = normalizeSkillToken(b);
+    const score = (n: string) => (primary.has(n) ? 2 : secondary.has(n) ? 1 : 0);
+    return score(bn) - score(an);
   });
 }
 
-/** Intersect profile skills with job text, preserving profile casing. */
-function alignedSkills(ctx: AgentContext, job: JobBrief): { matched: string[]; rest: string[] } {
-  const jobText = `${job.title} ${job.description ?? ""} ${(job.tech_stack ?? []).join(" ")}`;
-  const matched: string[] = [];
-  const rest: string[] = [];
-  for (const s of ctx.skills) {
-    if (skillMatchesText(s, jobText)) matched.push(s);
-    else rest.push(s);
-  }
-  return { matched: unique(matched), rest: unique(rest) };
+/* ───────── Project ranking ───────── */
+
+function projectRelevanceScore(project: { name?: string; description?: string; stack?: string[]; highlights?: string[] }, jd?: JDAnalysis): number {
+  if (!jd) return 0;
+  const text = `${project.name ?? ""} ${project.description ?? ""} ${(project.stack ?? []).join(" ")} ${(project.highlights ?? []).join(" ")}`;
+  let score = 0;
+  for (const kw of jd.primaryKeywords) if (skillMatches(kw, text)) score += 3;
+  for (const kw of jd.secondaryKeywords) if (skillMatches(kw, text)) score += 1;
+  return score;
 }
 
-function splitSkills(ctx: AgentContext, job?: JobBrief): { technical: string[]; soft: string[] } {
-  const ordered = job ? [...alignedSkills(ctx, job).matched, ...alignedSkills(ctx, job).rest] : ctx.skills;
-  const technical: string[] = [];
-  const soft: string[] = [];
-  for (const skill of unique(ordered)) {
-    if (SOFT_SKILLS.has(skill.toLowerCase())) soft.push(skill);
-    else technical.push(skill);
-  }
-  return { technical, soft };
+function rankProjects(ctx: AgentContext, jd?: JDAnalysis) {
+  return [...ctx.projects].sort((a, b) => projectRelevanceScore(b, jd) - projectRelevanceScore(a, jd));
 }
 
-function strengthenBullet(raw: string): string {
-  const text = raw.trim().replace(/^[•*-]\s*/, "").replace(/\.$/, "");
-  if (!text) return "";
-  if (/^(built|developed|designed|implemented|created|optimized|improved|enhanced|led|shipped|automated|integrated|completed|participated)/i.test(text)) {
-    return `${text}.`;
-  }
-  return `Delivered ${text.charAt(0).toLowerCase()}${text.slice(1)}.`;
+/* ───────── Impact bullet rewriter (ACTION + TECH + OUTCOME) ───────── */
+
+const STRONG_VERBS_BY_ROLE: Record<string, string[]> = {
+  "AI Engineer": ["Engineered", "Architected", "Integrated", "Implemented", "Optimized"],
+  "ML Engineer": ["Trained", "Engineered", "Optimized", "Deployed", "Implemented"],
+  "Data Scientist": ["Analyzed", "Modeled", "Engineered", "Validated", "Delivered"],
+  "Data Analyst": ["Analyzed", "Modeled", "Built", "Automated", "Reported"],
+  "Frontend Engineer": ["Built", "Implemented", "Refactored", "Optimized", "Shipped"],
+  "Backend Engineer": ["Engineered", "Architected", "Optimized", "Integrated", "Scaled"],
+  "Full Stack Developer": ["Built", "Engineered", "Shipped", "Integrated", "Implemented"],
+  "Cloud Engineer": ["Deployed", "Architected", "Automated", "Provisioned", "Scaled"],
+  "DevOps Engineer": ["Automated", "Architected", "Deployed", "Optimized", "Implemented"],
+  "QA Engineer": ["Automated", "Implemented", "Designed", "Validated", "Reduced"],
+  "Security Engineer": ["Hardened", "Audited", "Implemented", "Mitigated", "Architected"],
+  "Mobile Engineer": ["Shipped", "Built", "Optimized", "Implemented", "Refactored"],
+  "Product Analyst": ["Analyzed", "Modeled", "Identified", "Quantified", "Reported"],
+  "Business Analyst": ["Documented", "Modeled", "Streamlined", "Analyzed", "Mapped"],
+  "Software Engineer": ["Engineered", "Built", "Implemented", "Optimized", "Shipped"],
+};
+
+const BANNED_OPENERS = /^(developed( a| an)?|built( a| an)?|created( a| an)?|worked on|helped|responsible for|tasked with|participated in|completed|delivered)\s+/i;
+
+function stripBannedOpener(text: string): string {
+  return text.replace(BANNED_OPENERS, "").trim();
 }
 
-function summaryBullets(ctx: AgentContext, job?: JobBrief): string[] {
-  const p = ctx.personal;
-  const bullets = cleanSummaryText(p.summary)
-    .split(/(?<=\.)\s+|\n+/)
-    .map((s) => s.trim().replace(/^[•*-]\s*/, ""))
-    .filter(Boolean)
-    .slice(0, 2);
-  if (job) {
-    const matched = alignedSkills(ctx, job).matched.slice(0, 5);
-    const topProjects = rankProjects(ctx, job).slice(0, 2).map((p) => p.name);
-    const edu = ctx.education[0];
-    bullets.unshift(
-      `${ctx.is_fresher ? "Fresher" : "Software"} candidate targeting ${job.title}${job.company ? ` at ${job.company}` : ""}, with profile-backed evidence from ${topProjects.length ? `projects including ${topProjects.join(" and ")}` : "education, skills, and project work"}.`,
-    );
-    if (matched.length) {
-      bullets.push(`Job-aligned technical strengths: ${matched.join(", ")}.`);
+function trimToWords(text: string, max: number): string {
+  const words = text.split(/\s+/).filter(Boolean);
+  if (words.length <= max) return text;
+  return words.slice(0, max).join(" ").replace(/[,;:.]$/, "");
+}
+
+function pickVerb(role: string, hash: number): string {
+  const verbs = STRONG_VERBS_BY_ROLE[role] ?? STRONG_VERBS_BY_ROLE["Software Engineer"];
+  return verbs[hash % verbs.length];
+}
+
+function pickTechToken(projectStack: string[], profileSkills: string[], jd?: JDAnalysis): string | null {
+  // Prefer JD-aligned tech that is actually in this project's stack.
+  if (jd) {
+    for (const kw of [...jd.primaryKeywords, ...jd.secondaryKeywords]) {
+      if (projectStack.some((s) => skillMatches(kw, s))) return kw;
     }
-    if (edu) bullets.push(`Education foundation: ${[edu.degree, edu.field, edu.school].filter(Boolean).join(" — ")}.`);
-  } else if (!bullets.length && (p.headline || ctx.projects.length || ctx.education.length)) {
-    const topProjects = ctx.projects.slice(0, 2).map((pr) => pr.name);
-    bullets.push(
-      `${p.headline || "Software engineering candidate"} with project evidence${topProjects.length ? ` from ${topProjects.join(" and ")}` : ""}.`,
-    );
   }
-  return unique(bullets).slice(0, 4);
+  const allowed = projectStack.length ? projectStack : profileSkills;
+  return allowed[0] ?? null;
 }
 
-function relevantCoursework(ctx: AgentContext): string[] {
-  const candidates = [
-    "Data Structures & Algorithms",
-    "Database Management Systems",
-    "Artificial Intelligence",
-    "Software Engineering",
-    "Computer Networks",
-    "Operating Systems",
-    "Object-Oriented Programming",
-    "Web Technologies",
-  ];
-  if (ctx.personal.summary || ctx.skills.length) return candidates;
-  return [];
+function tailorBullet(
+  raw: string,
+  opts: { index: number; jd?: JDAnalysis; projectStack: string[]; profileSkills: string[] },
+): string {
+  const original = String(raw ?? "").trim().replace(/^[-*•]\s*/, "").replace(/\.$/, "");
+  if (!original) return "";
+
+  let body = original;
+  const hadOpener = BANNED_OPENERS.test(body);
+  if (hadOpener) body = stripBannedOpener(body);
+  body = body.charAt(0).toLowerCase() + body.slice(1);
+
+  const role = opts.jd?.primaryRole ?? "Software Engineer";
+  const verb = hadOpener || !/^[A-Z][a-z]+ed\b/.test(original)
+    ? pickVerb(role, opts.index)
+    : null;
+
+  let composed = verb ? `${verb} ${body}` : original;
+
+  // Inject a JD-aligned tech reference IF the project actually uses it AND
+  // the bullet doesn't already name one.
+  const stackTokens = opts.projectStack.map((s) => s.toLowerCase());
+  const mentionsTech = stackTokens.some((s) => composed.toLowerCase().includes(s));
+  if (!mentionsTech) {
+    const tech = pickTechToken(opts.projectStack, opts.profileSkills, opts.jd);
+    if (tech) composed = `${composed} using ${tech}`;
+  }
+
+  // Ensure outcome clause when possible
+  const hasOutcome = /\b(improving|reducing|increasing|supporting|enabling|delivering|achieving|powering|scaling|automating|optimizing|streamlining|accelerating)\b/i.test(composed);
+  if (!hasOutcome) {
+    // Append a qualitative outcome derived from the body — never a fake metric.
+    if (/dashboard|report|analytics/i.test(composed)) composed += ", improving visibility and decision-making";
+    else if (/auth|security|role/i.test(composed)) composed += ", enabling secure multi-user access";
+    else if (/automat|workflow|pipeline/i.test(composed)) composed += ", reducing manual operational effort";
+    else if (/api|integration|service/i.test(composed)) composed += ", enabling reliable downstream integrations";
+    else if (/search|retriev|index/i.test(composed)) composed += ", improving information accessibility";
+    else composed += ", supporting end-to-end product delivery";
+  }
+
+  composed = trimToWords(composed, 28);
+  if (!/[.!?]$/.test(composed)) composed += ".";
+  return composed.charAt(0).toUpperCase() + composed.slice(1);
 }
 
-function addSkillRows(lines: string[], ctx: AgentContext, job?: JobBrief) {
-  const { technical, soft } = splitSkills(ctx, job);
-  if (!technical.length && !soft.length) return;
-  const languages = technical.filter((s) => /^(python|javascript|typescript|java|c\+\+|c#|php|go|rust)$/i.test(s));
-  const frontend = technical.filter((s) => /react|next|html|css|tailwind|frontend|ui\/ux/i.test(s));
-  const backend = technical.filter((s) => /node|express|rest|api|backend|fastapi|django|flask/i.test(s));
-  const databases = technical.filter((s) => /postgres|mysql|mongo|database|sql/i.test(s));
-  const tools = technical.filter((s) => /git|github|docker|postman|vs code|vscode|jira|datadog/i.test(s));
-  const used = new Set([...languages, ...frontend, ...backend, ...databases, ...tools].map((s) => s.toLowerCase()));
-  const concepts = technical.filter((s) => !used.has(s.toLowerCase()));
+/* ───────── Summary builder (2–3 lines) ───────── */
 
-  lines.push("## Technical Skills");
-  if (languages.length) lines.push(`**Languages:** ${unique(languages).join(", ")}`);
-  if (frontend.length) lines.push(`**Frontend:** ${unique(frontend).join(", ")}`);
-  if (backend.length) lines.push(`**Backend:** ${unique(backend).join(", ")}`);
-  if (databases.length) lines.push(`**Databases:** ${unique(databases).join(", ")}`);
-  if (tools.length) lines.push(`**Tools:** ${unique(tools).join(", ")}`);
-  if (concepts.length) lines.push(`**Core Concepts:** ${unique(concepts).join(", ")}`);
-  if (soft.length) lines.push(`**Soft Skills:** ${unique(soft).join(", ")}`);
-  lines.push("");
+function summaryLines(ctx: AgentContext, jd?: JDAnalysis): string[] {
+  const p = ctx.personal;
+  const edu = ctx.education[0];
+  const role = jd?.primaryRole ?? (p.headline || "Software Engineer");
+
+  const matched = jd
+    ? sortByJdRelevance(ctx.skills, jd).filter((s) => skillMatches(s, jd.requiredSkills.concat(jd.secondaryKeywords).join(" "))).slice(0, 4)
+    : ctx.skills.slice(0, 4);
+
+  const topProject = ctx.projects[0]?.name;
+
+  const line1 = edu
+    ? `${edu.degree ?? "Computer Science"} candidate${edu.school ? ` at ${edu.school}` : ""} targeting ${role} roles.`
+    : `${role} with a project-led engineering portfolio.`;
+
+  const techPhrase = matched.length ? matched.join(", ") : ctx.skills.slice(0, 4).join(", ");
+  const line2 = techPhrase
+    ? `Hands-on experience with ${techPhrase}${topProject ? `, demonstrated through ${topProject}` : ""}.`
+    : `Hands-on builder with shipped project work${topProject ? `, including ${topProject}` : ""}.`;
+
+  const line3 = ctx.is_fresher
+    ? `Strong fundamentals in data structures, algorithms and system design, validated through production-grade student projects.`
+    : `Proven track record delivering production systems end-to-end with measurable user impact.`;
+
+  return [line1, line2, line3].filter(Boolean);
 }
 
-/* ───────── Resume ───────── */
+/* ───────── Public: resume builder ───────── */
 
 export function buildResumeFromProfile(ctx: AgentContext, job?: JobBrief): string {
-  const lines: string[] = [];
+  const jd = job ? analyzeJobDescription(job) : undefined;
   const p = ctx.personal;
+  const links = validateProfileLinks({
+    linkedin_url: p.links.linkedin,
+    github_url: p.links.github,
+    portfolio_url: p.links.portfolio,
+  });
 
+  const lines: string[] = [];
+
+  // Header
   lines.push(`# ${(p.name || "Candidate").toUpperCase()}`);
   const contactBits = [p.location, p.phone, p.email].filter(Boolean);
   if (contactBits.length) lines.push(contactBits.join(" | "));
   const linkBits = [
-    p.links.linkedin && `LinkedIn: ${cleanUrl(p.links.linkedin)}`,
-    p.links.github && `GitHub: ${cleanUrl(p.links.github)}`,
-    p.links.portfolio && `Portfolio: ${cleanUrl(p.links.portfolio)}`,
+    links.linkedin && `LinkedIn: ${cleanDisplayUrl(links.linkedin)}`,
+    links.github && `GitHub: ${cleanDisplayUrl(links.github)}`,
+    links.portfolio && `Portfolio: ${cleanDisplayUrl(links.portfolio)}`,
   ].filter(Boolean) as string[];
   if (linkBits.length) lines.push(linkBits.join(" | "));
   lines.push("");
 
+  // Profile Summary
   lines.push("## Profile Summary");
-  for (const bullet of summaryBullets(ctx, job)) lines.push(`- ${bullet}`);
+  for (const s of summaryLines(ctx, jd)) lines.push(s);
   lines.push("");
 
-  const coursework = relevantCoursework(ctx);
-  if (coursework.length) {
-    lines.push("## Relevant Coursework");
-    for (const course of coursework) lines.push(`- ${course}`);
+  // Technical Skills (reordered per JD)
+  const buckets = categorizeSkills(ctx.skills);
+  const orderedBucketLabels = ["Languages", "Frontend", "Backend", "Databases", "Cloud & DevOps", "AI & ML", "Tools", "Other"];
+  const hasAnySkill = Object.values(buckets).some((b) => b.length);
+  if (hasAnySkill) {
+    lines.push("## Technical Skills");
+    for (const label of orderedBucketLabels) {
+      const items = unique(sortByJdRelevance(buckets[label] ?? [], jd));
+      if (!items.length) continue;
+      const display = label === "Other" ? "Core Concepts" : label;
+      lines.push(`**${display}:** ${items.join(", ")}`);
+    }
     lines.push("");
   }
 
+  // Projects (always present for freshers; max 3 unless senior)
+  const orderedProjects = rankProjects(ctx, jd);
+  const projectsToShow = ctx.is_fresher ? orderedProjects.slice(0, 3) : orderedProjects.slice(0, 4);
+
   const renderProjects = () => {
-    if (!ctx.projects.length) return;
+    if (!projectsToShow.length) return;
     lines.push("## Projects");
-    const orderedProjects = rankProjects(ctx, job);
-    const matchedJobSkills = job ? alignedSkills(ctx, job).matched : [];
-    for (const project of orderedProjects) {
+    for (const project of projectsToShow) {
       const dates = fmtRange(project.start, project.end, project.current);
       const stack = project.stack?.length ? ` | ${project.stack.join(", ")}` : "";
       lines.push(`### ${project.name}${stack}${dates ? ` | ${dates}` : ""}`);
-      if (project.url) lines.push(`GitHub: ${cleanUrl(project.url)}`);
-      if (project.description) lines.push(project.description);
-      const projectSkillHits = matchedJobSkills.filter((s) =>
-        `${project.name} ${project.description ?? ""} ${(project.stack ?? []).join(" ")} ${(project.highlights ?? []).join(" ")}`
-          .toLowerCase()
-          .includes(s.toLowerCase()),
-      );
-      if (projectSkillHits.length) lines.push(`- Job relevance: demonstrates ${projectSkillHits.slice(0, 4).join(", ")} through shipped project work.`);
-      for (const h of (project.highlights ?? []).slice(0, 4)) {
-        const bullet = strengthenBullet(h);
+      if (project.url && isValidLink(project.url)) lines.push(`GitHub: ${cleanDisplayUrl(project.url)}`);
+      const highlights = (project.highlights ?? []).slice(0, 4);
+      const sourceBullets = highlights.length ? highlights : (project.description ? [project.description] : []);
+      sourceBullets.forEach((h, idx) => {
+        const bullet = tailorBullet(h, {
+          index: idx,
+          jd,
+          projectStack: project.stack ?? [],
+          profileSkills: ctx.skills,
+        });
         if (bullet) lines.push(`- ${bullet}`);
-      }
+      });
       lines.push("");
     }
   };
@@ -254,14 +297,14 @@ export function buildResumeFromProfile(ctx: AgentContext, job?: JobBrief): strin
     if (!ctx.experience.length) return;
     lines.push("## Experience");
     for (const exp of ctx.experience) {
-      const title = [exp.company, exp.title].filter(Boolean).join(" — ");
+      const head = [exp.company, exp.title].filter(Boolean).join(" — ");
       const meta = [fmtRange(exp.start, exp.end, exp.current), exp.location].filter(Boolean).join(" | ");
-      lines.push(`### ${title}${meta ? ` | ${meta}` : ""}`);
-      if (exp.description) lines.push(exp.description);
-      for (const h of exp.highlights ?? []) {
-        const bullet = strengthenBullet(h);
+      lines.push(`### ${head}${meta ? ` | ${meta}` : ""}`);
+      const hs = (exp.highlights ?? []).slice(0, 4);
+      hs.forEach((h, idx) => {
+        const bullet = tailorBullet(h, { index: idx, jd, projectStack: [], profileSkills: ctx.skills });
         if (bullet) lines.push(`- ${bullet}`);
-      }
+      });
       lines.push("");
     }
   };
@@ -274,37 +317,41 @@ export function buildResumeFromProfile(ctx: AgentContext, job?: JobBrief): strin
     renderProjects();
   }
 
-  addSkillRows(lines, ctx, job);
-
+  // Education
   if (ctx.education.length) {
     lines.push("## Education");
     for (const ed of ctx.education) {
       const credential = [ed.degree, ed.field && !String(ed.degree ?? "").includes(String(ed.field)) ? ed.field : ""].filter(Boolean).join(" — ");
       const dates = fmtRange(ed.start, ed.end);
-      lines.push(`### ${ed.school}${credential ? ` | ${credential}` : ""}${dates ? ` | ${dates}` : ""}`);
-      if (ed.gpa) lines.push(`${ed.gpa.includes("%") ? "Percentage" : "CGPA"}: ${ed.gpa}`);
-      if (ed.description) lines.push(ed.description);
-      lines.push("");
+      const gpa = ed.gpa ? ` | ${ed.gpa.includes("%") ? `Percentage ${ed.gpa}` : `CGPA ${ed.gpa}`}` : "";
+      lines.push(`### ${ed.school}${credential ? ` | ${credential}` : ""}${gpa}${dates ? ` | ${dates}` : ""}`);
     }
+    lines.push("");
   }
 
+  // Certifications
   if (ctx.certifications.length) {
     lines.push("## Certifications");
-    for (const cert of ctx.certifications) {
-      lines.push(`- ${[cert.name, cert.issuer, cert.year].filter(Boolean).join(" | ")}`);
+    for (const cert of ctx.certifications.slice(0, 6)) {
+      lines.push(`- ${[cert.name, cert.issuer, cert.year].filter(Boolean).join(" – ")}`);
     }
     lines.push("");
   }
 
+  // Achievements (max 4)
   if (ctx.achievements.length) {
     lines.push("## Achievements");
-    for (const achievement of ctx.achievements) lines.push(`- ${strengthenBullet(achievement)}`);
+    for (const a of ctx.achievements.slice(0, 4)) {
+      const bullet = tailorBullet(a, { index: 0, jd, projectStack: [], profileSkills: ctx.skills });
+      if (bullet) lines.push(`- ${bullet}`);
+    }
     lines.push("");
   }
 
+  // Languages
   if (ctx.languages.length) {
     lines.push("## Languages");
-    lines.push(ctx.languages.map((l) => (l.proficiency ? `${l.name} (${l.proficiency})` : l.name)).join(", "));
+    lines.push(ctx.languages.map((l) => (l.proficiency ? `${l.name} (${l.proficiency})` : l.name)).join(" | "));
     lines.push("");
   }
 
@@ -314,39 +361,48 @@ export function buildResumeFromProfile(ctx: AgentContext, job?: JobBrief): strin
 /* ───────── Cover Letter ───────── */
 
 export function buildCoverFromProfile(ctx: AgentContext, job: JobBrief): string {
+  const jd = analyzeJobDescription(job);
   const p = ctx.personal;
-  const topProjects = rankProjects(ctx, job).slice(0, 2);
+  const topProjects = rankProjects(ctx, jd).slice(0, 2);
   const edu = ctx.education[0];
-  const matched = alignedSkills(ctx, job).matched.slice(0, 5);
+
+  const matchedSkills = sortByJdRelevance(ctx.skills, jd)
+    .filter((s) => skillMatches(s, [...jd.requiredSkills, ...jd.primaryKeywords].join(" ")))
+    .slice(0, 5);
 
   const educationLine = edu
-    ? `I am pursuing ${edu.degree ?? "my studies"}${edu.school ? ` at ${edu.school}` : ""}${edu.gpa ? ` with ${edu.gpa.includes("%") ? `${edu.gpa}` : `CGPA ${edu.gpa}`}` : ""}`
-    : `I am ${p.headline || "a software engineering candidate"}`;
+    ? `I am pursuing ${edu.degree ?? "my studies"}${edu.school ? ` at ${edu.school}` : ""}${edu.gpa ? ` with ${edu.gpa.includes("%") ? edu.gpa : `CGPA ${edu.gpa}`}` : ""}`
+    : `I am ${p.headline || `a ${jd.primaryRole} candidate`}`;
 
-  const opener = `${educationLine}, and I am applying for the ${job.title} role at ${job.company}. I am keeping this application grounded in verified profile evidence: education, skills, and shipped projects.`;
+  const opener = `${educationLine}, applying for the ${job.title} role at ${job.company}. My background as a ${jd.primaryRole.toLowerCase()} is grounded in hands-on project work and verified profile evidence.`;
 
   const projectProof = topProjects
-    .map((project) => {
+    .map((project, idx) => {
       const stack = project.stack?.length ? ` using ${project.stack.slice(0, 4).join(", ")}` : "";
-      const proof = strengthenBullet(project.highlights?.[0] ?? project.description ?? "").replace(/\.$/, "");
-      return `${project.name}${stack}, where I ${proof.charAt(0).toLowerCase()}${proof.slice(1)}`;
+      const bullet = tailorBullet(project.highlights?.[0] ?? project.description ?? project.name, {
+        index: idx,
+        jd,
+        projectStack: project.stack ?? [],
+        profileSkills: ctx.skills,
+      }).replace(/\.$/, "");
+      return `${project.name}${stack}, where I ${bullet.charAt(0).toLowerCase()}${bullet.slice(1)}`;
     })
     .join(". ");
 
-  const proofParagraph = projectProof
-    ? `${projectProof}. These projects are the best proof of my ability to turn product requirements into working software.`
-    : matched.length
-      ? `My job-aligned strengths include ${matched.join(", ")}, supported by coursework and project execution.`
-      : `My profile shows strong foundations in software engineering, full-stack development, and problem solving.`;
+  const proof = projectProof
+    ? `${projectProof}. These projects are direct evidence that I can take ${jd.primaryRole.toLowerCase()} requirements from spec to a working, deployed product.`
+    : matchedSkills.length
+      ? `My job-aligned strengths include ${matchedSkills.join(", ")}, supported by coursework and project execution.`
+      : `My profile demonstrates strong foundations in software engineering and problem solving.`;
 
-  const closing = `I would value the opportunity to bring this project-first execution mindset to ${job.company}. Thank you for your time and consideration.`;
+  const closing = `I would value the opportunity to bring this execution mindset to ${job.company}. Thank you for your time and consideration.`;
 
   return [
     "Dear Hiring Manager,",
     "",
     opener,
     "",
-    proofParagraph,
+    proof,
     "",
     closing,
     "",

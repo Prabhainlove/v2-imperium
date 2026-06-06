@@ -88,8 +88,19 @@ function renderLines(lines: string[]): string {
   return out.join("");
 }
 
-export type ResumeTemplate = "classic" | "modern" | "compact";
+export type ResumeTemplate = "jake-ats" | "classic" | "modern" | "compact";
 
+const jakeAtsCss = `
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Latin Modern Roman','Computer Modern','Times New Roman',Times,serif;color:#111;padding:0.5in 0.55in;line-height:1.3;font-size:10.5pt;background:#fff}
+h1{font-size:20pt;font-weight:bold;text-align:center;margin:0 0 2px}
+.contact{font-size:10pt;color:#111;text-align:center;margin-bottom:8px}
+h2{font-size:11pt;font-weight:bold;text-transform:uppercase;letter-spacing:.05em;border-bottom:1.2px solid #111;padding-bottom:1px;margin:10px 0 3px}
+.role{display:flex;justify-content:space-between;gap:14px;margin:5px 0 1px}.role-right{white-space:nowrap;font-style:italic;color:#222}
+p{margin:2px 0}
+ul{margin:2px 0 4px 18px}
+li{margin:1px 0;line-height:1.35}
+`;
 const classicCss = `
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Times New Roman',Times,serif;color:#111;padding:0.6in 0.7in;line-height:1.35;font-size:11pt;background:#fff}
@@ -124,9 +135,9 @@ ul{margin:2px 0 4px 18px}
 li{margin:1px 0;line-height:1.3}
 `;
 
-export function renderResumeHtml(md: string, template: ResumeTemplate = "classic"): string {
+export function renderResumeHtml(md: string, template: ResumeTemplate = "jake-ats"): string {
   const parsed = parseResumeMarkdown(md);
-  const css = template === "modern" ? modernCss : template === "compact" ? compactCss : classicCss;
+  const css = template === "modern" ? modernCss : template === "compact" ? compactCss : template === "classic" ? classicCss : jakeAtsCss;
   const body = parsed.sections
     .map((s) => `<section><h2>${esc(s.heading)}</h2>${renderLines(s.lines)}</section>`)
     .join("");
