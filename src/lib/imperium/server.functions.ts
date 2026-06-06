@@ -631,6 +631,7 @@ export const optimizeMasterResume = createServerFn({ method: "POST" })
       title: data.job_title,
       company: data.company,
       description: data.job_description,
+      tech_stack: jobKeywords,
     });
     // Validate against profile vocabulary; strip any hallucinated tech terms.
     const report = validateAgainstProfile(optimized, ctx);
