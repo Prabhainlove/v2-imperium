@@ -631,6 +631,7 @@ export const optimizeMasterResume = createServerFn({ method: "POST" })
       title: data.job_title,
       company: data.company,
       description: data.job_description,
+      tech_stack: jobKeywords,
     });
     // Validate against profile vocabulary; strip any hallucinated tech terms.
     const report = validateAgainstProfile(optimized, ctx);
@@ -786,6 +787,42 @@ const RunSearchInput = z.object({
   resume_text: z.string().default(""),
 });
 
+function mergeStringList(primary: string[] = [], secondary: string[] = []): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const value of [...primary, ...secondary]) {
+    const text = String(value ?? "").trim();
+    if (!text) continue;
+    const key = text.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(text);
+  }
+  return out;
+}
+
+function appendIfMissing<T>(primary: T[] = [], secondary: T[] = [], keyOf: (item: T) => string): T[] {
+  const seen = new Set(primary.map((item) => keyOf(item).toLowerCase()).filter(Boolean));
+  const out = [...primary];
+  for (const item of secondary) {
+    const key = keyOf(item).toLowerCase();
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    out.push(item);
+  }
+  return out;
+}
+
+function meaningfulResumeText(text: string): boolean {
+  const t = text.trim();
+  return t.length >= 120 && !/^\[resume file uploaded:/i.test(t);
+}
+
+function isBadSummary(value?: string): boolean {
+  const t = (value ?? "").trim();
+  return !t || /^\[resume file uploaded:/i.test(t) || /^role alignment for .+profile-backed strengths in/i.test(t);
+}
+
 export const runJobSearch = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => RunSearchInput.parse(input))
@@ -806,26 +843,49 @@ export const runJobSearch = createServerFn({ method: "POST" })
     const existingProfile = rowToProfile(userId, existing as Record<string, unknown> | null);
     const fallbackEmail = (claims?.email as string | undefined) ?? "";
     const formSkills = data.skills.split(",").map((s) => s.trim()).filter(Boolean);
+    const resumePatch = meaningfulResumeText(data.resume_text)
+      ? (await (async () => {
+          try {
+            const { extractProfileFromText } = await import("./brain/profile-import.server");
+            return (await extractProfileFromText(data.resume_text)).patch as Record<string, unknown>;
+          } catch (error) {
+            await supabase.from("activity_log").insert({
+              user_id: userId,
+              task_id,
+              agent: "job_agent",
+              action: "resume_import",
+              status: "failed",
+              detail: error instanceof Error ? error.message : String(error),
+            });
+            return {} as Record<string, unknown>;
+          }
+        })())
+      : ({} as Record<string, unknown>);
+    const importedSkills = Array.isArray(resumePatch.skills) ? (resumePatch.skills as string[]) : [];
+    const mergedSkills = mergeStringList(
+      existingProfile?.skills?.length ? existingProfile.skills : [],
+      mergeStringList(formSkills, importedSkills),
+    );
 
     const merged = {
       id: userId,
-      name: existingProfile?.name || data.name || "Candidate",
-      email: existingProfile?.email || data.email || fallbackEmail,
-      phone: existingProfile?.phone || data.phone || "",
+      name: existingProfile?.name || (resumePatch.name as string) || data.name || "Candidate",
+      email: existingProfile?.email || (resumePatch.email as string) || data.email || fallbackEmail,
+      phone: existingProfile?.phone || (resumePatch.phone as string) || data.phone || "",
       location: existingProfile?.location || data.location,
-      headline: existingProfile?.headline || data.role,
-      summary: existingProfile?.summary || data.resume_text.slice(0, 1000),
-      target_role: existingProfile?.target_role || data.role,
-      skills: existingProfile?.skills?.length ? existingProfile.skills : formSkills,
-      experience: existingProfile?.experience ?? [],
-      education: existingProfile?.education ?? [],
-      projects: existingProfile?.projects ?? [],
-      certifications: existingProfile?.certifications ?? [],
-      languages: existingProfile?.languages ?? [],
-      achievements: existingProfile?.achievements ?? [],
-      linkedin_url: existingProfile?.linkedin_url ?? "",
-      github_url: existingProfile?.github_url ?? "",
-      portfolio_url: existingProfile?.portfolio_url ?? "",
+      headline: existingProfile?.headline || (resumePatch.headline as string) || data.role,
+      summary: !isBadSummary(existingProfile?.summary) ? existingProfile?.summary : (resumePatch.summary as string) || "",
+      target_role: existingProfile?.target_role || (resumePatch.target_role as string) || data.role,
+      skills: mergedSkills,
+      experience: appendIfMissing(existingProfile?.experience ?? [], (resumePatch.experience as never[]) ?? [], (e) => `${(e as { company?: string }).company ?? ""}:${(e as { title?: string }).title ?? ""}`),
+      education: appendIfMissing(existingProfile?.education ?? [], (resumePatch.education as never[]) ?? [], (e) => `${(e as { school?: string }).school ?? ""}:${(e as { degree?: string }).degree ?? ""}`),
+      projects: appendIfMissing(existingProfile?.projects ?? [], (resumePatch.projects as never[]) ?? [], (p) => (p as { name?: string }).name ?? ""),
+      certifications: appendIfMissing(existingProfile?.certifications ?? [], (resumePatch.certifications as never[]) ?? [], (c) => (c as { name?: string }).name ?? ""),
+      languages: appendIfMissing(existingProfile?.languages ?? [], (resumePatch.languages as never[]) ?? [], (l) => (l as { name?: string }).name ?? ""),
+      achievements: mergeStringList(existingProfile?.achievements ?? [], (resumePatch.achievements as string[]) ?? []),
+      linkedin_url: existingProfile?.linkedin_url || (resumePatch.linkedin_url as string) || "",
+      github_url: existingProfile?.github_url || (resumePatch.github_url as string) || "",
+      portfolio_url: existingProfile?.portfolio_url || (resumePatch.portfolio_url as string) || "",
     };
 
     // Persist non-destructively (only the fields we *do* know).
@@ -840,6 +900,15 @@ export const runJobSearch = createServerFn({ method: "POST" })
         summary: merged.summary,
         target_role: merged.target_role,
         skills: merged.skills,
+        experience: merged.experience,
+        education: merged.education,
+        projects: merged.projects,
+        certifications: merged.certifications,
+        languages: merged.languages,
+        achievements: merged.achievements,
+        linkedin_url: merged.linkedin_url,
+        github_url: merged.github_url,
+        portfolio_url: merged.portfolio_url,
       },
       { onConflict: "id" },
     );

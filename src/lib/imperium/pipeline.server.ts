@@ -56,6 +56,27 @@ interface ScoreBreakdown {
   location_match: number;   // 0..1
 }
 
+function normalizeSkill(value: string): string {
+  return value.toLowerCase().replace(/\.js\b/g, "").replace(/[^a-z0-9+#]+/g, " ").trim();
+}
+
+function skillMatchesJob(skill: string, jobText: string, stack: string[]): boolean {
+  const normalized = normalizeSkill(skill);
+  if (!normalized) return false;
+  const haystack = normalizeSkill(`${jobText} ${stack.join(" ")}`);
+  if (haystack.includes(normalized)) return true;
+  const aliases: Record<string, string[]> = {
+    react: ["reactjs", "frontend", "ui"],
+    node: ["nodejs", "backend", "api"],
+    postgres: ["postgresql", "sql"],
+    postgresql: ["postgres", "sql"],
+    javascript: ["js"],
+    typescript: ["ts"],
+    "rest apis": ["rest", "api", "apis"],
+  };
+  return (aliases[normalized] ?? []).some((alias) => haystack.includes(alias));
+}
+
 function scoreJob(
   job: RawJob,
   role: string,
@@ -73,11 +94,11 @@ function scoreJob(
   const title_score = role_terms.length ? title_hits / role_terms.length : 0;
 
   // Skill match
-  const wanted = skills.map((s) => s.toLowerCase().trim()).filter(Boolean);
+  const wanted = skills.map((s) => s.trim()).filter(Boolean);
   const matched: string[] = [];
   const missing: string[] = [];
   for (const s of wanted) {
-    if (text.includes(s) || job.tech_stack.some((t) => t.toLowerCase().includes(s))) matched.push(s);
+    if (skillMatchesJob(s, text, job.tech_stack)) matched.push(s);
     else missing.push(s);
   }
   const skill_score = wanted.length ? matched.length / wanted.length : 0.5;
