@@ -244,11 +244,8 @@ function SearchPage() {
       const firstApplication = data.matches?.find((m) => m.application_id)?.application_id;
       if ((data.summary?.application_packages ?? 0) > 0) {
         window.setTimeout(() => {
-          navigate(
-            firstApplication
-              ? { to: "/review/$id", params: { id: firstApplication } }
-              : { to: "/applications" },
-          );
+          if (firstApplication) navigate({ to: "/review/$id", params: { id: firstApplication } });
+          else navigate({ to: "/applications" });
         }, 900);
       }
     },
