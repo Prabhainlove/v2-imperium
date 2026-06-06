@@ -7,6 +7,9 @@
  * Writes an activity_log row at every stage so the UI animates live.
  */
 import { SOURCES, type RawJob } from "./sources.server";
+import { buildAgentContext, type AgentContext } from "./profile/agent-context";
+import { buildResumeFromProfile, buildCoverFromProfile } from "./profile/generators";
+import type { ImperiumProfile } from "./profile/types";
 
 type ImperiumDb = { from: (table: string) => any };
 
@@ -18,12 +21,8 @@ export interface PipelineInput {
   location: string;
   experience: string;
   skills: string[];
-  candidate: {
-    name: string;
-    email: string;
-    phone: string;
-    summary?: string;
-  };
+  /** Full profile snapshot — single source of truth for every generator. */
+  profile: Partial<ImperiumProfile>;
   max_applications: number;
   desired_salary_min?: number | null;
 }
@@ -123,62 +122,26 @@ function scoreJob(
 // AI removed from the search/package pipeline for portability.
 // Matching, resume, cover letter, and readiness now run locally.
 
-function fallbackResume(
-  input: PipelineInput,
-  job: RawJob,
-  matched: string[],
-  missing: string[],
-): string {
-  // Union of every keyword the ATS heuristic will look for: candidate skills,
-  // job tech stack, matched + missing keywords. We weave all of them into the
-  // resume so the ATS score lands at 100.
-  const allKeywords = Array.from(
-    new Set(
-      [
-        ...input.skills,
-        ...job.tech_stack,
-        ...matched,
-        ...missing,
-      ]
-        .map((k) => k.trim())
-        .filter(Boolean),
-    ),
-  );
-  const keywordLine = allKeywords.join(" · ");
-  return [
-    `# ${input.candidate.name}`,
-    `${input.candidate.email} · ${input.candidate.phone}`,
-    "",
-    `## Summary`,
-    `${input.candidate.summary ?? `${input.role} with ${input.experience} of experience.`} Targeting ${job.title} at ${job.company}. Hands-on with ${allKeywords.slice(0, 8).join(", ")}.`,
-    "",
-    `## Skills`,
-    keywordLine,
-    "",
-    `## Experience`,
-    `- Delivered production ${input.role.toLowerCase()} systems aligned with ${job.title} at ${job.company}.`,
-    `- Built and shipped features using ${allKeywords.slice(0, 6).join(", ")}.`,
-    `- Comfortable with remote async collaboration across timezones.`,
-    "",
-    `## Education`,
-    `- Relevant coursework and continuous learning across ${allKeywords.slice(0, 4).join(", ")}.`,
-    "",
-    `## Keywords`,
-    keywordLine,
-  ].join("\n");
+// Profile-first generators. No invented experience, no invented tech, no
+// keyword stuffing. The Profile is the single source of truth.
+function generateResume(ctx: AgentContext, job: RawJob): string {
+  return buildResumeFromProfile(ctx, {
+    title: job.title,
+    company: job.company,
+    description: job.description,
+    tech_stack: job.tech_stack,
+    location: job.location,
+  });
 }
 
-function fallbackCover(input: PipelineInput, job: RawJob): string {
-  return [
-    `Dear ${job.company} hiring team,`,
-    "",
-    `I'm applying for the ${job.title} role. With ${input.experience} of experience as a ${input.role}, I bring direct expertise in ${input.skills.slice(0, 4).join(", ")} — closely matching what your team is building.`,
-    "",
-    `I'd love to discuss how I can contribute.`,
-    "",
-    `Best regards,`,
-    input.candidate.name,
-  ].join("\n");
+function generateCover(ctx: AgentContext, job: RawJob): string {
+  return buildCoverFromProfile(ctx, {
+    title: job.title,
+    company: job.company,
+    description: job.description,
+    tech_stack: job.tech_stack,
+    location: job.location,
+  });
 }
 
 export async function runPipeline(input: PipelineInput) {
