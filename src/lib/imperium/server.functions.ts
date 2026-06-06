@@ -817,6 +817,11 @@ function meaningfulResumeText(text: string): boolean {
   return t.length >= 120 && !/^\[resume file uploaded:/i.test(t);
 }
 
+function isBadSummary(value?: string): boolean {
+  const t = (value ?? "").trim();
+  return !t || /^\[resume file uploaded:/i.test(t) || /^role alignment for .+profile-backed strengths in/i.test(t);
+}
+
 export const runJobSearch = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => RunSearchInput.parse(input))
@@ -868,7 +873,7 @@ export const runJobSearch = createServerFn({ method: "POST" })
       phone: existingProfile?.phone || (resumePatch.phone as string) || data.phone || "",
       location: existingProfile?.location || data.location,
       headline: existingProfile?.headline || (resumePatch.headline as string) || data.role,
-      summary: existingProfile?.summary || (resumePatch.summary as string) || "",
+      summary: !isBadSummary(existingProfile?.summary) ? existingProfile?.summary : (resumePatch.summary as string) || "",
       target_role: existingProfile?.target_role || (resumePatch.target_role as string) || data.role,
       skills: mergedSkills,
       experience: appendIfMissing(existingProfile?.experience ?? [], (resumePatch.experience as never[]) ?? [], (e) => `${(e as { company?: string }).company ?? ""}:${(e as { title?: string }).title ?? ""}`),
