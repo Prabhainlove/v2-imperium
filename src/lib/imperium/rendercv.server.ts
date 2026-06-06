@@ -28,7 +28,7 @@ export function parseResumeMarkdown(md: string): ParsedResume {
   let current: { heading: string; lines: string[] } | null = null;
   for (; i < lines.length; i++) {
     const line = lines[i];
-    const h = line.match(/^#{2,3}\s+(.*)/);
+    const h = line.match(/^##\s+(.*)/);
     if (h) {
       if (current) sections.push(current);
       current = { heading: h[1].trim(), lines: [] };
@@ -62,6 +62,17 @@ function renderLines(lines: string[]): string {
       flush();
       continue;
     }
+    if (/^###\s+/.test(line)) {
+      flush();
+      const body = line.replace(/^###\s+/, "");
+      const parts = body.split(/\s+\|\s+/);
+      const right = parts.length > 1 ? parts[parts.length - 1] : "";
+      const left = parts.length > 1 ? parts.slice(0, -1).join(" | ") : body;
+      out.push(
+        `<div class="role"><span class="role-left"><strong>${esc(left)}</strong></span>${right ? `<span class="role-right">${esc(right)}</span>` : ""}</div>`,
+      );
+      continue;
+    }
     if (/^[-*•]\s+/.test(line)) {
       if (!inUl) {
         out.push("<ul>");
@@ -70,7 +81,7 @@ function renderLines(lines: string[]): string {
       out.push(`<li>${esc(line.replace(/^[-*•]\s+/, ""))}</li>`);
     } else {
       flush();
-      out.push(`<p>${esc(line)}</p>`);
+      out.push(`<p>${esc(line).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>").replace(/\*(.+?)\*/g, "<em>$1</em>")}</p>`);
     }
   }
   flush();
