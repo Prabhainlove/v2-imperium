@@ -684,19 +684,52 @@ export const runJobSearch = createServerFn({ method: "POST" })
     const { supabase, userId, claims } = context;
     const task_id = `t_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 
-    // Persist latest profile snapshot for the user
-    const skillList = data.skills.split(",").map((s) => s.trim()).filter(Boolean);
+    // PROFILE IS THE SOURCE OF TRUTH.
+    // Read the saved profile first. Only fill in *missing* fields from the
+    // search form — never overwrite existing rich profile data with a thin
+    // form submission.
+    const { data: existing } = await supabase
+      .from("profiles")
+      .select(PROFILE_V2_COLUMNS)
+      .eq("id", userId)
+      .maybeSingle();
+    const existingProfile = rowToProfile(userId, existing as Record<string, unknown> | null);
     const fallbackEmail = (claims?.email as string | undefined) ?? "";
+    const formSkills = data.skills.split(",").map((s) => s.trim()).filter(Boolean);
+
+    const merged = {
+      id: userId,
+      name: existingProfile?.name || data.name || "Candidate",
+      email: existingProfile?.email || data.email || fallbackEmail,
+      phone: existingProfile?.phone || data.phone || "",
+      location: existingProfile?.location || data.location,
+      headline: existingProfile?.headline || data.role,
+      summary: existingProfile?.summary || data.resume_text.slice(0, 1000),
+      target_role: existingProfile?.target_role || data.role,
+      skills: existingProfile?.skills?.length ? existingProfile.skills : formSkills,
+      experience: existingProfile?.experience ?? [],
+      education: existingProfile?.education ?? [],
+      projects: existingProfile?.projects ?? [],
+      certifications: existingProfile?.certifications ?? [],
+      languages: existingProfile?.languages ?? [],
+      achievements: existingProfile?.achievements ?? [],
+      linkedin_url: existingProfile?.linkedin_url ?? "",
+      github_url: existingProfile?.github_url ?? "",
+      portfolio_url: existingProfile?.portfolio_url ?? "",
+    };
+
+    // Persist non-destructively (only the fields we *do* know).
     await supabase.from("profiles").upsert(
       {
         id: userId,
-        name: data.name || "Candidate",
-        email: data.email || fallbackEmail,
-        phone: data.phone,
-        location: data.location,
-        headline: data.role,
-        summary: data.resume_text.slice(0, 1000),
-        skills: skillList,
+        name: merged.name,
+        email: merged.email,
+        phone: merged.phone,
+        location: merged.location,
+        headline: merged.headline,
+        summary: merged.summary,
+        target_role: merged.target_role,
+        skills: merged.skills,
       },
       { onConflict: "id" },
     );
@@ -708,13 +741,8 @@ export const runJobSearch = createServerFn({ method: "POST" })
       role: data.role,
       location: data.location,
       experience: data.experience,
-      skills: skillList,
-      candidate: {
-        name: data.name || "Candidate",
-        email: data.email || fallbackEmail || "candidate@example.com",
-        phone: data.phone,
-        summary: data.resume_text.slice(0, 1000),
-      },
+      skills: merged.skills,
+      profile: merged,
       max_applications: data.max_applications,
     });
 
