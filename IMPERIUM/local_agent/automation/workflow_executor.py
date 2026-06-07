@@ -25,8 +25,9 @@ Flow orchestration per site. Generic form mechanics live in
 """
 from __future__ import annotations
 
+import os
 import time
-from typing import Any, Callable, Dict
+from typing import Any, Callable, Dict, List
 
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -41,6 +42,12 @@ from automation.form_parser import (
 from automation.resume_uploader import maybe_upload_resume
 
 Emit = Callable[..., None]
+
+# B6 — configurable wizard-step timeout; surfaces clearer failure causes.
+EASY_APPLY_STEP_TIMEOUT_S = float(os.environ.get("LINKEDIN_STEP_TIMEOUT", "20"))
+# B6 — optional per-step approval gate (default off to preserve current UX).
+EASY_APPLY_PER_STEP_APPROVAL = os.environ.get("LINKEDIN_APPROVAL_PER_STEP") == "1"
+
 
 
 # ============================================================
@@ -133,7 +140,14 @@ def linkedin_click_easy_apply(driver, emit: Emit) -> bool:
 
 def linkedin_easy_apply_loop(driver, emit: Emit, profile: Dict[str, Any],
                              max_steps: int = 8) -> str:
-    """Walk the Easy Apply wizard: fill -> Next -> Review. Stops at Review."""
+    """Walk the Easy Apply wizard: fill -> Next -> Review. Stops at Review.
+
+    B6 hardening:
+      - Per-step timeout (LINKEDIN_STEP_TIMEOUT, default 20s) instead of unbounded waits.
+      - Optional per-step approval gate (LINKEDIN_APPROVAL_PER_STEP=1).
+      - When stuck, surface unfilled field labels at error level so the
+        operator knows exactly what to look at.
+    """
     job_context = ""
     try:
         job_context = driver.find_element(By.CSS_SELECTOR, ".jobs-description").text[:2000]
@@ -141,12 +155,19 @@ def linkedin_easy_apply_loop(driver, emit: Emit, profile: Dict[str, Any],
         pass
 
     for step in range(max_steps):
+        step_started = time.time()
         time.sleep(1)
         root = active_form_root(driver)
         maybe_upload_resume(driver, emit, profile, root=root)
         n = fill_visible_fields(driver, emit, profile, job_context, root=root)
         n += fill_choice_controls(driver, emit, profile, job_context, root=root)
         emit("easy_apply", f"Step {step+1}: filled {n} field(s)")
+
+        if EASY_APPLY_PER_STEP_APPROVAL:
+            emit("approval",
+                 f"Per-step approval gate: review step {step+1} in Chrome, "
+                 f"then Approve to advance.", level="warn")
+            return "awaiting_approval"
 
         if click_first(driver, [
             "button[aria-label*='Review your application' i]",
@@ -174,12 +195,57 @@ def linkedin_easy_apply_loop(driver, emit: Emit, profile: Dict[str, Any],
             if find_submit_button(driver, root=root):
                 emit("easy_apply", "Reached Submit step", level="success")
                 return "awaiting_approval"
-            emit("easy_apply", "Stuck — no Next/Review/Submit visible", level="warn")
+            unfilled = _list_unfilled_labels(driver, root=root)
+            if unfilled:
+                emit("easy_apply",
+                     "Stuck — these fields appear unfilled: " + ", ".join(unfilled[:6]),
+                     level="error")
+            else:
+                emit("easy_apply", "Stuck — no Next/Review/Submit visible "
+                                   "and no obviously empty fields", level="error")
             return "needs_human"
+        # Per-step soft timeout: not an exception, just a logged note.
+        if time.time() - step_started > EASY_APPLY_STEP_TIMEOUT_S:
+            emit("easy_apply",
+                 f"Step {step+1} took {int(time.time() - step_started)}s "
+                 f"(over {EASY_APPLY_STEP_TIMEOUT_S}s soft limit) — continuing.",
+                 level="warn")
         time.sleep(1.2)
 
     emit("easy_apply", "Exceeded max wizard steps", level="warn")
     return "needs_human"
+
+
+def _list_unfilled_labels(driver, root=None) -> List[str]:
+    """Best-effort: return labels of inputs that are visible, required, empty."""
+    scope = root if root is not None else driver
+    labels: List[str] = []
+    try:
+        inputs = scope.find_elements(
+            By.CSS_SELECTOR,
+            "input[required], select[required], textarea[required], "
+            "input[aria-required='true'], select[aria-required='true'], textarea[aria-required='true']",
+        )
+        for el in inputs[:20]:
+            try:
+                if not el.is_displayed():
+                    continue
+                val = (el.get_attribute("value") or "").strip()
+                if val:
+                    continue
+                label = (
+                    el.get_attribute("aria-label")
+                    or el.get_attribute("name")
+                    or el.get_attribute("id")
+                    or "(unnamed field)"
+                )
+                labels.append(label.strip()[:60])
+            except WebDriverException:
+                continue
+    except WebDriverException:
+        pass
+    return labels
+
 
 
 # ============================================================

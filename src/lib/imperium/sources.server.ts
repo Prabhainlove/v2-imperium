@@ -165,9 +165,47 @@ export async function fetchArbeitnow(role: string, location: string): Promise<Ra
 /* ───────── LinkedIn (guest jobs JSON) ───────── */
 /**
  * LinkedIn has no public Jobs API for individual devs. Their public "guest"
- * jobs search endpoint returns HTML cards that we parse. If the endpoint
- * blocks us (anti-bot), we throw and the pipeline logs it cleanly.
+ * jobs search endpoint returns HTML cards that we parse.
+ *
+ * JD enrichment (B4): after parsing cards, we sequentially fetch each card's
+ * full job posting from the guest JD endpoint and replace the placeholder
+ * `description` with the real one. The fetch is throttled (≤8 per run, 600ms
+ * gap, 5s timeout) and EVERY failure is swallowed — the card always
+ * survives with its placeholder description so the pipeline never breaks.
+ *
+ * Kill-switch: `LINKEDIN_DISABLE_JD_FETCH=1` skips enrichment entirely.
  */
+
+const LINKEDIN_JD_FETCH_MAX = 8;
+const LINKEDIN_JD_FETCH_GAP_MS = 600;
+const LINKEDIN_JD_FETCH_TIMEOUT_MS = 5000;
+const LINKEDIN_PLACEHOLDER_DESCRIPTION = "LinkedIn listing — click through for full job description.";
+
+async function fetchLinkedInJd(id: string): Promise<{ description: string; html: string } | null> {
+  const url = `https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/${id}`;
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), LINKEDIN_JD_FETCH_TIMEOUT_MS);
+  try {
+    const res = await fetch(url, {
+      headers: { "User-Agent": UA, Accept: "text/html,application/xhtml+xml" },
+      signal: ctrl.signal,
+    });
+    if (!res.ok) return null;
+    const html = await res.text();
+    const block =
+      html.match(/<div[^>]*class="[^"]*description__text[^"]*"[^>]*>([\s\S]*?)<\/div>/)?.[1] ??
+      html.match(/<section[^>]*class="[^"]*show-more-less-html[^"]*"[^>]*>([\s\S]*?)<\/section>/)?.[1] ??
+      html;
+    const description = stripHtml(block).slice(0, 8000);
+    if (description.length < 40) return null;
+    return { description, html: block.slice(0, 12000) };
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export async function fetchLinkedIn(role: string, location: string): Promise<RawJob[]> {
   const params = new URLSearchParams({
     keywords: role,
@@ -213,8 +251,7 @@ export async function fetchLinkedIn(role: string, location: string): Promise<Raw
       company: company || "Unknown",
       location: loc,
       remote: /remote/i.test(loc + " " + title),
-      description:
-        "LinkedIn listing — click through for full job description.",
+      description: LINKEDIN_PLACEHOLDER_DESCRIPTION,
       tech_stack: extractTechStack(text),
       salary_min: null,
       salary_max: null,
@@ -225,8 +262,28 @@ export async function fetchLinkedIn(role: string, location: string): Promise<Raw
   if (out.length === 0) {
     throw new Error("LinkedIn returned 0 parseable cards (blocked or empty)");
   }
+
+  // ── JD enrichment (best-effort, never fails the pipeline) ──
+  if (process.env.LINKEDIN_DISABLE_JD_FETCH === "1") return out;
+  const toFetch = out.slice(0, LINKEDIN_JD_FETCH_MAX);
+  for (const job of toFetch) {
+    try {
+      const jd = await fetchLinkedInJd(job.external_id);
+      if (jd?.description) {
+        job.description = jd.description;
+        job.tech_stack = Array.from(
+          new Set([...job.tech_stack, ...extractTechStack(jd.description)]),
+        );
+      }
+    } catch {
+      // Swallow — placeholder description is fine.
+    }
+    await new Promise((r) => setTimeout(r, LINKEDIN_JD_FETCH_GAP_MS));
+  }
+
   return out;
 }
+
 
 /* ───────── Adzuna (Indeed-class aggregator; requires API key) ───────── */
 export async function fetchAdzuna(role: string, location: string): Promise<RawJob[]> {
@@ -274,6 +331,54 @@ export async function fetchAdzuna(role: string, location: string): Promise<RawJo
 }
 
 /* ───────── Naukri (best-effort guest search) ───────── */
+
+// All Naukri header magic in one place so spoofing tweaks are obvious.
+const NAUKRI_HEADERS: Record<string, string> = {
+  "User-Agent": UA,
+  Accept: "application/json",
+  "App-Id": "109",
+  "Content-Type": "application/json",
+  "Sec-Fetch-Site": "same-origin",
+  "Sec-Fetch-Mode": "cors",
+  "Sec-Fetch-Dest": "empty",
+  Referer: "https://www.naukri.com/",
+  Origin: "https://www.naukri.com",
+  systemid: "Naukri",
+  clientid: "d3skt0p",
+};
+
+interface NaukriPlaceholder {
+  type?: string;
+  label?: string;
+}
+
+function parseNaukriSalary(o: Record<string, unknown>): { min: number | null; max: number | null; currency: string } {
+  // Naukri returns salary as a free-form string in placeholders[type=salary].label
+  // e.g. "₹ 8-12 Lacs P.A.", "Not disclosed", "$80,000 - $120,000".
+  const placeholders = (o.placeholders as NaukriPlaceholder[] | undefined) ?? [];
+  const sal = placeholders.find((p) => p.type === "salary")?.label ?? "";
+  if (!sal || /not disclosed/i.test(sal)) return { min: null, max: null, currency: "INR" };
+  const currency = /\$/.test(sal) ? "USD" : /€/.test(sal) ? "EUR" : /£/.test(sal) ? "GBP" : "INR";
+  const lacMultiplier = /lac|lakh/i.test(sal) ? 100000 : /cr/i.test(sal) ? 10000000 : 1;
+  const nums = (sal.match(/\d+(?:\.\d+)?/g) ?? []).map(Number).filter((n) => !Number.isNaN(n));
+  if (!nums.length) return { min: null, max: null, currency };
+  const min = Math.round(nums[0] * lacMultiplier);
+  const max = nums.length > 1 ? Math.round(nums[1] * lacMultiplier) : min;
+  return { min, max, currency };
+}
+
+function parseNaukriLocation(o: Record<string, unknown>): string {
+  const placeholders = (o.placeholders as NaukriPlaceholder[] | undefined) ?? [];
+  const locs = placeholders
+    .filter((p) => p.type === "location")
+    .map((p) => p.label?.trim())
+    .filter((l): l is string => !!l);
+  if (locs.length) return Array.from(new Set(locs)).join(", ");
+  // Fallback: any placeholder that looks like a city list.
+  const cityLike = placeholders.find((p) => p.label && /,/.test(p.label));
+  return cityLike?.label?.trim() ?? "";
+}
+
 export async function fetchNaukri(role: string, location: string): Promise<RawJob[]> {
   const params = new URLSearchParams({
     noOfResults: "20",
@@ -288,39 +393,52 @@ export async function fetchNaukri(role: string, location: string): Promise<RawJo
     latLong: "",
   });
   const url = `https://www.naukri.com/jobapi/v3/search?${params.toString()}`;
-  const res = await fetch(url, {
-    headers: {
-      "User-Agent": UA,
-      Accept: "application/json",
-      "App-Id": "109",
-      "Content-Type": "application/json",
-      "Sec-Fetch-Site": "same-origin",
-      Referer: "https://www.naukri.com/",
-    },
-  });
-  if (!res.ok) throw new Error(`Naukri ${res.status} (anti-bot guard)`);
-  const data = (await res.json()) as { jobDetails?: Record<string, unknown>[] };
+  let res: Response;
+  try {
+    res = await fetch(url, { headers: NAUKRI_HEADERS });
+  } catch (err) {
+    // Network error / DNS / TLS — keep pipeline alive.
+    console.warn("[naukri] fetch failed:", (err as Error).message);
+    return [];
+  }
+  if (!res.ok) {
+    // Anti-bot or rate limit — return empty rather than throwing so the
+    // pipeline never dies because Naukri is grumpy.
+    console.warn(`[naukri] HTTP ${res.status} — skipping this run`);
+    return [];
+  }
+  let data: { jobDetails?: Record<string, unknown>[] };
+  try {
+    data = (await res.json()) as { jobDetails?: Record<string, unknown>[] };
+  } catch (err) {
+    console.warn("[naukri] JSON parse failed:", (err as Error).message);
+    return [];
+  }
+
   const out: RawJob[] = [];
   for (const o of data.jobDetails ?? []) {
-    const text = `${o.title ?? ""} ${o.companyName ?? ""} ${o.placeholders ?? ""} ${o.jobDescription ?? ""}`;
+    const text = `${o.title ?? ""} ${o.companyName ?? ""} ${o.jobDescription ?? ""}`;
+    const salary = parseNaukriSalary(o);
+    const loc = parseNaukriLocation(o) || (typeof location === "string" ? location : "");
     out.push({
       source: "naukri",
-      external_id: String(o.jobId ?? Math.random()),
+      external_id: String(o.jobId ?? `naukri-${Date.now()}-${out.length}`),
       url: `https://www.naukri.com${(o.jdURL as string) ?? ""}`,
       title: String(o.title ?? ""),
       company: String(o.companyName ?? "Unknown"),
-      location: String((o.placeholders as { label?: string }[] | undefined)?.find((p) => p.label?.includes(","))?.label ?? ""),
-      remote: /remote|work from home|wfh/i.test(text),
+      location: loc,
+      remote: /remote|work from home|wfh/i.test(`${text} ${loc}`),
       description: stripHtml(String(o.jobDescription ?? "")).slice(0, 4000),
       tech_stack: extractTechStack(text, (o.tagsAndSkills as string)?.split(",") ?? []),
-      salary_min: null,
-      salary_max: null,
-      salary_currency: "INR",
+      salary_min: salary.min,
+      salary_max: salary.max,
+      salary_currency: salary.currency,
       posted_at: typeof o.footerPlaceholderLabel === "string" ? null : null,
     });
   }
   return out;
 }
+
 
 /* ───────── Jooble (global aggregator; requires API key) ───────── */
 export async function fetchJooble(role: string, location: string): Promise<RawJob[]> {
