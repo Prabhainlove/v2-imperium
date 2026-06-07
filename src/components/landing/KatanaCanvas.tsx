@@ -115,7 +115,7 @@ function Katana({ progressRef }: { progressRef?: MutableRefObject<number> }) {
 
       {/* ===== SAYA GROUP — recoils left on unsheathe ===== */}
       <group ref={saya}>
-        <mesh position={[-2.2, 0, 0]} castShadow receiveShadow>
+        <mesh position={[-2.2, 0, 0]} rotation={[0, 0, Math.PI / 2]} castShadow receiveShadow>
           <cylinderGeometry args={[0.16, 0.18, 3.4, 32]} />
           <meshPhysicalMaterial
             color="#0a0a0a"
