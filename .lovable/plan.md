@@ -1,54 +1,78 @@
-## Goal
-Replace the GLB-based `KatanaCanvas` in the hero with a **2D sprite-based katana** using your uploaded reference image as the source. Blade slides out of saya on scroll, both with a subtle 3D-feel rotation (perspective tilt + roll). Lighter, faster, and looks exactly like your reference because it IS your reference.
+# Cinematic 3D Katanas — Three Models, Three Acts
 
-## Approach
+Replace the 2D `KatanaSprite` with a real Three.js stage that swaps between three GLB katana models as the user scrolls. Each model gets its own "act" with a different camera language, lighting mood, and user-triggered moment so it feels like a director cut, not a turntable.
 
-### 1. Prepare two transparent-PNG sprites from your upload
-Your reference image shows the blade already unsheathed, no saya. I need both halves to animate them apart. Generate via `imagegen--edit_image` (two passes from the same source):
-- **`katana_blade.png`** — isolated blade + gold tsuba + black/diamond tsuka, transparent background, horizontal orientation, kept faithful to your reference's exact metal/gold/wrap pattern.
-- **`katana_saya.png`** — matching black lacquer saya (sheath) sized to fit the blade, with subtle red flame motif and a gold koiguchi mouth, transparent background. Generated to visually pair with the blade so the silhouette reads as one katana when overlapped.
+## What you need to provide
 
-Both uploaded to Lovable CDN as `.asset.json` pointers.
+The three Sketchfab links all require a logged-in download. Lovable can't fetch them automatically. Please download these as **glTF (.glb)** and drop them into chat:
 
-### 2. New component `KatanaSprite.tsx` (replaces `KatanaCanvas` in Hero)
-Plain DOM, no Three.js. Two stacked `<img>` layers inside a `perspective: 1200px` wrapper:
+1. `real_katana.glb` — from skfb.ly/o9CXU (REAL Katana by csheffield) → **Act I: Hero / Strike**
+2. `katana_b.glb` — from skfb.ly/pJGx6 → **Act II: Feature / Analyze**
+3. `katana_c.glb` — from skfb.ly/owwBK → **Act III: Finale / Resting pose**
 
-```text
-   ┌─────────── perspective wrapper ───────────┐
-   │  [saya layer]    ← behind, translateX -   │
-   │     ▓▓▓▓▓▓▓▓▓▓▓▓▓ ═════════════           │
-   │  [blade layer]   ← front, translateX +    │
-   │     ━━━━━━━━━━━━━━━━━━━━━━━╪═══           │
-   └────────────────────────────────────────────┘
-```
+I'll upload them to the CDN as `.asset.json` pointers and reference them from the Three.js loader. If any has baked animations (FBX-style clips), I'll wire those into the scroll timeline; if not, I'll author camera + transform animations against the static mesh.
 
-Animation driven by the existing `heroProgressRef` (0→1 across Hero + KeepScrolling):
+## The three acts
 
-| p range | What happens |
-|---|---|
-| 0.00–0.15 | Sheathed, slight overhead 3D tilt (rotateX -8°, rotateY 12°). Both layers fully overlapped. |
-| 0.15–0.45 | "Camera" rotates to horizontal — wrapper rotateX → 0°, rotateY → 0°. Subtle parallax: blade scales 1 → 1.05. |
-| 0.40–0.85 | **Unsheathe.** Blade `translateX` 0 → +28%, saya `translateX` 0 → −12%. Both also `rotateZ` from −4° → +2° together (the "rolling katana" motion). |
-| 0.55–0.80 | Red emissive glow under the blade-saya junction fades from 1 → 0 (CSS radial-gradient div, matches your prior "flame core" beat). |
+### Act I — Hero (model 1, "Strike")
+- Section: `HeroSection` + `KeepScrollingSection`
+- Fixed full-screen Three.js canvas behind the hero copy
+- 0.00–0.20 scroll: katana sheathed, slow dolly-in, ambient steel glint
+- 0.20–0.55: unsheathe — blade slides out of saya, camera tracks blade tip
+- 0.55–0.80: **strike** — fast diagonal slash, motion blur trail, screen-space red flash, audio cue (optional)
+- 0.80–1.00: blade rests, blood-groove highlight, camera settles into hero composition
+- Click/tap the blade to replay the strike
 
-Idle ambience (independent of scroll, requestAnimationFrame): wrapper `rotateY` breathes ±1.5° and `translateY` ±4px so it never looks static.
+### Act II — Feature/Analyze (model 2)
+- Section: `FeatureSwordSection`
+- Section-scoped canvas, slow orbit (~15s loop)
+- Hover/scroll triggers **analyze mode**: katana rotates to broadside, four part-callouts fade in with thin connector lines (kissaki, shinogi, habaki, tsuka) — typography-driven, no UI chrome
+- Subtle parallax: pointer moves camera ±3°
+- Cinematic key light from upper-left, rim light from behind
 
-### 3. 3D feel without WebGL
-- `perspective: 1200px` on the wrapper + `transform-style: preserve-3d` gives real depth between blade and saya layers (blade `translateZ(20px)` sits above saya).
-- Soft `drop-shadow(0 30px 40px rgba(0,0,0,0.6))` on the blade layer for grounded weight.
-- A `mix-blend-screen` highlight strip across the blade that follows scroll (gives a "polished steel catches light" sweep as it unsheathes).
+### Act III — Finale (model 3)
+- Section: `FooterCTASection` (or `ClaritySection` — confirm)
+- Katana mounted on a virtual stand, locked-off cinema shot
+- Slow breathing camera (±0.5°), volumetric dust motes
+- CTA button hover causes a faint blade resonance hum + glint sweep
 
-### 4. Files touched
-- New: `src/components/landing/KatanaSprite.tsx`
-- New: `src/assets/landing/katana_blade.png.asset.json`
-- New: `src/assets/landing/katana_saya.png.asset.json`
-- Edit: `src/components/landing/LandingShell.tsx` — swap `<KatanaCanvas />` for `<KatanaSprite />`, keep the same `heroProgressRef` prop wiring.
-- Edit: `src/components/landing/sections/HeroSection.tsx` — remove the reference-image mood bleed (the actual katana sprite now IS the visual; the bleed becomes redundant).
-- Keep `KatanaCanvas.tsx` on disk (unused) in case you want to switch back. Or delete — your call; I'll delete by default to keep the tree clean.
+## Technical plan
 
-### 5. Dependencies
-None. Pure CSS transforms + GSAP (already installed) for the scroll-driven tween.
+**Stack additions**
+- `three` + `@react-three/fiber` + `@react-three/drei` (GLTFLoader, useGLTF, Environment, ContactShadows, useScroll-like primitive). Install via `bun add`.
+- Reuse existing `useLenisScroll` progress refs — no new scroll lib.
 
-### Honest caveats
-- AI-generating a matching saya from a blade-only reference means the saya's exact ornamentation is the model's interpretation — close to your reference's aesthetic (black + red flame + gold mouth) but not pixel-identical. If you want a specific saya, upload one and I'll swap the pointer.
-- 2D sprites can't show the blade's edge thickness when the katana rotates head-on. The perspective tilt is kept subtle to avoid that breaking the illusion. This matches your "should look like 2D" guidance.
+**New files**
+- `src/components/landing/katana3d/KatanaStage.tsx` — shared `<Canvas>` wrapper with tone mapping, env lighting, post-processing (bloom + subtle vignette).
+- `src/components/landing/katana3d/HeroKatana.tsx` — Act I rig, consumes `heroProgressRef`, animates unsheathe + strike.
+- `src/components/landing/katana3d/FeatureKatana.tsx` — Act II rig with analyze callouts.
+- `src/components/landing/katana3d/FinaleKatana.tsx` — Act III rig.
+- `src/components/landing/katana3d/useScrollRange.ts` — small helper that maps a scroll range → eased local 0–1 per rig.
+- `src/assets/landing/katana_hero.glb.asset.json`, `katana_feature.glb.asset.json`, `katana_finale.glb.asset.json` — CDN pointers after I upload your files.
+
+**Files edited**
+- `LandingShell.tsx` — remove fixed `KatanaSprite` layer. Mount `HeroKatana` fixed behind hero only (unmounted once `heroProgressRef > 1`). Mount `FeatureKatana` and `FinaleKatana` inside their section wrappers with `IntersectionObserver` so canvases pause when off-screen.
+- `FeatureSwordSection.tsx` — add canvas slot + analyze callout overlay.
+- `FooterCTASection.tsx` — add canvas slot, wire CTA hover state into katana glint shader uniform.
+- `HeroSection.tsx` — remove any leftover sprite references.
+- Delete `KatanaSprite.tsx` and the two sprite `.asset.json` pointers.
+
+**Performance**
+- Each canvas uses `frameloop="demand"` + `invalidate()` on scroll/hover so we don't burn GPU when idle.
+- DRACO/Meshopt decoding on the GLBs (drei `useGLTF.preload`).
+- Mobile fallback: if `matchMedia('(max-width: 640px)')` or `prefers-reduced-motion`, skip strike animation, render static hero pose only.
+- Sections II + III use `IntersectionObserver` with 50% threshold to mount/unmount canvas.
+
+**Cinematic polish**
+- Custom anisotropic env map for steel reflections (`drei <Environment preset="warehouse" />` to start, can swap to a curated HDRI later).
+- Soft contact shadows under blade.
+- Postprocessing: subtle bloom on blade highlights, film grain in finale only.
+- Tone mapping: ACES filmic, exposure ~1.1.
+
+## Open questions before I implement
+
+- Which existing section should host Act III — `FooterCTASection` or `ClaritySection`? (I'll default to footer CTA unless you say otherwise.)
+- Audio cue on the strike — yes or no?
+- Reduced-motion users: static hero pose, or skip the 3D entirely and fall back to a still render?
+
+Drop the three `.glb` files in chat and confirm the questions above, and I'll build it in one pass.
