@@ -153,7 +153,7 @@ function Katana({ progressRef }: { progressRef?: MutableRefObject<number> }) {
           <meshStandardMaterial color="#c9a14a" roughness={0.6} />
         </mesh>
         {/* koiguchi */}
-        <mesh position={[-0.42, 0, 0]} castShadow>
+        <mesh position={[-0.42, 0, 0]} rotation={[0, 0, Math.PI / 2]} castShadow>
           <cylinderGeometry args={[0.18, 0.18, 0.08, 32]} />
           <meshPhysicalMaterial color="#1a1a1a" metalness={0.5} roughness={0.3} />
         </mesh>
