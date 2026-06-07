@@ -1,7 +1,7 @@
 import { createFileRoute, ClientOnly } from "@tanstack/react-router";
 import { lazy, Suspense, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import heroKatana from "@/assets/landing/katana_hero.png";
+
 
 const LandingShell = lazy(() => import("@/components/landing/LandingShell"));
 
