@@ -15,7 +15,7 @@ export default function KeepScrollingSection() {
   );
 
   return (
-    <section ref={ref} className="relative h-[220vh] w-full bg-black">
+    <section ref={ref} className="relative h-[220vh] w-full bg-transparent">
       <div className="sticky top-0 h-screen w-full overflow-hidden">
         {/* top red hairline */}
         <div className="absolute left-0 right-0 top-0 z-30 h-[2px] origin-left">
