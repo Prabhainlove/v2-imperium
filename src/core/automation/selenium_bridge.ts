@@ -34,17 +34,25 @@ export interface LocalAgentEvent {
 
 const DEFAULT_BASE = "http://127.0.0.1:8000";
 
+function viteEnv(): Record<string, string> {
+  return (typeof import.meta !== "undefined" && (import.meta as { env?: Record<string, string> }).env) || {};
+}
+
 function baseUrl(): string {
-  const env =
-    (typeof import.meta !== "undefined" && (import.meta as { env?: Record<string, string> }).env?.VITE_LOCAL_AGENT_URL) ||
-    undefined;
-  return env || DEFAULT_BASE;
+  return viteEnv().VITE_LOCAL_AGENT_URL || DEFAULT_BASE;
+}
+
+function authToken(): string | undefined {
+  return viteEnv().VITE_LOCAL_AGENT_TOKEN || undefined;
 }
 
 async function call<T>(path: string, init?: RequestInit): Promise<T> {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  const tok = authToken();
+  if (tok) headers["Authorization"] = `Bearer ${tok}`;
   const res = await fetch(`${baseUrl()}${path}`, {
-    headers: { "Content-Type": "application/json" },
     ...init,
+    headers: { ...headers, ...(init?.headers as Record<string, string> | undefined) },
   });
   if (!res.ok) throw new Error(`Local agent ${path} → ${res.status}`);
   return (await res.json()) as T;
