@@ -10,6 +10,14 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/imperium/page-header";
+import {
+  localAgentApply,
+  localAgentApprove,
+  localAgentHealth,
+  localAgentReject,
+  localAgentStatus,
+  type LocalAgentRun,
+} from "@/core/automation/selenium_bridge";
 
 export const Route = createFileRoute("/_authenticated/autopilot")({
   head: () => ({
