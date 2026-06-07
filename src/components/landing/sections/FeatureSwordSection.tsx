@@ -2,6 +2,7 @@ import { useRef } from "react";
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
 import katana from "@/assets/landing/katana_horizontal.png";
+import clouds from "@/assets/landing/cloud_band_wide.jpg";
 
 const features = [
   { tag: "→", title: "Wide Range\nof Modules", body: "From calm passive search to sharp aggressive outreach.", icon: "◐◑" },
@@ -42,8 +43,10 @@ export default function FeatureSwordSection() {
   );
 
   return (
-    <section ref={ref} className="relative min-h-screen w-full overflow-hidden bg-[#e8e4dd] py-32">
-      <img src={katana} alt="" loading="lazy" className="fs-sword pointer-events-none absolute left-0 top-1/3 w-[120vw] max-w-none" />
+    <section ref={ref} className="relative min-h-screen w-full overflow-hidden bg-[#f1ece6] py-32">
+      {/* wide cloud panorama backdrop */}
+      <img src={clouds} alt="" loading="lazy" className="pointer-events-none absolute inset-x-0 top-1/4 h-[55vh] w-full object-cover opacity-90" />
+      <img src={katana} alt="" loading="lazy" className="fs-sword pointer-events-none absolute left-0 top-1/3 z-10 w-[120vw] max-w-none" />
 
       <div className="relative z-10 mx-auto grid max-w-7xl grid-cols-1 gap-10 px-8 pt-20 md:grid-cols-2 md:gap-16">
         {features.map((f, i) => (
