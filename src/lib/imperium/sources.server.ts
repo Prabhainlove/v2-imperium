@@ -165,9 +165,47 @@ export async function fetchArbeitnow(role: string, location: string): Promise<Ra
 /* ───────── LinkedIn (guest jobs JSON) ───────── */
 /**
  * LinkedIn has no public Jobs API for individual devs. Their public "guest"
- * jobs search endpoint returns HTML cards that we parse. If the endpoint
- * blocks us (anti-bot), we throw and the pipeline logs it cleanly.
+ * jobs search endpoint returns HTML cards that we parse.
+ *
+ * JD enrichment (B4): after parsing cards, we sequentially fetch each card's
+ * full job posting from the guest JD endpoint and replace the placeholder
+ * `description` with the real one. The fetch is throttled (≤8 per run, 600ms
+ * gap, 5s timeout) and EVERY failure is swallowed — the card always
+ * survives with its placeholder description so the pipeline never breaks.
+ *
+ * Kill-switch: `LINKEDIN_DISABLE_JD_FETCH=1` skips enrichment entirely.
  */
+
+const LINKEDIN_JD_FETCH_MAX = 8;
+const LINKEDIN_JD_FETCH_GAP_MS = 600;
+const LINKEDIN_JD_FETCH_TIMEOUT_MS = 5000;
+const LINKEDIN_PLACEHOLDER_DESCRIPTION = "LinkedIn listing — click through for full job description.";
+
+async function fetchLinkedInJd(id: string): Promise<{ description: string; html: string } | null> {
+  const url = `https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/${id}`;
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), LINKEDIN_JD_FETCH_TIMEOUT_MS);
+  try {
+    const res = await fetch(url, {
+      headers: { "User-Agent": UA, Accept: "text/html,application/xhtml+xml" },
+      signal: ctrl.signal,
+    });
+    if (!res.ok) return null;
+    const html = await res.text();
+    const block =
+      html.match(/<div[^>]*class="[^"]*description__text[^"]*"[^>]*>([\s\S]*?)<\/div>/)?.[1] ??
+      html.match(/<section[^>]*class="[^"]*show-more-less-html[^"]*"[^>]*>([\s\S]*?)<\/section>/)?.[1] ??
+      html;
+    const description = stripHtml(block).slice(0, 8000);
+    if (description.length < 40) return null;
+    return { description, html: block.slice(0, 12000) };
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export async function fetchLinkedIn(role: string, location: string): Promise<RawJob[]> {
   const params = new URLSearchParams({
     keywords: role,
@@ -213,8 +251,7 @@ export async function fetchLinkedIn(role: string, location: string): Promise<Raw
       company: company || "Unknown",
       location: loc,
       remote: /remote/i.test(loc + " " + title),
-      description:
-        "LinkedIn listing — click through for full job description.",
+      description: LINKEDIN_PLACEHOLDER_DESCRIPTION,
       tech_stack: extractTechStack(text),
       salary_min: null,
       salary_max: null,
@@ -225,8 +262,28 @@ export async function fetchLinkedIn(role: string, location: string): Promise<Raw
   if (out.length === 0) {
     throw new Error("LinkedIn returned 0 parseable cards (blocked or empty)");
   }
+
+  // ── JD enrichment (best-effort, never fails the pipeline) ──
+  if (process.env.LINKEDIN_DISABLE_JD_FETCH === "1") return out;
+  const toFetch = out.slice(0, LINKEDIN_JD_FETCH_MAX);
+  for (const job of toFetch) {
+    try {
+      const jd = await fetchLinkedInJd(job.external_id);
+      if (jd?.description) {
+        job.description = jd.description;
+        job.tech_stack = Array.from(
+          new Set([...job.tech_stack, ...extractTechStack(jd.description)]),
+        );
+      }
+    } catch {
+      // Swallow — placeholder description is fine.
+    }
+    await new Promise((r) => setTimeout(r, LINKEDIN_JD_FETCH_GAP_MS));
+  }
+
   return out;
 }
+
 
 /* ───────── Adzuna (Indeed-class aggregator; requires API key) ───────── */
 export async function fetchAdzuna(role: string, location: string): Promise<RawJob[]> {
