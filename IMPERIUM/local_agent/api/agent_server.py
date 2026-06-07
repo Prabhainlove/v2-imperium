@@ -46,23 +46,50 @@ from agents.automation_agent import run_job
 
 HOST = os.environ.get("HOST", "127.0.0.1")
 PORT = int(os.environ.get("PORT", "8000"))
+AGENT_TOKEN = os.environ.get("IMPERIUM_AGENT_TOKEN", "").strip()
+_DEFAULT_ORIGINS = "http://localhost:3000,http://localhost:5173,http://127.0.0.1:3000,http://127.0.0.1:5173"
+ALLOWED_ORIGINS = [
+    o.strip() for o in os.environ.get("IMPERIUM_ALLOWED_ORIGINS", _DEFAULT_ORIGINS).split(",") if o.strip()
+]
+
+# Loopback-only invariant — never bind to 0.0.0.0 even if env says so.
+if HOST not in ("127.0.0.1", "localhost", "::1"):
+    print(f"[agent] WARNING: HOST={HOST!r} is not loopback; forcing 127.0.0.1")
+    HOST = "127.0.0.1"
+
+# Public (no-auth) endpoints. Everything else requires Bearer token when set.
+PUBLIC_PATHS = {"/health"}
+
+
+def _origin_header(origin: str | None) -> str:
+    if not origin:
+        return ALLOWED_ORIGINS[0] if ALLOWED_ORIGINS else "http://localhost:3000"
+    return origin if origin in ALLOWED_ORIGINS else (ALLOWED_ORIGINS[0] if ALLOWED_ORIGINS else "null")
 
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = "ImperiumLocalAgent/3.1"
+    server_version = "ImperiumLocalAgent/3.2"
 
     def log_message(self, format: str, *args: Any) -> None:  # noqa: A002
         return
 
     # ---- helpers ----
+    def _cors_headers(self) -> Dict[str, str]:
+        origin = self.headers.get("Origin")
+        return {
+            "Access-Control-Allow-Origin": _origin_header(origin),
+            "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type, Authorization",
+            "Vary": "Origin",
+        }
+
     def _send_json(self, status: int, payload: Any) -> None:
         body = json.dumps(payload).encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
-        self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+        for k, v in self._cors_headers().items():
+            self.send_header(k, v)
         self.end_headers()
         self.wfile.write(body)
 
@@ -77,17 +104,30 @@ class Handler(BaseHTTPRequestHandler):
             return {}
         return data if isinstance(data, dict) else {}
 
+    def _authorized(self, path: str) -> bool:
+        if not AGENT_TOKEN:
+            # Token not configured — only public paths reachable.
+            return path in PUBLIC_PATHS
+        if path in PUBLIC_PATHS:
+            return True
+        header = self.headers.get("Authorization", "")
+        if not header.startswith("Bearer "):
+            return False
+        return header[len("Bearer "):].strip() == AGENT_TOKEN
+
     # ---- CORS ----
     def do_OPTIONS(self) -> None:  # noqa: N802
         self.send_response(204)
-        self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+        for k, v in self._cors_headers().items():
+            self.send_header(k, v)
         self.end_headers()
 
     # ---- routing ----
     def do_GET(self) -> None:  # noqa: N802
         path = urlparse(self.path).path.rstrip("/") or "/"
+
+        if not self._authorized(path):
+            return self._send_json(401, {"error": "unauthorized"})
 
         if path == "/health":
             return self._send_json(200, {
@@ -95,7 +135,8 @@ class Handler(BaseHTTPRequestHandler):
                 "chrome": SELENIUM_OK,
                 "headless": HEADLESS,
                 "runs": len(models.RUNS),
-                "version": "3.1.0",
+                "version": "3.2.0",
+                "auth_required": bool(AGENT_TOKEN),
             })
 
         if path == "/runs":
@@ -127,6 +168,10 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:  # noqa: N802
         path = urlparse(self.path).path.rstrip("/") or "/"
+
+        if not self._authorized(path):
+            return self._send_json(401, {"error": "unauthorized"})
+
         body = self._read_json()
 
         if path == "/apply":
@@ -164,6 +209,12 @@ def main() -> None:
     models.load_state()
     print(f"[agent] Imperium Local Agent (offline, stdlib) -- http://{HOST}:{PORT}")
     print(f"[agent] Chrome ready: {SELENIUM_OK} | headless={HEADLESS} | state={models.STATE_FILE}")
+    if AGENT_TOKEN:
+        print(f"[agent] Auth: Bearer token required (len={len(AGENT_TOKEN)})")
+    else:
+        print("[agent] WARNING: IMPERIUM_AGENT_TOKEN unset — only /health is reachable. "
+              "Set IMPERIUM_AGENT_TOKEN in your .env to enable /apply, /approve, /reject, /status, /events, /runs.")
+    print(f"[agent] CORS allowed origins: {', '.join(ALLOWED_ORIGINS) or '(none)'}")
     server = ThreadingHTTPServer((HOST, PORT), Handler)
     try:
         server.serve_forever()
