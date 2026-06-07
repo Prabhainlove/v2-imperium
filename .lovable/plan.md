@@ -1,39 +1,76 @@
-## IMPERIUM — Single-Canvas R3F Scroll Experience
 
-Replace landing `/` with one fixed full-viewport `<Canvas>` that never unmounts. All six rooms exist in world space simultaneously; the camera travels through them on a `CatmullRomCurve3` scrubbed by Lenis-driven scroll progress.
+## Final Reading of string-tune.fiddle.digital (corrected)
 
-### Dependencies to install
-`three`, `@react-three/fiber`, `@react-three/drei`, `@react-three/postprocessing`, `postprocessing`, `lenis`, `gsap`
+The site is not a 3D camera tour and not a traditional marketing page. It behaves like an **interactive design publication** whose pages turn under a fixed UI chrome. Every correction you sent is folded into the description below.
 
-### Files
+### Overall design language
+A single creative system runs end-to-end:
+- Japanese craftsmanship aesthetic (katana, saya, bonsai, bamboo, clouds, ukiyo-e tone)
+- Katana symbolism as the narrative spine
+- Developer-tooling metaphors (Console, Skill Hub, code chips, easing curves)
+- Editorial display typography at hero scale (not serif — large sans presented like a magazine cover)
+- Motion-graphics treatment of text (slash-blur reveals, ghost copies, scrub blur)
+- Technical interface overlays (HUD, mono micro-labels, version chips)
+- Scroll storytelling that crossfades layered artwork
 
-**Modified**
-- `src/routes/index.tsx` — keep `head()` + Supabase session → CTA wiring; render `<ClientOnly>` wrapping a lazy-loaded `<ImperiumExperience />`.
+### Persistent chrome (HUD) — always visible
+While the artwork beneath changes, this UI stays mounted and updates continuously:
+- Top-left: logo + IMPERIUM© wordmark
+- Top-center: nav pills (info `i`, Dashboard, Console)
+- Top-right: scroll-progress percentage
+- Left rail (vertical mono): `• FPS: NN  • TOP: #### PX`
+- Bottom-right: companion sprite + dialogue bubble (Next / Skip)
+- Thin red progress hairline on key sticky stages
 
-**Created** (`src/components/imperium/world/`)
-- `ImperiumExperience.tsx` — 600vh spacer, fixed `<Canvas dpr={[1, isMobile?1.25:1.75]}>`, mounts `<World/>`, `<CameraRig/>`, `<PostFX/>`, `<HtmlOverlay/>`. Initializes Lenis once and writes `progressRef.current` (0..1) every RAF — no React state, no remounts.
-- `useScrollProgress.ts` — exposes a stable `MutableRefObject<number>` consumed inside `useFrame`.
-- `CameraRig.tsx` — builds two `CatmullRomCurve3` (`positions[6]`, `targets[6]`) with `catmullrom`/tension `0.5`; each frame: `t = easeInOutCubic(progress)`, `camera.position.copy(posCurve.getPoint(t))`, `camera.lookAt(targetCurve.getPoint(t))`. No OrbitControls.
-- `PostFX.tsx` — `<EffectComposer>` with `<Bloom>`, `<DepthOfField>` (desktop only), `<ChromaticAberration>`, `<Noise>`, `<Vignette>`. Per-frame: read progress, compute per-room weights, lerp each effect's uniforms (bloom intensity 0.4→1.8, CA offset 0.0006→0.004, DOF focusDistance, vignette darkness). Crossfade only — no hard cuts.
-- `World.tsx` — composes all six rooms at fixed world coordinates along `+X` axis (rooms spaced ~40 units apart), plus shared `<Environment preset="night">` and a single procedural `<Character/>` instanced per room.
-- `rooms/RoomIntro.tsx` — black void, fog plane, IMPERIUM wordmark via `<Html transform>`.
-- `rooms/RoomRooftop.tsx` — inverted sky sphere with gradient shader, large `PlaneGeometry` ground with custom wet-reflection material (env reflection + normal-map noise), distant city silhouette = instanced boxes, one warm directional light.
-- `rooms/RoomStudio.tsx` — black box, `MeshPhysicalMaterial` props `{ transmission: 0.05, iridescence: 0.3, thickness: 0.4, roughness: 0.15 }`, exponential fog via shader plane.
-- `rooms/RoomArena.tsx` — 6 stacked `RingGeometry` tiers, two angled emissive plane "light blades", `InstancedMesh` of ~2000 (desktop) / 500 (mobile) point sprites animated with curl-noise in vertex shader.
-- `rooms/RoomMemory.tsx` — `BoxGeometry` interior with procedural `fract(p*scale)` cyan grid shader, ~30 floating cube sprites, zero direct lights.
-- `rooms/RoomOutro.tsx` — warm amber `fogExp2`, max bloom region, ENTER IMPERIUM CTA via `<Html>` linking to `/dashboard` or `/auth` (Supabase session prop).
-- `Character.tsx` — procedural humanoid built from primitives: capsule torso, sphere head, cylinder limbs, all `MeshPhysicalMaterial` `{ iridescence: 1, iridescenceIOR: 1.8, transmission: 0.1, roughness: 0.2, metalness: 0.4 }`. Positioned once per room.
-- `HtmlOverlay.tsx` — fixed DOM layer above canvas: top-left `IMPERIUM` + `[SECTION]`, top-center flickering `5.0`, top-right `Sound: Off` · `MENU`, right vertical scroll rail (cyan fill = progress), bottom-left `scroll ▾`, bottom-right `hi@imperium.app` · `Open 2026`, plus per-room bracket text + copy from the current `src/routes/index.tsx`. Section label and per-room copy fade via `framer-motion` reading the same progress ref.
-- `shaders/wetGround.ts`, `shaders/grid.ts`, `shaders/fog.ts`, `shaders/sky.ts` — GLSL strings.
+### Scene-by-scene (corrected)
+1. **0–6 s — Cold open.** Black canvas, centered brand glyph, corner crescent spinner. Cuts via a slash wipe into the hero.
+2. **6–10 s — Hero.** Sheathed katana diagonal, saya glows with a red flame core, dim ukiyo-e branches behind. Editorial display title `Master / Your / Skills` (large sans, magazine-cover scale). Skill Hub / Console placeholder card bottom-left. Companion bubble bottom-right.
+3. **10–16 s — Unsheathing.** Blade and saya start overlapped and drift apart on scroll. Word `Control` reveals via heavy horizontal motion-blur slash with ghost copies.
+4. **16–22 s — Keep Scrolling.** Two-stage slash-blur reveal of `Keep Scrolling`. Red hairline at top of the sticky stage. Companion line updates.
+5. **22–32 s — The Spirit Awakened (interstitial).** A short transitional bridge between the unsheathing sequence and the cloud narrative — naked blade above, empty saya below, blurred title between, master-portrait pixel card with dialogue in the lower right. Not a major standalone scene.
+6. **32–42 s — Cloud panorama.** Wide red/cream cloud band. The katana **glides** across with subtle parallax and scale shifts (restrained, not flying). Master Oji portrait card + bonsai pixel.
+7. **42–48 s — Warm wash / bamboo.** Cream-sand background, pixel bamboo, orange sun haze, transition into the dark monochrome compass.
+8. **48–54 s — And listen…** Scrub-blur typography, drifting red squares, bonsai silhouette.
+9. **54–58 s — Principles bento.** `Principles` wordmark + 9-cell magazine bento grid (hero portrait tile, spec tiles, easing curve, scroll smoothie tile, logo tile).
+10. **58–63 s — Compass + Clarity finale.** **Compass-like glyph cluster / radial information diagram** (not a wheel) with the central emblem and rotating audience labels. Compact letter-chip cluster, then `Code With Clarity / Native` numbered columns and footer CTA.
 
-### Scroll → room mapping
-`[0–.16] intro · [.16–.33] rooftop · [.33–.5] studio · [.5–.66] arena · [.66–.83] memory · [.83–1] outro`. Camera anchors land at center of each room; targets bias slightly forward into the next room for continuous motion.
+### Composition transitions
+There is no virtual camera. Section-to-section change is achieved with **layered motion, parallax, crossfades, and scroll choreography** — artwork layers transforming, never a camera moving through 3D.
 
-### Mobile
-`matchMedia('(max-width: 768px)')` → disable `<DepthOfField>`, particle count 2000→500, bloom intensity ×0.6, DPR cap 1.25.
+---
 
-### SSR
-Entire experience is `ClientOnly` + `React.lazy`. No `window` access at module scope.
+## Revised 40% → 100% Plan (existing files, plus the few additions already approved)
+
+Scope: edit only existing landing files, plus 4 new assets, 1 helper, 1 interstitial (already approved earlier as "And listen"). No new sections beyond what was approved.
+
+### New assets (generated)
+- `src/assets/landing/loader_glyph.png` — cold-open brand glyph
+- `src/assets/landing/branches_backdrop.png` — dim ukiyo-e branches for hero
+- `src/assets/landing/bento_red_portrait.jpg` — bento hero tile
+- `src/assets/landing/cloud_band_wide.jpg` — wide red/cream cloud panorama
+
+### New shared helpers
+- `src/components/landing/SlashText.tsx` — shared slash-blur reveal used by Hero, KeepScrolling, Awakening, AndListen.
+- `src/components/landing/sections/AndListenSection.tsx` — cream interstitial.
+- `src/components/landing/ColdOpen.tsx` — 5 s loader → slash-cut into hero, mounted from `LandingShell`.
+
+### Edits to existing files (no rewrites of unrelated logic)
+- `LandingShell.tsx` — mount `ColdOpen` and `AndListenSection` in the section order.
+- `HeroSection.tsx` — wordmark `Master / Your / Skills`, layered composition (branches backdrop + saya with red flame core + sheathed blade diagonal), Skill Hub / Console placeholder card, companion bubble alignment.
+- `KeepScrollingSection.tsx` — unsheathe choreography (blade + saya start overlapped, drift apart), shared `SlashText`, two-stage reveal, top red hairline.
+- `AwakeningSection.tsx` — restructure as **interstitial**: naked blade top, empty saya bottom, slash-blur title centered, master-portrait dialogue lower-right. Smaller vertical footprint than other sections.
+- `BambooSection.tsx` — cream wash, pixel bamboo, orange sun haze, transition into compass.
+- `CompassSection.tsx` — dark monochrome compass beat.
+- `BentoSection.tsx` — true 9-cell magazine bento grid using `bento_red_portrait.jpg` + spec/easing/scroll/logo tiles.
+- `AudienceWheelSection.tsx` — rename intent only in copy/labels; render as **compass-like glyph cluster / radial information diagram** (central emblem + rotating audience labels). No new file, no route change.
+- `ClaritySection.tsx` — letter-chip cluster + `Code With Clarity / Native` numbered columns.
+- `TopChrome.tsx` — confirm logo + pills + info chip + scroll % stay mounted across all sections.
+- `Companion.tsx` — sprite swaps and line updates aligned to new section progress thresholds.
+- `chrome/SideTicker.tsx` — confirm `FPS` + `TOP: #### PX` rail visible from cold open through footer.
 
 ### Out of scope
-No backend changes. No new routes. No external GLB / HDRI files (procedural + drei built-in `night` preset only). Auth CTA logic preserved.
+- No router, auth, server-function, or schema changes.
+- No new dependencies beyond `lenis` + `gsap` + `@gsap/react` (already installed).
+- No additional sections beyond the ones listed above.
+
+Approve and I will implement in one pass.
