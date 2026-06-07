@@ -3,7 +3,7 @@ import ColdOpen from "./ColdOpen";
 import TopChrome from "./chrome/TopChrome";
 import SideTicker from "./chrome/SideTicker";
 import Companion from "./chrome/Companion";
-import KatanaCanvas from "./KatanaCanvas";
+import KatanaSprite from "./KatanaSprite";
 import HeroSection from "./sections/HeroSection";
 import KeepScrollingSection from "./sections/KeepScrollingSection";
 import AwakeningSection from "./sections/AwakeningSection";
@@ -31,10 +31,10 @@ export default function LandingShell({ cta, ctaLabel }: Props) {
       <SideTicker scrollYRef={scrollYRef} fpsRef={fpsRef} />
       <Companion progressRef={progressRef} />
 
-      {/* Fixed black backdrop + 3D katana visible through transparent Hero/KeepScrolling */}
+      {/* Fixed black backdrop + 2D sprite katana visible through transparent Hero/KeepScrolling */}
       <div className="pointer-events-none fixed inset-0 z-0 bg-black" />
       <div className="pointer-events-none fixed inset-0 z-[1] h-screen w-screen">
-        <KatanaCanvas progressRef={heroProgressRef} />
+        <KatanaSprite progressRef={heroProgressRef} />
       </div>
 
       <main className="relative z-10">
