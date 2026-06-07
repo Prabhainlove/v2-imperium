@@ -10,6 +10,13 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/imperium/page-header";
+import {
+  localAgentApply,
+  localAgentApprove,
+  localAgentHealth,
+  localAgentReject,
+  localAgentStatus,
+} from "@/core/automation/selenium_bridge";
 
 export const Route = createFileRoute("/_authenticated/autopilot")({
   head: () => ({
@@ -84,13 +91,13 @@ function AutopilotPage() {
     if (id) setJobId(id);
   }, []);
 
-  // Health-check the local agent
+  // Health-check the local agent (uses shared bridge → token + VITE_LOCAL_AGENT_URL)
   useEffect(() => {
     let cancelled = false;
     const ping = async () => {
       try {
-        const r = await fetch(`${agentUrl}/health`, { cache: "no-store" });
-        if (!cancelled) setAgentOnline(r.ok);
+        await localAgentHealth();
+        if (!cancelled) setAgentOnline(true);
       } catch {
         if (!cancelled) setAgentOnline(false);
       }
@@ -106,9 +113,7 @@ function AutopilotPage() {
     let cancelled = false;
     const poll = async () => {
       try {
-        const r = await fetch(`${agentUrl}/status/${jobId}`, { cache: "no-store" });
-        if (!r.ok) return;
-        const data = (await r.json()) as AgentRun;
+        const data = (await localAgentStatus(jobId)) as unknown as AgentRun;
         if (!cancelled) setRun(data);
       } catch { /* agent offline; keep last state */ }
     };
@@ -123,7 +128,11 @@ function AutopilotPage() {
 
   const queueRun = async () => {
     if (!jobUrl.trim()) return toast.error("Enter a job URL first");
-    if (!agentOnline) return toast.error("Local agent is not reachable at " + agentUrl);
+    if (!agentOnline) {
+      return toast.error(
+        `Local agent not reachable at ${agentUrl}. Check that it's running, that VITE_LOCAL_AGENT_TOKEN matches IMPERIUM_AGENT_TOKEN, and that this origin is in IMPERIUM_ALLOWED_ORIGINS.`,
+      );
+    }
     setBusy(true);
     try {
       if (typeof window !== "undefined") localStorage.setItem(AGENT_URL_KEY, agentUrl);
@@ -137,19 +146,14 @@ function AutopilotPage() {
           .maybeSingle();
         profile = data ?? {};
       }
-      const r = await fetch(`${agentUrl}/apply`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ job_url: jobUrl.trim(), profile }),
-      });
-      if (!r.ok) throw new Error(await r.text());
-      const { job_id } = (await r.json()) as { job_id: string };
+      const { job_id } = await localAgentApply(jobUrl.trim(), profile);
       setJobId(job_id);
       if (typeof window !== "undefined") localStorage.setItem(AGENT_JOB_KEY, job_id);
       toast.success("Agent is opening Chrome locally…");
       setJobUrl("");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to queue");
+      const msg = e instanceof Error ? e.message : "Failed to queue";
+      toast.error(`Failed to queue: ${msg}`);
     } finally {
       setBusy(false);
     }
@@ -158,12 +162,8 @@ function AutopilotPage() {
   const send = async (path: "approve" | "reject") => {
     if (!jobId) return;
     try {
-      const r = await fetch(`${agentUrl}/${path}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ job_id: jobId }),
-      });
-      if (!r.ok) throw new Error(await r.text());
+      if (path === "approve") await localAgentApprove(jobId);
+      else await localAgentReject(jobId);
       toast.success(path === "approve" ? "Approved — submitting…" : "Rejected.");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Action failed");
