@@ -45,6 +45,13 @@ export default function HeroSection({ heroProgressRef }: Props) {
 
   return (
     <section ref={ref} className="relative h-screen w-full overflow-hidden bg-transparent">
+      {/* katana reference mood bleed — sits behind the 3D canvas */}
+      <img
+        src={katanaReference.url}
+        alt=""
+        className="hero-branches pointer-events-none absolute left-[5%] top-[55%] w-[90%] -translate-y-1/2 opacity-[0.12] mix-blend-screen"
+        style={{ filter: "sepia(0.4) saturate(1.2) brightness(0.9) blur(1px)" }}
+      />
       {/* ukiyo-e branches backdrop */}
       <img
         src={branches}
