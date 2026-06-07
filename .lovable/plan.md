@@ -1,61 +1,44 @@
-## Goal
-Match the reference hero ~95%: a photoreal **3D katana** macro shot filling the right ~65% of the screen, with a tight editorial title block on the left, populated Skill Hub card, and corrected top chrome.
+## What the reference video actually does (frame by frame)
 
-## 1. Add 3D stack
-```bash
-bun add three @react-three/fiber @react-three/drei
-bun add -d @types/three
-```
+- **0–15% scroll** — macro close-up: tsuba + saya cutaway fill ~70% of the screen, sheathed. Title "Master / Your / Skills" sits top-left, "Skill Hub" thumbnail bottom-left. Katana is **static** here; just gentle idle.
+- **15–40%** — **camera dollies back + rotates**. The katana shrinks from "macro fill" to a "full-weapon shot" angled ~10° tilt. Title + Skill Hub fade out. Big "StringTune©" word appears center, katana is now small and horizontal across the screen, blade still sheathed.
+- **40–70%** — **unsheathe begins**. The blade slides out of the saya to the right while the saya stays/drifts left. Camera rotates further so the weapon is near-horizontal. "Concentrate" text crossfades in.
+- **70–100%** — fully unsheathed: bare blade fully separated from saya, both horizontal, "Keep Scrolling" text behind them. AIKA companion swaps to Oji sprite.
 
-## 2. Source the katana GLB
-- Use a CC0/CC-BY katana model (Poly Pizza / Sketchfab CC0 / Quaternius). I'll fetch one via `curl` into `public/models/katana.glb` (kept out of bundle, served as static asset, lazy-loaded).
-- If no suitable free model is found at fetch time, fall back to a procedural katana built from primitives in R3F (cylinder tsuka + torus tsuba + box saya with emissive red inner material + thin box blade). Procedural still beats the flat PNG because it has real lighting and depth.
+My current build is **static** — no camera move, no unsheathe, no separation. That's the gap.
 
-## 3. New component: `src/components/landing/KatanaCanvas.tsx`
-- `<Canvas>` absolutely positioned right side, `camera={{ position: [0, 0, 2.2], fov: 28 }}` for a tight macro framing
-- Load GLB with `useGLTF`, rotated so tsuka points upper-right, blade exits lower-left of canvas
-- Lighting: 1 key directional light (warm), 1 rim light (cool), 1 small red point light **inside the saya cutaway** for the volumetric flame glow
-- Emissive red marble material applied to the inner saya geometry (or a red emissive sphere placed inside if the model lacks a cutaway)
-- Subtle scroll-driven rotation (~6°) and slow idle bob via `useFrame`
-- Lazy-mount with `<Suspense fallback={null}>`; render only after ColdOpen finishes (delay 5s or via prop)
-- `dpr={[1, 1.5]}`, `gl={{ antialias: true, alpha: true }}`, `frameloop="demand"` when idle
+## Implementation plan
 
-## 4. Rewrite `HeroSection.tsx`
-- Remove `<img src={katanaHero}>`
-- Remove the CSS radial flame blob (the red light is now part of the 3D scene)
-- Keep `branches_backdrop.png` but lower opacity to ~0.45 and shift left so the 3D katana visually occludes the right side
-- Mount `<KatanaCanvas />` absolute, `right-0 top-0 h-full w-[65%]`
-- Title block:
-  - Shrink to `clamp(48px, 7.5vw, 120px)` (currently 11vw is too large)
-  - `leading-[0.92]`, `tracking-[-0.025em]`
-  - Position `top-24 left-10`
-  - "Built by Fiddle.Digital" inline next to the "Skills" baseline as a tiny `text-[13px]` block (flex row, `items-end`, gap-3) — not stacked below
-- Skill Hub card (bottom-left): add a real thumbnail tile inside — generate `src/assets/landing/skill_balance.jpg` (athletic figure, soft warm light, "Balance" label overlay rendered in JSX, not baked in)
-- `V_ 1.2.0` stays top-center
+### 1. Make `KatanaCanvas` scroll-driven
+- Already accepts `progressRef`. Wire it to a **page-level scroll progress** (0 → 1 across the combined Hero + KeepScrolling sticky stage), not just the hero's local progress.
+- Split the katana group into two named sub-groups: `sayaGroup` (saya + cutaway + koiguchi + fuchi + tsuba) and `bladeGroup` (new — thin reflective steel blade extending from tsuka through where the saya was).
+- New `useFrame` timeline based on `p = progressRef.current`:
+  - **Camera dolly**: `camera.position.z` lerps `2.6 → 5.2` over `p ∈ [0.05, 0.45]`, then `5.2 → 4.6` over `[0.45, 1]`. `camera.position.y` slight `0 → 0.2`.
+  - **Group rotation**: whole katana `rotation.z` lerps `-0.05 → -0.35 → 0` (tilts down then levels horizontal); `rotation.y` `0.15 → 0` (turns to face camera flat).
+  - **Group position**: lerps from `[0.3, -0.1, 0]` (offset right macro) to `[0, 0, 0]` (centered).
+  - **Unsheathe**: `bladeGroup.position.x` lerps `0 → +1.8` over `p ∈ [0.4, 0.85]` (blade slides out right); `sayaGroup.position.x` lerps `0 → -0.4` over same range (slight recoil left).
+  - **Flame fade**: red emissive plane + point light intensity ramp `2.4 → 0` over `[0.55, 0.8]` (no flame once unsheathed).
+- Add a real blade mesh: long thin `boxGeometry` ~3.2×0.06×0.02, `meshPhysicalMaterial` (metalness 1, roughness 0.1, clearcoat 1, color `#e8eef2`), with subtle curve via slight rotation. Add `hamon` (temper line) via a second thinner emissive-ish strip.
 
-## 5. Fix `TopChrome.tsx`
-- Replace `Dashboard` / `Console` labels with `Dev Guides` / `Skill Hub`
-- Add a small **red rounded katana chip** next to the logo (32×28 rounded-lg, `bg-[#ff3a2a]`, contains a tiny katana glyph) — matches reference TL
-- Keep `0%` progress at TR
+### 2. Restructure the Hero + KeepScrolling stage
+- Lift `KatanaCanvas` out of `HeroSection` and into a **fixed full-screen canvas** in `LandingShell`, mounted once, positioned `fixed inset-0 z-0 pointer-events-none`, only visible while combined progress < ~1.05.
+- Build a single `ScrollTrigger` in `useLenisScroll` (or a new `useHeroProgress` hook) that measures scroll from `top of HeroSection` to `bottom of KeepScrollingSection` and writes 0–1 into a new `heroProgressRef`. Pass that ref into `KatanaCanvas` instead of the global page progress.
+- `HeroSection`: keep title, V_1.2.0, Skill Hub card. Add GSAP scrub fading these out at local progress > 0.6.
+- `KeepScrollingSection`: **remove the two `<img>` katana copies entirely** (the 3D canvas now owns the katana). Keep the pinned text reveals ("Control", "StringTune", "Concentrate", "Keep Scrolling") timed to align with the 3D timeline beats.
 
-## 6. Asset cleanup
-- `katana_hero.png` becomes unused → delete via `rm`
-- Keep `katana_horizontal.png` (still used by `AwakeningSection`)
+### 3. Fix the layout gap (title vs 3D katana overlap on current screenshot)
+- Currently the canvas covers the right 68% but the katana sits centered-right inside it, so it visually crashes into "Master / Your / Skills". Adjust initial camera framing: at `p=0`, position the katana so its visible bulk sits in the right ~55% (move group `position.x` to `+0.6` at start).
+- Move title block to `left-14 top-32`, cap font at `clamp(40px, 6.5vw, 104px)` so it fits in the left 35% column.
+- Move Skill Hub card to bottom-left with `left-14 bottom-14`, shrink to `w-[260px] h-[170px]`.
 
-## Files touched
-- **new** `src/components/landing/KatanaCanvas.tsx`
-- **new** `public/models/katana.glb` (downloaded) or procedural fallback
-- **new** `src/assets/landing/skill_balance.jpg` (generated)
-- **edit** `src/components/landing/sections/HeroSection.tsx` (rewrite layout, mount Canvas)
-- **edit** `src/components/landing/chrome/TopChrome.tsx` (nav labels, red katana chip)
-- **delete** `src/assets/landing/katana_hero.png`
+### 4. Files touched
+- **edit** `src/components/landing/useLenisScroll.ts` — add `heroProgressRef` measured against hero+keepScrolling stage.
+- **edit** `src/components/landing/KatanaCanvas.tsx` — add bladeGroup, scroll-driven camera + unsheathe + rotation timeline.
+- **edit** `src/components/landing/LandingShell.tsx` — mount `KatanaCanvas` once as fixed background, fade out after sections pass.
+- **edit** `src/components/landing/sections/HeroSection.tsx` — remove local KatanaCanvas, fix title/card layout, scrub-fade text.
+- **edit** `src/components/landing/sections/KeepScrollingSection.tsx` — remove img katanas, re-time text beats to match 3D unsheathe.
 
-## Out of scope
-KeepScrolling, Awakening, Cloud band, Bento, Audience Wheel, Compass, etc. Untouched this turn — we finish Hero first, then move to the next section per your one-by-one plan.
+### Out of scope
+Everything below KeepScrolling (Awakening → Footer) untouched. No new packages.
 
-## Risk / notes
-- Free GLB katana availability is the only unknown. If the fetched model is low-quality or licensing is unclear, I'll use the procedural R3F fallback so we still get true 3D depth and lighting without a flat PNG. Either way, the result is real 3D, not a regenerated image.
-- Bundle impact: ~250KB gz for three+fiber+drei. Acceptable for a landing page.
-- No backend / auth / routing changes.
-
-Approve and I'll implement.
+Approve and I'll implement in one pass.
