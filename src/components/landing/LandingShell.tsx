@@ -3,6 +3,7 @@ import ColdOpen from "./ColdOpen";
 import TopChrome from "./chrome/TopChrome";
 import SideTicker from "./chrome/SideTicker";
 import Companion from "./chrome/Companion";
+import KatanaCanvas from "./KatanaCanvas";
 import HeroSection from "./sections/HeroSection";
 import KeepScrollingSection from "./sections/KeepScrollingSection";
 import AwakeningSection from "./sections/AwakeningSection";
@@ -21,7 +22,7 @@ interface Props {
 }
 
 export default function LandingShell({ cta, ctaLabel }: Props) {
-  const { progressRef, scrollYRef, fpsRef } = useLenisScroll();
+  const { progressRef, scrollYRef, fpsRef, heroProgressRef } = useLenisScroll();
 
   return (
     <div className="relative w-full bg-[#f1ece6] text-black overflow-x-hidden">
@@ -30,8 +31,13 @@ export default function LandingShell({ cta, ctaLabel }: Props) {
       <SideTicker scrollYRef={scrollYRef} fpsRef={fpsRef} />
       <Companion progressRef={progressRef} />
 
-      <main className="relative">
-        <HeroSection />
+      {/* Global 3D katana — fixed background spanning Hero + KeepScrolling */}
+      <div className="pointer-events-none fixed inset-0 z-0 h-screen w-screen">
+        <KatanaCanvas progressRef={heroProgressRef} />
+      </div>
+
+      <main className="relative z-10">
+        <HeroSection heroProgressRef={heroProgressRef} />
         <KeepScrollingSection />
         <AwakeningSection />
         <BambooSection />
