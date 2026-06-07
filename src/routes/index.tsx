@@ -1,35 +1,36 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { ClientOnly } from "@tanstack/react-router";
+import { createFileRoute, ClientOnly } from "@tanstack/react-router";
 import { lazy, Suspense, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import heroKatana from "@/assets/landing/katana_hero.png";
 
-const ImperiumExperience = lazy(
-  () => import("@/components/imperium/world/ImperiumExperience"),
-);
+const LandingShell = lazy(() => import("@/components/landing/LandingShell"));
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "IMPERIUM — The AI Job Agent" },
+      { title: "IMPERIUM — Master Your Craft" },
       {
         name: "description",
         content:
-          "IMPERIUM interfaces with sources, recruiters, and AI to build a transparent job pipeline. Discover. Analyze. Optimize. Apply. Track.",
+          "IMPERIUM is the AI job agent. Discover, analyze, optimize, apply and track — orchestrated end-to-end.",
       },
-      { property: "og:title", content: "IMPERIUM — The AI Job Agent" },
+      { property: "og:title", content: "IMPERIUM — Master Your Craft" },
       {
         property: "og:description",
-        content: "A cinematic, autonomous job agent. Built for the modern career.",
+        content: "An AI job agent that orchestrates resumes, applications, and interviews end-to-end.",
       },
+      { property: "og:image", content: heroKatana },
+      { property: "og:url", content: "/" },
     ],
+    links: [{ rel: "canonical", href: "/" }],
   }),
   component: LandingPage,
 });
 
 function Fallback() {
   return (
-    <div className="fixed inset-0 z-0 grid place-items-center bg-black">
-      <div className="imp-mono text-[14px] tracking-[0.4em] text-white/40">
+    <div className="fixed inset-0 z-0 grid place-items-center bg-[#f1ece6]">
+      <div className="font-mono text-[11px] tracking-[0.4em] text-black/50">
         LOADING IMPERIUM…
       </div>
     </div>
@@ -38,25 +39,18 @@ function Fallback() {
 
 function LandingPage() {
   const [signedIn, setSignedIn] = useState(false);
-
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSignedIn(!!data.session));
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) =>
-      setSignedIn(!!s),
-    );
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => setSignedIn(!!s));
     return () => sub.subscription.unsubscribe();
   }, []);
-
   const cta = signedIn ? "/dashboard" : "/auth";
-  const ctaLabel = signedIn ? "ENTER CONSOLE" : "ENTER IMPERIUM";
-
+  const ctaLabel = signedIn ? "Enter Console" : "Enter Imperium";
   return (
-    <div className="relative min-h-screen w-full bg-black text-white">
-      <ClientOnly fallback={<Fallback />}>
-        <Suspense fallback={<Fallback />}>
-          <ImperiumExperience cta={cta} ctaLabel={ctaLabel} />
-        </Suspense>
-      </ClientOnly>
-    </div>
+    <ClientOnly fallback={<Fallback />}>
+      <Suspense fallback={<Fallback />}>
+        <LandingShell cta={cta} ctaLabel={ctaLabel} />
+      </Suspense>
+    </ClientOnly>
   );
 }
