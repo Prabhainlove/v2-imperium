@@ -130,9 +130,10 @@ function AutopilotPage() {
     if (!jobUrl.trim()) return toast.error("Enter a job URL first");
     if (!agentOnline) {
       return toast.error(
-        `Local agent not reachable at ${agentUrl}. Check that it's running, that VITE_LOCAL_AGENT_TOKEN matches IMPERIUM_AGENT_TOKEN, and that this origin is in IMPERIUM_ALLOWED_ORIGINS.`,
+        `Local agent not reachable at ${agentUrl}. Start it with: cd IMPERIUM/local_agent && python main.py`,
       );
     }
+
     setBusy(true);
     try {
       if (typeof window !== "undefined") localStorage.setItem(AGENT_URL_KEY, agentUrl);

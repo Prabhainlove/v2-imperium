@@ -42,14 +42,8 @@ function baseUrl(): string {
   return viteEnv().VITE_LOCAL_AGENT_URL || DEFAULT_BASE;
 }
 
-function authToken(): string | undefined {
-  return viteEnv().VITE_LOCAL_AGENT_TOKEN || undefined;
-}
-
 async function call<T>(path: string, init?: RequestInit): Promise<T> {
   const headers: Record<string, string> = { "Content-Type": "application/json" };
-  const tok = authToken();
-  if (tok) headers["Authorization"] = `Bearer ${tok}`;
   const res = await fetch(`${baseUrl()}${path}`, {
     ...init,
     headers: { ...headers, ...(init?.headers as Record<string, string> | undefined) },
@@ -57,6 +51,7 @@ async function call<T>(path: string, init?: RequestInit): Promise<T> {
   if (!res.ok) throw new Error(`Local agent ${path} → ${res.status}`);
   return (await res.json()) as T;
 }
+
 
 export const localAgentHealth = () =>
   call<{ ok: boolean; chrome: boolean; headless: boolean; runs: number; version: string }>("/health");

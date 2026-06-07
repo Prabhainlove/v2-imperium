@@ -32,23 +32,13 @@ from typing import Any, Dict, Optional
 from selenium.common.exceptions import TimeoutException, WebDriverException
 
 from shared import models
-from shared.callbacks import post_run_callback  # B8 — HMAC callback to web app
 from shared.llm_brain import classify_page, llm_available
 from automation.selenium_driver import build_driver, SELENIUM_OK
 from automation.form_parser import page_snapshot, find_submit_button
 from automation.workflow_executor import run_adapter
 
 
-# B8 — terminal statuses that should fire a callback to the web app.
-_TERMINAL_STATUSES = {"submitted", "failed", "rejected", "awaiting_approval"}
 
-
-def _notify_terminal(job_id: str) -> None:
-    run = models.RUNS.get(job_id)
-    if not run:
-        return
-    if run.get("status") in _TERMINAL_STATUSES:
-        post_run_callback(run)
 
 
 def _safe_classify(snapshot: Dict[str, Any]) -> str:
@@ -215,8 +205,4 @@ def run_job(job_id: str) -> None:
                 driver.quit()
             except Exception:
                 pass
-        # B8 — best-effort HMAC callback to the web app on terminal states.
-        try:
-            _notify_terminal(job_id)
-        except Exception:
-            pass
+
