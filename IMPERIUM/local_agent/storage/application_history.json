@@ -1,0 +1,640 @@
+{
+  "d41173b0-b008-47ab-b4b0-820b56d2aa02": {
+    "id": "d41173b0-b008-47ab-b4b0-820b56d2aa02",
+    "job_url": "https://www.linkedin.com/jobs/view/4421112022/?alternateChannel=search&eBP=NOT_ELIGIBLE_FOR_CHARGING&trk=d_flagship3_search_srp_jobs&refId=4JssRxKTvw8lVvvgiN5hNQ%3D%3D&trackingId=E0KHOiQnOZpjHWSjm8mQqg%3D%3D",
+    "profile": {
+      "name": "Dinesh Kumar Merugu",
+      "email": "fresher.demo@imperium.app",
+      "phone": "+91 9121980375",
+      "location": "Hyderabad, Telangana",
+      "headline": "Full Stack & AI Engineer",
+      "summary": "",
+      "linkedin_url": "https://linkedin.com/in/dineshkumar",
+      "github_url": "https://github.com/dineshkumar",
+      "portfolio_url": "https://imperium-ai.vercel.app"
+    },
+    "status": "awaiting_approval",
+    "progress": 70,
+    "current_step": "needs_human",
+    "current_action": "Agent is stuck. Take over in the Chrome window, then click Approve to submit or Reject to abort.",
+    "current_url": "https://www.linkedin.com/jobs/view/4421112022/?alternateChannel=search&eBP=NOT_ELIGIBLE_FOR_CHARGING&trk=d_flagship3_search_srp_jobs&refId=4JssRxKTvw8lVvvgiN5hNQ%3D%3D&trackingId=E0KHOiQnOZpjHWSjm8mQqg%3D%3D",
+    "approved": null,
+    "error": "",
+    "created_at": "2026-06-06T09:54:20.383162+00:00",
+    "updated_at": "2026-06-06T09:55:09.418681+00:00",
+    "events": [
+      {
+        "ts": "2026-06-06T09:54:20.386799+00:00",
+        "step": "queued",
+        "action": "Queued application for https://www.linkedin.com/jobs/view/4421112022/?alternateChannel=search&eBP=NOT_ELIGIBLE_FOR_CHARGING&trk=d_flagship3_search_srp_jobs&refId=4JssRxKTvw8lVvvgiN5hNQ%3D%3D&trackingId=E0KHOiQnOZpjHWSjm8mQqg%3D%3D",
+        "level": "info",
+        "url": ""
+      },
+      {
+        "ts": "2026-06-06T09:54:20.395203+00:00",
+        "step": "boot",
+        "action": "Launching local Chrome with Selenium",
+        "level": "info",
+        "url": ""
+      },
+      {
+        "ts": "2026-06-06T09:54:20.560004+00:00",
+        "step": "brain",
+        "action": "Ollama brain AVAILABLE",
+        "level": "info",
+        "url": ""
+      },
+      {
+        "ts": "2026-06-06T09:54:28.581903+00:00",
+        "step": "profile",
+        "action": "Using dedicated agent profile: Default (C:\\Users\\dinesh\\.imperium_chrome_profile)",
+        "level": "info",
+        "url": ""
+      },
+      {
+        "ts": "2026-06-06T09:54:28.594061+00:00",
+        "step": "navigate",
+        "action": "Opening https://www.linkedin.com/jobs/view/4421112022/?alternateChannel=search&eBP=NOT_ELIGIBLE_FOR_CHARGING&trk=d_flagship3_search_srp_jobs&refId=4JssRxKTvw8lVvvgiN5hNQ%3D%3D&trackingId=E0KHOiQnOZpjHWSjm8mQqg%3D%3D",
+        "level": "info",
+        "url": "https://www.linkedin.com/jobs/view/4421112022/?alternateChannel=search&eBP=NOT_ELIGIBLE_FOR_CHARGING&trk=d_flagship3_search_srp_jobs&refId=4JssRxKTvw8lVvvgiN5hNQ%3D%3D&trackingId=E0KHOiQnOZpjHWSjm8mQqg%3D%3D"
+      },
+      {
+        "ts": "2026-06-06T09:54:48.914748+00:00",
+        "step": "classify",
+        "action": "Page \u2192 job_listing",
+        "level": "info",
+        "url": "https://www.linkedin.com/jobs/view/4421112022/?alternateChannel=search&eBP=NOT_ELIGIBLE_FOR_CHARGING&trk=d_flagship3_search_srp_jobs&refId=4JssRxKTvw8lVvvgiN5hNQ%3D%3D&trackingId=E0KHOiQnOZpjHWSjm8mQqg%3D%3D"
+      },
+      {
+        "ts": "2026-06-06T09:54:49.737021+00:00",
+        "step": "listing",
+        "action": "Opened first job card",
+        "level": "success",
+        "url": ""
+      },
+      {
+        "ts": "2026-06-06T09:55:09.384976+00:00",
+        "step": "easy_apply",
+        "action": "No Apply button found",
+        "level": "warn",
+        "url": ""
+      },
+      {
+        "ts": "2026-06-06T09:55:09.418625+00:00",
+        "step": "needs_human",
+        "action": "Agent paused \u2014 finish manually in Chrome, then Approve/Reject.",
+        "level": "warn",
+        "url": ""
+      }
+    ]
+  },
+  "959d1a9e-77ca-4f4e-8581-b5294b50d151": {
+    "id": "959d1a9e-77ca-4f4e-8581-b5294b50d151",
+    "job_url": "https://www.linkedin.com/jobs/view/4421112022/?alternateChannel=search&eBP=NOT_ELIGIBLE_FOR_CHARGING&trk=d_flagship3_search_srp_jobs&refId=4JssRxKTvw8lVvvgiN5hNQ%3D%3D&trackingId=E0KHOiQnOZpjHWSjm8mQqg%3D%3D",
+    "profile": {
+      "name": "Dinesh Kumar Merugu",
+      "email": "fresher.demo@imperium.app",
+      "phone": "+91 9121980375",
+      "location": "Hyderabad, Telangana",
+      "headline": "Full Stack & AI Engineer",
+      "summary": "",
+      "linkedin_url": "https://linkedin.com/in/dineshkumar",
+      "github_url": "https://github.com/dineshkumar",
+      "portfolio_url": "https://imperium-ai.vercel.app"
+    },
+    "status": "failed",
+    "progress": 5,
+    "current_step": "boot",
+    "current_action": "Starting Chrome",
+    "current_url": "",
+    "approved": null,
+    "error": "Message: session not created: cannot connect to chrome at 127.0.0.1:56617\nfrom chrome not reachable\nStacktrace:\n\tundetected_chromedriver!GetHandleVerifier [0x119f9c3+106c3]\n\tundetected_chromedriver!GetHandleVerifier [0x119fa04+10704]\n\tundetected_chromedriver!(No symbol) [0xf9a66e]\n\tundetected_chromedriver!(No symbol) [0xf8dfd8]\n\tundetected_chromedriver!(No symbol) [0xfd54d2]\n\tundetected_chromedriver!(No symbol) [0xfcb7b5]\n\tundetected_chromedriver!(No symbol) [0xfcb5d6]\n\tundetected_chromedriver!(No symbol) [0x1011f8f]\n\tundetected_chromedriver!(No symbol) [0x10117a7]\n\tundetected_chromedriver!(No symbol) [0x1006026]\n\tundetected_chromedriver!(No symbol) [0xfd9289]\n\tundetected_chromedriver!(No symbol) [0xfda054]\n\tundetected_chromedriver!GetHandleVerifier [0x14244aa+2951aa]\n\tundetected_chromedriver!GetHandleVerifier [0x141fb06+290806]\n\tundetected_chromedriver!GetHandleVerifier [0x143ff3b+2b0c3b]\n\tundetected_chromedriver!GetHandleVerifier [0x11b9e86+2ab86]\n\tundetected_chromedriver!GetHandleVerifier [0x11c11fd+31efd]\n\tundetected_chromedriver!GetHandleVerifier [0x11a8388+19088]\n\tundetected_chromedriver!GetHandleVerifier [0x11a8535+19235]\n\tundetected_chromedriver!GetHandleVerifier [0x119120f+1f0f]\n\tKERNEL32!BaseThreadInitThunk [0x75eb5d49+19]\n\tntdll!RtlInitializeExceptionChain [0x772de12b+6b]\n\tntdll!RtlGetAppContainerNamedObjectPath [0x772de0b1+231]\n",
+    "created_at": "2026-06-06T09:56:10.129841+00:00",
+    "updated_at": "2026-06-06T09:57:11.540916+00:00",
+    "events": [
+      {
+        "ts": "2026-06-06T09:56:10.132904+00:00",
+        "step": "queued",
+        "action": "Queued application for https://www.linkedin.com/jobs/view/4421112022/?alternateChannel=search&eBP=NOT_ELIGIBLE_FOR_CHARGING&trk=d_flagship3_search_srp_jobs&refId=4JssRxKTvw8lVvvgiN5hNQ%3D%3D&trackingId=E0KHOiQnOZpjHWSjm8mQqg%3D%3D",
+        "level": "info",
+        "url": ""
+      },
+      {
+        "ts": "2026-06-06T09:56:10.140968+00:00",
+        "step": "boot",
+        "action": "Launching local Chrome with Selenium",
+        "level": "info",
+        "url": ""
+      },
+      {
+        "ts": "2026-06-06T09:56:10.180546+00:00",
+        "step": "brain",
+        "action": "Ollama brain AVAILABLE",
+        "level": "info",
+        "url": ""
+      },
+      {
+        "ts": "2026-06-06T09:57:11.536817+00:00",
+        "step": "boot",
+        "action": "Chrome failed to start. Close every Chrome window (tray included) or unset USE_REAL_CHROME.",
+        "level": "error",
+        "url": ""
+      },
+      {
+        "ts": "2026-06-06T09:57:11.540879+00:00",
+        "step": "error",
+        "action": "Unhandled error: Message: session not created: cannot connect to chrome at 127.0.0.1:56617\nfrom chrome not reachable\nStacktrace:\n\tundetected_chromedriver!GetHandleVerifier [0x119f9c3+106c3]\n\tundetected_chromedriver!GetHandleVerifier [0x119fa04+10704]\n\tundetected_chromedriver!(No symbol) [0xf9a66e]\n\tundetected_chromedriver!(No symbol) [0xf8dfd8]\n\tundetected_chromedriver!(No symbol) [0xfd54d2]\n\tundetected_chromedriver!(No symbol) [0xfcb7b5]\n\tundetected_chromedriver!(No symbol) [0xfcb5d6]\n\tundetected_chromedriver!(No symbol) [0x1011f8f]\n\tundetected_chromedriver!(No symbol) [0x10117a7]\n\tundetected_chromedriver!(No symbol) [0x1006026]\n\tundetected_chromedriver!(No symbol) [0xfd9289]\n\tundetected_chromedriver!(No symbol) [0xfda054]\n\tundetected_chromedriver!GetHandleVerifier [0x14244aa+2951aa]\n\tundetected_chromedriver!GetHandleVerifier [0x141fb06+290806]\n\tundetected_chromedriver!GetHandleVerifier [0x143ff3b+2b0c3b]\n\tundetected_chromedriver!GetHandleVerifier [0x11b9e86+2ab86]\n\tundetected_chromedriver!GetHandleVerifier [0x11c11fd+31efd]\n\tundetected_chromedriver!GetHandleVerifier [0x11a8388+19088]\n\tundetected_chromedriver!GetHandleVerifier [0x11a8535+19235]\n\tundetected_chromedriver!GetHandleVerifier [0x119120f+1f0f]\n\tKERNEL32!BaseThreadInitThunk [0x75eb5d49+19]\n\tntdll!RtlInitializeExceptionChain [0x772de12b+6b]\n\tntdll!RtlGetAppContainerNamedObjectPath [0x772de0b1+231]\n",
+        "level": "error",
+        "url": ""
+      }
+    ]
+  },
+  "88b92434-2db5-4c30-8c92-678eb7771d25": {
+    "id": "88b92434-2db5-4c30-8c92-678eb7771d25",
+    "job_url": "https://www.linkedin.com/jobs/view/4421112022/?alternateChannel=search&eBP=NOT_ELIGIBLE_FOR_CHARGING&trk=d_flagship3_search_srp_jobs&refId=4JssRxKTvw8lVvvgiN5hNQ%3D%3D&trackingId=E0KHOiQnOZpjHWSjm8mQqg%3D%3D",
+    "profile": {
+      "name": "Dinesh Kumar Merugu",
+      "email": "fresher.demo@imperium.app",
+      "phone": "+91 9121980375",
+      "location": "Hyderabad, Telangana",
+      "headline": "Full Stack & AI Engineer",
+      "summary": "",
+      "linkedin_url": "https://linkedin.com/in/dineshkumar",
+      "github_url": "https://github.com/dineshkumar",
+      "portfolio_url": "https://imperium-ai.vercel.app"
+    },
+    "status": "failed",
+    "progress": 25,
+    "current_step": "job_listing",
+    "current_action": "Page detected: job_listing",
+    "current_url": "https://www.linkedin.com/jobs/view/4421112022/?alternateChannel=search&eBP=NOT_ELIGIBLE_FOR_CHARGING&trk=d_flagship3_search_srp_jobs&refId=4JssRxKTvw8lVvvgiN5hNQ%3D%3D&trackingId=E0KHOiQnOZpjHWSjm8mQqg%3D%3D",
+    "approved": null,
+    "error": "Message: invalid session id\nStacktrace:\n\tundetected_chromedriver!GetHandleVerifier [0x119f9c3+106c3]\n\tundetected_chromedriver!GetHandleVerifier [0x119fa04+10704]\n\tundetected_chromedriver!(No symbol) [0xf9a66e]\n\tundetected_chromedriver!(No symbol) [0xfd8515]\n\tundetected_chromedriver!(No symbol) [0x1006146]\n\tundetected_chromedriver!(No symbol) [0x10012a2]\n\tundetected_chromedriver!(No symbol) [0x1000c81]\n\tundetected_chromedriver!(No symbol) [0xf6dbce]\n\tundetected_chromedriver!(No symbol) [0xf6e16e]\n\tundetected_chromedriver!(No symbol) [0xf6e64d]\n\tundetected_chromedriver!GetHandleVerifier [0x14244aa+2951aa]\n\tundetected_chromedriver!GetHandleVerifier [0x141fb06+290806]\n\tundetected_chromedriver!GetHandleVerifier [0x143ff3b+2b0c3b]\n\tundetected_chromedriver!GetHandleVerifier [0x11b9e86+2ab86]\n\tundetected_chromedriver!GetHandleVerifier [0x11c11fd+31efd]\n\tundetected_chromedriver!(No symbol) [0xf6d746]\n\tundetected_chromedriver!(No symbol) [0xf6cda2]\n\tundetected_chromedriver!GetHandleVerifier [0x158442f+3f512f]\n\tKERNEL32!BaseThreadInitThunk [0x75eb5d49+19]\n\tntdll!RtlInitializeExceptionChain [0x772de12b+6b]\n\tntdll!RtlGetAppContainerNamedObjectPath [0x772de0b1+231]\n",
+    "created_at": "2026-06-06T09:56:47.439422+00:00",
+    "updated_at": "2026-06-06T09:58:46.359482+00:00",
+    "events": [
+      {
+        "ts": "2026-06-06T09:56:47.443188+00:00",
+        "step": "queued",
+        "action": "Queued application for https://www.linkedin.com/jobs/view/4421112022/?alternateChannel=search&eBP=NOT_ELIGIBLE_FOR_CHARGING&trk=d_flagship3_search_srp_jobs&refId=4JssRxKTvw8lVvvgiN5hNQ%3D%3D&trackingId=E0KHOiQnOZpjHWSjm8mQqg%3D%3D",
+        "level": "info",
+        "url": ""
+      },
+      {
+        "ts": "2026-06-06T09:56:47.454274+00:00",
+        "step": "boot",
+        "action": "Launching local Chrome with Selenium",
+        "level": "info",
+        "url": ""
+      },
+      {
+        "ts": "2026-06-06T09:56:47.505088+00:00",
+        "step": "brain",
+        "action": "Ollama brain AVAILABLE",
+        "level": "info",
+        "url": ""
+      },
+      {
+        "ts": "2026-06-06T09:56:49.141118+00:00",
+        "step": "profile",
+        "action": "Using dedicated agent profile: Default (C:\\Users\\dinesh\\.imperium_chrome_profile)",
+        "level": "info",
+        "url": ""
+      },
+      {
+        "ts": "2026-06-06T09:56:49.146945+00:00",
+        "step": "navigate",
+        "action": "Opening https://www.linkedin.com/jobs/view/4421112022/?alternateChannel=search&eBP=NOT_ELIGIBLE_FOR_CHARGING&trk=d_flagship3_search_srp_jobs&refId=4JssRxKTvw8lVvvgiN5hNQ%3D%3D&trackingId=E0KHOiQnOZpjHWSjm8mQqg%3D%3D",
+        "level": "info",
+        "url": "https://www.linkedin.com/jobs/view/4421112022/?alternateChannel=search&eBP=NOT_ELIGIBLE_FOR_CHARGING&trk=d_flagship3_search_srp_jobs&refId=4JssRxKTvw8lVvvgiN5hNQ%3D%3D&trackingId=E0KHOiQnOZpjHWSjm8mQqg%3D%3D"
+      },
+      {
+        "ts": "2026-06-06T09:57:13.148233+00:00",
+        "step": "classify",
+        "action": "Page \u2192 job_listing",
+        "level": "info",
+        "url": "https://www.linkedin.com/jobs/view/4421112022/?alternateChannel=search&eBP=NOT_ELIGIBLE_FOR_CHARGING&trk=d_flagship3_search_srp_jobs&refId=4JssRxKTvw8lVvvgiN5hNQ%3D%3D&trackingId=E0KHOiQnOZpjHWSjm8mQqg%3D%3D"
+      },
+      {
+        "ts": "2026-06-06T09:57:13.842180+00:00",
+        "step": "listing",
+        "action": "Opened first job card",
+        "level": "success",
+        "url": ""
+      },
+      {
+        "ts": "2026-06-06T09:57:33.604762+00:00",
+        "step": "easy_apply",
+        "action": "No Apply button found",
+        "level": "warn",
+        "url": ""
+      },
+      {
+        "ts": "2026-06-06T09:57:39.296863+00:00",
+        "step": "fill",
+        "action": "Filled 'First name' = Dinesh",
+        "level": "success",
+        "url": ""
+      },
+      {
+        "ts": "2026-06-06T09:57:40.078687+00:00",
+        "step": "fill",
+        "action": "Filled 'Last name' = Kumar Merugu",
+        "level": "success",
+        "url": ""
+      },
+      {
+        "ts": "2026-06-06T09:57:40.809271+00:00",
+        "step": "fill",
+        "action": "Filled 'email@address.com' = fresher.demo@imperium.app",
+        "level": "success",
+        "url": ""
+      },
+      {
+        "ts": "2026-06-06T09:57:41.553708+00:00",
+        "step": "fill",
+        "action": "Filled 'Phone' = +91 9121980375",
+        "level": "success",
+        "url": ""
+      },
+      {
+        "ts": "2026-06-06T09:58:13.994831+00:00",
+        "step": "fill",
+        "action": "Filled 'Address Line 1' = Hyderabad, Telangana",
+        "level": "success",
+        "url": ""
+      },
+      {
+        "ts": "2026-06-06T09:58:15.560882+00:00",
+        "step": "fill",
+        "action": "Filled 'Address Line 2' = Hyderabad, Telangana",
+        "level": "success",
+        "url": ""
+      },
+      {
+        "ts": "2026-06-06T09:58:45.802250+00:00",
+        "step": "fill",
+        "action": "Skipped a field: InvalidSessionIdException",
+        "level": "warn",
+        "url": ""
+      },
+      {
+        "ts": "2026-06-06T09:58:45.813658+00:00",
+        "step": "fill",
+        "action": "Skipped a field: InvalidSessionIdException",
+        "level": "warn",
+        "url": ""
+      },
+      {
+        "ts": "2026-06-06T09:58:45.823259+00:00",
+        "step": "fill",
+        "action": "Skipped a field: InvalidSessionIdException",
+        "level": "warn",
+        "url": ""
+      },
+      {
+        "ts": "2026-06-06T09:58:45.833669+00:00",
+        "step": "fill",
+        "action": "Skipped a field: InvalidSessionIdException",
+        "level": "warn",
+        "url": ""
+      },
+      {
+        "ts": "2026-06-06T09:58:45.842859+00:00",
+        "step": "fill",
+        "action": "Skipped a field: InvalidSessionIdException",
+        "level": "warn",
+        "url": ""
+      },
+      {
+        "ts": "2026-06-06T09:58:45.853614+00:00",
+        "step": "fill",
+        "action": "Skipped a field: InvalidSessionIdException",
+        "level": "warn",
+        "url": ""
+      },
+      {
+        "ts": "2026-06-06T09:58:45.864081+00:00",
+        "step": "fill",
+        "action": "Skipped a field: InvalidSessionIdException",
+        "level": "warn",
+        "url": ""
+      },
+      {
+        "ts": "2026-06-06T09:58:45.873124+00:00",
+        "step": "fill",
+        "action": "Skipped a field: InvalidSessionIdException",
+        "level": "warn",
+        "url": ""
+      },
+      {
+        "ts": "2026-06-06T09:58:45.886626+00:00",
+        "step": "fill",
+        "action": "Skipped a field: InvalidSessionIdException",
+        "level": "warn",
+        "url": ""
+      },
+      {
+        "ts": "2026-06-06T09:58:45.901834+00:00",
+        "step": "fill",
+        "action": "Skipped a field: InvalidSessionIdException",
+        "level": "warn",
+        "url": ""
+      },
+      {
+        "ts": "2026-06-06T09:58:45.910626+00:00",
+        "step": "fill",
+        "action": "Skipped a field: InvalidSessionIdException",
+        "level": "warn",
+        "url": ""
+      },
+      {
+        "ts": "2026-06-06T09:58:45.924112+00:00",
+        "step": "fill",
+        "action": "Skipped a field: InvalidSessionIdException",
+        "level": "warn",
+        "url": ""
+      },
+      {
+        "ts": "2026-06-06T09:58:45.935703+00:00",
+        "step": "fill",
+        "action": "Skipped a field: InvalidSessionIdException",
+        "level": "warn",
+        "url": ""
+      },
+      {
+        "ts": "2026-06-06T09:58:45.943635+00:00",
+        "step": "fill",
+        "action": "Skipped a field: InvalidSessionIdException",
+        "level": "warn",
+        "url": ""
+      },
+      {
+        "ts": "2026-06-06T09:58:45.953010+00:00",
+        "step": "fill",
+        "action": "Skipped a field: InvalidSessionIdException",
+        "level": "warn",
+        "url": ""
+      },
+      {
+        "ts": "2026-06-06T09:58:45.961899+00:00",
+        "step": "fill",
+        "action": "Skipped a field: InvalidSessionIdException",
+        "level": "warn",
+        "url": ""
+      },
+      {
+        "ts": "2026-06-06T09:58:45.971958+00:00",
+        "step": "fill",
+        "action": "Skipped a field: InvalidSessionIdException",
+        "level": "warn",
+        "url": ""
+      },
+      {
+        "ts": "2026-06-06T09:58:45.984442+00:00",
+        "step": "fill",
+        "action": "Skipped a field: InvalidSessionIdException",
+        "level": "warn",
+        "url": ""
+      },
+      {
+        "ts": "2026-06-06T09:58:45.993585+00:00",
+        "step": "fill",
+        "action": "Skipped a field: InvalidSessionIdException",
+        "level": "warn",
+        "url": ""
+      },
+      {
+        "ts": "2026-06-06T09:58:46.006236+00:00",
+        "step": "fill",
+        "action": "Skipped a field: InvalidSessionIdException",
+        "level": "warn",
+        "url": ""
+      },
+      {
+        "ts": "2026-06-06T09:58:46.021584+00:00",
+        "step": "fill",
+        "action": "Skipped a field: InvalidSessionIdException",
+        "level": "warn",
+        "url": ""
+      },
+      {
+        "ts": "2026-06-06T09:58:46.038207+00:00",
+        "step": "fill",
+        "action": "Skipped a field: InvalidSessionIdException",
+        "level": "warn",
+        "url": ""
+      },
+      {
+        "ts": "2026-06-06T09:58:46.059154+00:00",
+        "step": "fill",
+        "action": "Skipped a field: InvalidSessionIdException",
+        "level": "warn",
+        "url": ""
+      },
+      {
+        "ts": "2026-06-06T09:58:46.074853+00:00",
+        "step": "fill",
+        "action": "Skipped a field: InvalidSessionIdException",
+        "level": "warn",
+        "url": ""
+      },
+      {
+        "ts": "2026-06-06T09:58:46.099612+00:00",
+        "step": "fill",
+        "action": "Skipped a field: InvalidSessionIdException",
+        "level": "warn",
+        "url": ""
+      },
+      {
+        "ts": "2026-06-06T09:58:46.126254+00:00",
+        "step": "fill",
+        "action": "Skipped a field: InvalidSessionIdException",
+        "level": "warn",
+        "url": ""
+      },
+      {
+        "ts": "2026-06-06T09:58:46.146461+00:00",
+        "step": "fill",
+        "action": "Skipped a field: InvalidSessionIdException",
+        "level": "warn",
+        "url": ""
+      },
+      {
+        "ts": "2026-06-06T09:58:46.155487+00:00",
+        "step": "fill",
+        "action": "Skipped a field: InvalidSessionIdException",
+        "level": "warn",
+        "url": ""
+      },
+      {
+        "ts": "2026-06-06T09:58:46.165173+00:00",
+        "step": "fill",
+        "action": "Skipped a field: InvalidSessionIdException",
+        "level": "warn",
+        "url": ""
+      },
+      {
+        "ts": "2026-06-06T09:58:46.173440+00:00",
+        "step": "fill",
+        "action": "Skipped a field: InvalidSessionIdException",
+        "level": "warn",
+        "url": ""
+      },
+      {
+        "ts": "2026-06-06T09:58:46.182900+00:00",
+        "step": "fill",
+        "action": "Skipped a field: InvalidSessionIdException",
+        "level": "warn",
+        "url": ""
+      },
+      {
+        "ts": "2026-06-06T09:58:46.190261+00:00",
+        "step": "fill",
+        "action": "Skipped a field: InvalidSessionIdException",
+        "level": "warn",
+        "url": ""
+      },
+      {
+        "ts": "2026-06-06T09:58:46.199185+00:00",
+        "step": "fill",
+        "action": "Skipped a field: InvalidSessionIdException",
+        "level": "warn",
+        "url": ""
+      },
+      {
+        "ts": "2026-06-06T09:58:46.206110+00:00",
+        "step": "fill",
+        "action": "Skipped a field: InvalidSessionIdException",
+        "level": "warn",
+        "url": ""
+      },
+      {
+        "ts": "2026-06-06T09:58:46.212857+00:00",
+        "step": "fill",
+        "action": "Skipped a field: InvalidSessionIdException",
+        "level": "warn",
+        "url": ""
+      },
+      {
+        "ts": "2026-06-06T09:58:46.221633+00:00",
+        "step": "fill",
+        "action": "Skipped a field: InvalidSessionIdException",
+        "level": "warn",
+        "url": ""
+      },
+      {
+        "ts": "2026-06-06T09:58:46.230534+00:00",
+        "step": "fill",
+        "action": "Skipped a field: InvalidSessionIdException",
+        "level": "warn",
+        "url": ""
+      },
+      {
+        "ts": "2026-06-06T09:58:46.237831+00:00",
+        "step": "fill",
+        "action": "Skipped a field: InvalidSessionIdException",
+        "level": "warn",
+        "url": ""
+      },
+      {
+        "ts": "2026-06-06T09:58:46.247397+00:00",
+        "step": "fill",
+        "action": "Skipped a field: InvalidSessionIdException",
+        "level": "warn",
+        "url": ""
+      },
+      {
+        "ts": "2026-06-06T09:58:46.256090+00:00",
+        "step": "fill",
+        "action": "Skipped a field: InvalidSessionIdException",
+        "level": "warn",
+        "url": ""
+      },
+      {
+        "ts": "2026-06-06T09:58:46.264204+00:00",
+        "step": "fill",
+        "action": "Skipped a field: InvalidSessionIdException",
+        "level": "warn",
+        "url": ""
+      },
+      {
+        "ts": "2026-06-06T09:58:46.271632+00:00",
+        "step": "fill",
+        "action": "Skipped a field: InvalidSessionIdException",
+        "level": "warn",
+        "url": ""
+      },
+      {
+        "ts": "2026-06-06T09:58:46.278320+00:00",
+        "step": "fill",
+        "action": "Skipped a field: InvalidSessionIdException",
+        "level": "warn",
+        "url": ""
+      },
+      {
+        "ts": "2026-06-06T09:58:46.287414+00:00",
+        "step": "fill",
+        "action": "Skipped a field: InvalidSessionIdException",
+        "level": "warn",
+        "url": ""
+      },
+      {
+        "ts": "2026-06-06T09:58:46.295264+00:00",
+        "step": "fill",
+        "action": "Skipped a field: InvalidSessionIdException",
+        "level": "warn",
+        "url": ""
+      },
+      {
+        "ts": "2026-06-06T09:58:46.303232+00:00",
+        "step": "fill",
+        "action": "Skipped a field: InvalidSessionIdException",
+        "level": "warn",
+        "url": ""
+      },
+      {
+        "ts": "2026-06-06T09:58:46.310518+00:00",
+        "step": "fill",
+        "action": "Skipped a field: InvalidSessionIdException",
+        "level": "warn",
+        "url": ""
+      },
+      {
+        "ts": "2026-06-06T09:58:46.319755+00:00",
+        "step": "fill",
+        "action": "Skipped a field: InvalidSessionIdException",
+        "level": "warn",
+        "url": ""
+      },
+      {
+        "ts": "2026-06-06T09:58:46.335063+00:00",
+        "step": "fill",
+        "action": "Skipped a field: InvalidSessionIdException",
+        "level": "warn",
+        "url": ""
+      },
+      {
+        "ts": "2026-06-06T09:58:46.341588+00:00",
+        "step": "fill",
+        "action": "Skipped a field: InvalidSessionIdException",
+        "level": "warn",
+        "url": ""
+      },
+      {
+        "ts": "2026-06-06T09:58:46.349299+00:00",
+        "step": "fill",
+        "action": "Skipped a field: InvalidSessionIdException",
+        "level": "warn",
+        "url": ""
+      },
+      {
+        "ts": "2026-06-06T09:58:46.359446+00:00",
+        "step": "error",
+        "action": "Unhandled error: Message: invalid session id\nStacktrace:\n\tundetected_chromedriver!GetHandleVerifier [0x119f9c3+106c3]\n\tundetected_chromedriver!GetHandleVerifier [0x119fa04+10704]\n\tundetected_chromedriver!(No symbol) [0xf9a66e]\n\tundetected_chromedriver!(No symbol) [0xfd8515]\n\tundetected_chromedriver!(No symbol) [0x1006146]\n\tundetected_chromedriver!(No symbol) [0x10012a2]\n\tundetected_chromedriver!(No symbol) [0x1000c81]\n\tundetected_chromedriver!(No symbol) [0xf6dbce]\n\tundetected_chromedriver!(No symbol) [0xf6e16e]\n\tundetected_chromedriver!(No symbol) [0xf6e64d]\n\tundetected_chromedriver!GetHandleVerifier [0x14244aa+2951aa]\n\tundetected_chromedriver!GetHandleVerifier [0x141fb06+290806]\n\tundetected_chromedriver!GetHandleVerifier [0x143ff3b+2b0c3b]\n\tundetected_chromedriver!GetHandleVerifier [0x11b9e86+2ab86]\n\tundetected_chromedriver!GetHandleVerifier [0x11c11fd+31efd]\n\tundetected_chromedriver!(No symbol) [0xf6d746]\n\tundetected_chromedriver!(No symbol) [0xf6cda2]\n\tundetected_chromedriver!GetHandleVerifier [0x158442f+3f512f]\n\tKERNEL32!BaseThreadInitThunk [0x75eb5d49+19]\n\tntdll!RtlInitializeExceptionChain [0x772de12b+6b]\n\tntdll!RtlGetAppContainerNamedObjectPath [0x772de0b1+231]\n",
+        "level": "error",
+        "url": ""
+      }
+    ]
+  }
+}
