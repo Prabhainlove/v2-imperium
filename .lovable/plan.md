@@ -1,76 +1,61 @@
+## What I see vs. what we have (honest diff)
 
-## Final Reading of string-tune.fiddle.digital (corrected)
+**Reference katana** (image 1 + hero shot):
+- BLACK lacquered saya with a RED flame/marbling core showing through a cutaway window
+- WHITE ito-wrapped tsuka with BLACK diamond menuki spacing, gold fuchi/kashira
+- Brand kanji ベ on the saya near the koiguchi
+- Composition: sheathed katana enters from lower-left, runs diagonally up to the right, handle exits top-right corner
 
-The site is not a 3D camera tour and not a traditional marketing page. It behaves like an **interactive design publication** whose pages turn under a fixed UI chrome. Every correction you sent is folded into the description below.
+**Our `katana_hero.png`**: opposite — RED saya with BLACK smoke, and it shows the bare blade crossed with the saya (an unsheathing pose, not the sealed sheathed hero pose). Wrong colors, wrong pose.
 
-### Overall design language
-A single creative system runs end-to-end:
-- Japanese craftsmanship aesthetic (katana, saya, bonsai, bamboo, clouds, ukiyo-e tone)
-- Katana symbolism as the narrative spine
-- Developer-tooling metaphors (Console, Skill Hub, code chips, easing curves)
-- Editorial display typography at hero scale (not serif — large sans presented like a magazine cover)
-- Motion-graphics treatment of text (slash-blur reveals, ghost copies, scrub blur)
-- Technical interface overlays (HUD, mono micro-labels, version chips)
-- Scroll storytelling that crossfades layered artwork
+**Our `katana_horizontal.png`**: plain naked blade with a black-wrap tsuka. Fine as the "drawn blade" image for later sections, but not the hero.
 
-### Persistent chrome (HUD) — always visible
-While the artwork beneath changes, this UI stays mounted and updates continuously:
-- Top-left: logo + IMPERIUM© wordmark
-- Top-center: nav pills (info `i`, Dashboard, Console)
-- Top-right: scroll-progress percentage
-- Left rail (vertical mono): `• FPS: NN  • TOP: #### PX`
-- Bottom-right: companion sprite + dialogue bubble (Next / Skip)
-- Thin red progress hairline on key sticky stages
+**Reference hero background**: dark near-black canvas with a delicate, almost ukiyo-e ink-drawn tree forming a circular mandala silhouette behind the katana, tiny red blossoms dotted across it. No moon. Very muted, ~20% luminance.
 
-### Scene-by-scene (corrected)
-1. **0–6 s — Cold open.** Black canvas, centered brand glyph, corner crescent spinner. Cuts via a slash wipe into the hero.
-2. **6–10 s — Hero.** Sheathed katana diagonal, saya glows with a red flame core, dim ukiyo-e branches behind. Editorial display title `Master / Your / Skills` (large sans, magazine-cover scale). Skill Hub / Console placeholder card bottom-left. Companion bubble bottom-right.
-3. **10–16 s — Unsheathing.** Blade and saya start overlapped and drift apart on scroll. Word `Control` reveals via heavy horizontal motion-blur slash with ghost copies.
-4. **16–22 s — Keep Scrolling.** Two-stage slash-blur reveal of `Keep Scrolling`. Red hairline at top of the sticky stage. Companion line updates.
-5. **22–32 s — The Spirit Awakened (interstitial).** A short transitional bridge between the unsheathing sequence and the cloud narrative — naked blade above, empty saya below, blurred title between, master-portrait pixel card with dialogue in the lower right. Not a major standalone scene.
-6. **32–42 s — Cloud panorama.** Wide red/cream cloud band. The katana **glides** across with subtle parallax and scale shifts (restrained, not flying). Master Oji portrait card + bonsai pixel.
-7. **42–48 s — Warm wash / bamboo.** Cream-sand background, pixel bamboo, orange sun haze, transition into the dark monochrome compass.
-8. **48–54 s — And listen…** Scrub-blur typography, drifting red squares, bonsai silhouette.
-9. **54–58 s — Principles bento.** `Principles` wordmark + 9-cell magazine bento grid (hero portrait tile, spec tiles, easing curve, scroll smoothie tile, logo tile).
-10. **58–63 s — Compass + Clarity finale.** **Compass-like glyph cluster / radial information diagram** (not a wheel) with the central emblem and rotating audience labels. Compact letter-chip cluster, then `Code With Clarity / Native` numbered columns and footer CTA.
+**Our `branches_backdrop.png`**: bright pink cherry blossoms with a giant yellow moon — wrong era, wrong mood, wrong density, wrong shape.
 
-### Composition transitions
-There is no virtual camera. Section-to-section change is achieved with **layered motion, parallax, crossfades, and scroll choreography** — artwork layers transforming, never a camera moving through 3D.
+**Reference hero layout**:
+```
+[logo+®] [red-pill icon]  Master                V_ 1.2.0           [i] [Dev Guides] [Skill Hub]   0%
+                          Your
+                          Skills  Built by
+                                  Fiddle.Digital
 
----
+         Skill Hub
+         ┌─────────────┐                                  Hey there, wanderer! 🎮 Welcome to the
+         │             │   ← empty rounded card           realm of StringTune, where precision
+         │             │                                  meets mastery
+         └─────────────┘                                                                  [ Next ]
+                                                                                          🧍 AIKA
+```
 
-## Revised 40% → 100% Plan (existing files, plus the few additions already approved)
+**Our hero**: title split between SlashText("Master") and a separate h1("Your / Skills") — they desync; "Built by IMPERIUM" stacked vertically at bottom-left instead of inline; Skill Hub card is bottom-RIGHT (collides with companion); extra full-bleed black gradient overlay washes out the backdrop.
 
-Scope: edit only existing landing files, plus 4 new assets, 1 helper, 1 interstitial (already approved earlier as "And listen"). No new sections beyond what was approved.
+## Plan (focus: hero only, surgical)
 
-### New assets (generated)
-- `src/assets/landing/loader_glyph.png` — cold-open brand glyph
-- `src/assets/landing/branches_backdrop.png` — dim ukiyo-e branches for hero
-- `src/assets/landing/bento_red_portrait.jpg` — bento hero tile
-- `src/assets/landing/cloud_band_wide.jpg` — wide red/cream cloud panorama
+### 1. Regenerate two assets (premium quality, transparent where needed)
 
-### New shared helpers
-- `src/components/landing/SlashText.tsx` — shared slash-blur reveal used by Hero, KeepScrolling, Awakening, AndListen.
-- `src/components/landing/sections/AndListenSection.tsx` — cream interstitial.
-- `src/components/landing/ColdOpen.tsx` — 5 s loader → slash-cut into hero, mounted from `LandingShell`.
+- `src/assets/landing/katana_hero.png` — sheathed katana, transparent PNG. Prompt locked to: black lacquered saya, red flame/marble core visible through a cutaway window mid-saya, white cotton ito-wrap on tsuka with black diamond menuki, gold tsuba with floral relief, kanji ベ on saya. Diagonal pose, blade pointing lower-left, handle upper-right.
+- `src/assets/landing/branches_backdrop.png` — dark muted ink-painted bare tree branches forming a soft circular mandala, sparse tiny red blossoms, near-black background, subtle paper grain. No moon. Premium tier.
 
-### Edits to existing files (no rewrites of unrelated logic)
-- `LandingShell.tsx` — mount `ColdOpen` and `AndListenSection` in the section order.
-- `HeroSection.tsx` — wordmark `Master / Your / Skills`, layered composition (branches backdrop + saya with red flame core + sheathed blade diagonal), Skill Hub / Console placeholder card, companion bubble alignment.
-- `KeepScrollingSection.tsx` — unsheathe choreography (blade + saya start overlapped, drift apart), shared `SlashText`, two-stage reveal, top red hairline.
-- `AwakeningSection.tsx` — restructure as **interstitial**: naked blade top, empty saya bottom, slash-blur title centered, master-portrait dialogue lower-right. Smaller vertical footprint than other sections.
-- `BambooSection.tsx` — cream wash, pixel bamboo, orange sun haze, transition into compass.
-- `CompassSection.tsx` — dark monochrome compass beat.
-- `BentoSection.tsx` — true 9-cell magazine bento grid using `bento_red_portrait.jpg` + spec/easing/scroll/logo tiles.
-- `AudienceWheelSection.tsx` — rename intent only in copy/labels; render as **compass-like glyph cluster / radial information diagram** (central emblem + rotating audience labels). No new file, no route change.
-- `ClaritySection.tsx` — letter-chip cluster + `Code With Clarity / Native` numbered columns.
-- `TopChrome.tsx` — confirm logo + pills + info chip + scroll % stay mounted across all sections.
-- `Companion.tsx` — sprite swaps and line updates aligned to new section progress thresholds.
-- `chrome/SideTicker.tsx` — confirm `FPS` + `TOP: #### PX` rail visible from cold open through footer.
+### 2. Rewrite `HeroSection.tsx` to match the reference
 
-### Out of scope
-- No router, auth, server-function, or schema changes.
-- No new dependencies beyond `lenis` + `gsap` + `@gsap/react` (already installed).
-- No additional sections beyond the ones listed above.
+- Single `<h1>` with three lines `Master / Your / Skills`, left-aligned, top-left at `top-28 left-8`, tight `leading-[0.88]`, weight 500, tracking `-0.03em`, color `#f1ece6`.
+- Inline `Built by\nFiddle.Digital` as a small block beside the "Skills" line (flex row, items-end), small sans `text-[18px]` muted `text-white/70`.
+- Remove the `<SlashText text="Master">` — it desyncs with the static lines; the hero title should be calm, not slash-blurred (reference is static).
+- Move Skill Hub card to bottom-LEFT (`bottom-8 left-8`), keep it as an empty rounded card with just the "Skill Hub" label top-left inside it.
+- Remove the heavy `bg-gradient-to-b from-black/40 ... to-black/70` overlay so the backdrop reads.
+- Reduce the red flame glow radius and opacity (currently bleeds across the whole canvas; reference has a tight glow only inside the saya cutaway, so push opacity to ~0.25 and shrink to 35vh).
+- Add subtle paper grain via existing CSS; keep `V_ 1.2.0` top-center-right as already placed.
+- Companion (`AIKA`) stays bottom-right — already correct.
 
-Approve and I will implement in one pass.
+### 3. No changes to other sections this turn
+
+The user explicitly asked to focus on starting / hero / katana. KeepScrolling, Awakening, FeatureSword, Bento, etc. stay as-is this pass.
+
+### Files touched
+- `src/assets/landing/katana_hero.png` (regenerate)
+- `src/assets/landing/branches_backdrop.png` (regenerate)
+- `src/components/landing/sections/HeroSection.tsx` (rewrite layout)
+
+No new dependencies. No backend changes.
