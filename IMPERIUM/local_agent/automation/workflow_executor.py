@@ -277,6 +277,75 @@ def external_form_flow(driver, emit: Emit, profile: Dict[str, Any]) -> str:
 
 
 # ============================================================
+#                  Naukri (B7)
+# ============================================================
+#
+# Naukri.com Apply UX differs fundamentally from LinkedIn:
+#   - "Apply" (in-app) sends the saved profile snapshot to the recruiter.
+#   - "Apply on company site" redirects to an external ATS.
+#   - "Chat-Apply" opens a chatbot with free-form questions.
+#
+# We try in-app Apply, detect redirect → external ATS handler, otherwise
+# fill any visible popup fields and surface awaiting_approval / needs_human
+# so the orchestrator can flip the app to ManualApplyPending (B9).
+
+def naukri_apply_flow(driver, emit: Emit, profile: Dict[str, Any]) -> str:
+    before_url = driver.current_url
+    before_handles = list(driver.window_handles)
+
+    clicked = click_first(driver, [
+        "button#apply-button",
+        "button.apply-button",
+        "button[id*='apply' i]",
+        "a[id*='apply' i]",
+        "button[class*='apply' i]",
+    ], timeout=6) or click_xpath(driver, [
+        ".//button[not(@disabled) and contains(translate(normalize-space(.),"
+        "'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'apply')]",
+    ], timeout=2)
+
+    if not clicked:
+        emit("naukri", "No Apply button found on Naukri job page", level="warn")
+        return "needs_human"
+
+    time.sleep(2.5)
+    try:
+        if len(driver.window_handles) > len(before_handles):
+            driver.switch_to.window(driver.window_handles[-1])
+    except WebDriverException:
+        pass
+
+    cur = driver.current_url or ""
+    if "naukri.com" not in cur.lower() and cur != before_url:
+        emit("external", "Naukri redirected to external ATS",
+             level="success", url=cur)
+        return external_form_flow(driver, emit, profile)
+
+    body_text = ""
+    try:
+        body_text = driver.find_element(By.TAG_NAME, "body").text.lower()
+    except WebDriverException:
+        pass
+    if any(t in body_text for t in (
+        "successfully applied", "application submitted", "you have applied",
+    )):
+        emit("naukri", "In-app Apply succeeded", level="success")
+        return "awaiting_approval"
+
+    root = active_form_root(driver) or active_dialog(driver)
+    if root is not None:
+        n = fill_visible_fields(driver, emit, profile, "", root=root)
+        n += fill_choice_controls(driver, emit, profile, "", root=root)
+        emit("naukri", f"Filled {n} field(s) in Naukri popup — verify in Chrome",
+             level="success" if n else "warn")
+        return "awaiting_approval"
+
+    emit("naukri", "Apply clicked but Naukri response unclear — verify in Chrome",
+         level="warn")
+    return "needs_human"
+
+
+# ============================================================
 #                        dispatch
 # ============================================================
 
@@ -299,7 +368,10 @@ def run_adapter(kind: str, driver, emit: Emit, profile: Dict[str, Any]) -> str:
             return "needs_human"
 
     if kind == "job_detail":
-        if "linkedin.com" in driver.current_url:
+        cur = (driver.current_url or "").lower()
+        if "naukri.com" in cur:
+            return naukri_apply_flow(driver, emit, profile)
+        if "linkedin.com" in cur:
             if linkedin_click_easy_apply(driver, emit):
                 return linkedin_easy_apply_loop(driver, emit, profile)
             try:
