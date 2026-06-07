@@ -1037,6 +1037,8 @@ export const updateApplicationFields = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
 
+  });
+
 /* ---------- B8: attach local-agent run id to an application ---------- */
 const AttachAgentRunInput = z.object({
   application_id: z.string().min(1),
