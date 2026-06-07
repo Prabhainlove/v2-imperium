@@ -16,7 +16,6 @@ import {
   localAgentHealth,
   localAgentReject,
   localAgentStatus,
-  type LocalAgentRun,
 } from "@/core/automation/selenium_bridge";
 
 export const Route = createFileRoute("/_authenticated/autopilot")({
