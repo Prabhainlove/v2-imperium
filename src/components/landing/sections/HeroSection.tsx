@@ -4,6 +4,7 @@ import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import branches from "@/assets/landing/branches_backdrop.png";
 import skillBalance from "@/assets/landing/skill_balance.jpg";
+import katanaReference from "@/assets/landing/katana_reference.png.asset.json";
 
 interface Props {
   heroProgressRef: React.MutableRefObject<number>;
