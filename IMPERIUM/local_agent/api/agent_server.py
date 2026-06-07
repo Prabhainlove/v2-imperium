@@ -126,13 +126,17 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:  # noqa: N802
         path = urlparse(self.path).path.rstrip("/") or "/"
 
+        if not self._authorized(path):
+            return self._send_json(401, {"error": "unauthorized"})
+
         if path == "/health":
             return self._send_json(200, {
                 "ok": True,
                 "chrome": SELENIUM_OK,
                 "headless": HEADLESS,
                 "runs": len(models.RUNS),
-                "version": "3.1.0",
+                "version": "3.2.0",
+                "auth_required": bool(AGENT_TOKEN),
             })
 
         if path == "/runs":
@@ -164,6 +168,10 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:  # noqa: N802
         path = urlparse(self.path).path.rstrip("/") or "/"
+
+        if not self._authorized(path):
+            return self._send_json(401, {"error": "unauthorized"})
+
         body = self._read_json()
 
         if path == "/apply":
@@ -201,6 +209,12 @@ def main() -> None:
     models.load_state()
     print(f"[agent] Imperium Local Agent (offline, stdlib) -- http://{HOST}:{PORT}")
     print(f"[agent] Chrome ready: {SELENIUM_OK} | headless={HEADLESS} | state={models.STATE_FILE}")
+    if AGENT_TOKEN:
+        print(f"[agent] Auth: Bearer token required (len={len(AGENT_TOKEN)})")
+    else:
+        print("[agent] WARNING: IMPERIUM_AGENT_TOKEN unset — only /health is reachable. "
+              "Set IMPERIUM_AGENT_TOKEN in your .env to enable /apply, /approve, /reject, /status, /events, /runs.")
+    print(f"[agent] CORS allowed origins: {', '.join(ALLOWED_ORIGINS) or '(none)'}")
     server = ThreadingHTTPServer((HOST, PORT), Handler)
     try:
         server.serve_forever()
