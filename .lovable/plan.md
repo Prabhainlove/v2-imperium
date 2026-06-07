@@ -1,46 +1,54 @@
-## Why the current katana looks cheap
+## Goal
+Replace the GLB-based `KatanaCanvas` in the hero with a **2D sprite-based katana** using your uploaded reference image as the source. Blade slides out of saya on scroll, both with a subtle 3D-feel rotation (perspective tilt + roll). Lighter, faster, and looks exactly like your reference because it IS your reference.
 
-The current `KatanaCanvas.tsx` builds the sword from raw Three.js primitives:
-- Blade = a flat `boxGeometry`
-- Saya / tsuka / fuchi / kashira = bare `cylinderGeometry`
-- Ito wrap = rotated `planeGeometry` squares
-- Hamon, flame, kanji = flat `planeGeometry` with solid colors
+## Approach
 
-These shapes have no real geometry, no UV-mapped textures, no painted saya art, no woven ito, no curvature on the blade. That is the cap — procedural primitives will never look like your reference image. The fix is to load a real katana 3D model (GLB) with PBR textures.
+### 1. Prepare two transparent-PNG sprites from your upload
+Your reference image shows the blade already unsheathed, no saya. I need both halves to animate them apart. Generate via `imagegen--edit_image` (two passes from the same source):
+- **`katana_blade.png`** — isolated blade + gold tsuba + black/diamond tsuka, transparent background, horizontal orientation, kept faithful to your reference's exact metal/gold/wrap pattern.
+- **`katana_saya.png`** — matching black lacquer saya (sheath) sized to fit the blade, with subtle red flame motif and a gold koiguchi mouth, transparent background. Generated to visually pair with the blade so the silhouette reads as one katana when overlapped.
 
-## Plan
+Both uploaded to Lovable CDN as `.asset.json` pointers.
 
-### 1. Source the model
-- Find a free CC0 / CC-BY katana GLB (Sketchfab, Poly Pizza, Quaternius). Target: stylized anime/Demon-Slayer-style katana with painted saya, ito wrap, gold tsuba — matching your reference image. Backup: if no suitable free model surfaces, ask you to upload a `.glb` (you confirmed this path is OK).
-- Upload via `lovable-assets create` so the GLB is served from CDN, not committed to repo.
+### 2. New component `KatanaSprite.tsx` (replaces `KatanaCanvas` in Hero)
+Plain DOM, no Three.js. Two stacked `<img>` layers inside a `perspective: 1200px` wrapper:
 
-### 2. Rewrite `KatanaCanvas.tsx`
-- Delete the entire procedural `<Katana>` component (every box/cylinder/plane).
-- Replace with a `<KatanaModel>` that uses drei's `useGLTF(modelUrl)` and renders the loaded scene.
-- Split the loaded scene into two refs at load time: `bladeGroup` (everything with "blade"/"katana_blade" in the node name) and `sayaGroup` (everything with "saya"/"sheath"). These two groups are what slide apart on unsheathe.
-- Keep the existing scroll timeline math (`range`, `ease`, `lerp`) and the `Rig` camera dolly — only the geometry source changes.
-- Lighting: keep the warm key + cool fill + ambient, add `Environment preset="warehouse"` (better metal reflections than "studio" for a katana), and an `<AccumulativeShadows>` ground catcher so it doesn't float.
-- Use `<Suspense fallback={null}>` so the rest of the page renders while the GLB downloads. Add `useGLTF.preload(modelUrl)` at module scope.
+```text
+   ┌─────────── perspective wrapper ───────────┐
+   │  [saya layer]    ← behind, translateX -   │
+   │     ▓▓▓▓▓▓▓▓▓▓▓▓▓ ═════════════           │
+   │  [blade layer]   ← front, translateX +    │
+   │     ━━━━━━━━━━━━━━━━━━━━━━━╪═══           │
+   └────────────────────────────────────────────┘
+```
 
-### 3. Use your reference image
-- Save your uploaded katana reference as the Hero's mood backdrop (low opacity, behind the canvas, sepia-tinted like the existing `branches_backdrop`) so the painted-saya/flame art bleeds through visually even before the model loads. Upload via `lovable-assets`.
+Animation driven by the existing `heroProgressRef` (0→1 across Hero + KeepScrolling):
 
-### 4. Scroll animation (unchanged behavior, real geometry)
-- `p 0.00–0.15`: macro close-up of the tsuba area, sheathed
-- `p 0.15–0.45`: camera dollies back, group rotates to horizontal
-- `p 0.40–0.85`: `bladeGroup.position.x` lerps +1.9, `sayaGroup.position.x` lerps −0.45 → blade pulls out
-- `p 0.55–0.80`: a red emissive `pointLight` inside the saya fades from 3 → 0 (keeps the "flame core" beat from your reference without faking it with a plane)
+| p range | What happens |
+|---|---|
+| 0.00–0.15 | Sheathed, slight overhead 3D tilt (rotateX -8°, rotateY 12°). Both layers fully overlapped. |
+| 0.15–0.45 | "Camera" rotates to horizontal — wrapper rotateX → 0°, rotateY → 0°. Subtle parallax: blade scales 1 → 1.05. |
+| 0.40–0.85 | **Unsheathe.** Blade `translateX` 0 → +28%, saya `translateX` 0 → −12%. Both also `rotateZ` from −4° → +2° together (the "rolling katana" motion). |
+| 0.55–0.80 | Red emissive glow under the blade-saya junction fades from 1 → 0 (CSS radial-gradient div, matches your prior "flame core" beat). |
 
-### 5. Files touched
-- `src/components/landing/KatanaCanvas.tsx` — rewrite
-- `src/assets/katana.glb.asset.json` — new (CDN pointer)
-- `src/assets/katana_reference.png.asset.json` — new (CDN pointer for your uploaded image, used as Hero backdrop)
-- `src/components/landing/sections/HeroSection.tsx` — swap backdrop image source
-- No changes to `useLenisScroll.ts`, `LandingShell.tsx`, or `KeepScrollingSection.tsx`
+Idle ambience (independent of scroll, requestAnimationFrame): wrapper `rotateY` breathes ±1.5° and `translateY` ±4px so it never looks static.
 
-### 6. Dependencies
-Already installed: `three`, `@react-three/fiber`, `@react-three/drei`. No new packages needed — `useGLTF`, `Environment`, `AccumulativeShadows` all ship with drei.
+### 3. 3D feel without WebGL
+- `perspective: 1200px` on the wrapper + `transform-style: preserve-3d` gives real depth between blade and saya layers (blade `translateZ(20px)` sits above saya).
+- Soft `drop-shadow(0 30px 40px rgba(0,0,0,0.6))` on the blade layer for grounded weight.
+- A `mix-blend-screen` highlight strip across the blade that follows scroll (gives a "polished steel catches light" sweep as it unsheathes).
 
-### Risks / honest caveats
-- Free CC0 katana models vary a lot in quality. If I can't find a stylized anime-style one that matches your red-flame-saya reference, the realistic outcome is: I wire in a decent generic katana GLB now, and you provide a custom `.glb` later for an exact match. I will tell you which model I picked and link the source so you can swap it.
-- A real GLB is typically 1–5 MB. It loads async — first paint shows the page without the sword, then it pops in. We mitigate with `useGLTF.preload` + the reference-image backdrop so the hero never looks empty.
+### 4. Files touched
+- New: `src/components/landing/KatanaSprite.tsx`
+- New: `src/assets/landing/katana_blade.png.asset.json`
+- New: `src/assets/landing/katana_saya.png.asset.json`
+- Edit: `src/components/landing/LandingShell.tsx` — swap `<KatanaCanvas />` for `<KatanaSprite />`, keep the same `heroProgressRef` prop wiring.
+- Edit: `src/components/landing/sections/HeroSection.tsx` — remove the reference-image mood bleed (the actual katana sprite now IS the visual; the bleed becomes redundant).
+- Keep `KatanaCanvas.tsx` on disk (unused) in case you want to switch back. Or delete — your call; I'll delete by default to keep the tree clean.
+
+### 5. Dependencies
+None. Pure CSS transforms + GSAP (already installed) for the scroll-driven tween.
+
+### Honest caveats
+- AI-generating a matching saya from a blade-only reference means the saya's exact ornamentation is the model's interpretation — close to your reference's aesthetic (black + red flame + gold mouth) but not pixel-identical. If you want a specific saya, upload one and I'll swap the pointer.
+- 2D sprites can't show the blade's edge thickness when the katana rotates head-on. The perspective tilt is kept subtle to avoid that breaking the illusion. This matches your "should look like 2D" guidance.
