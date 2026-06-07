@@ -25,8 +25,9 @@ Flow orchestration per site. Generic form mechanics live in
 """
 from __future__ import annotations
 
+import os
 import time
-from typing import Any, Callable, Dict
+from typing import Any, Callable, Dict, List
 
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -41,6 +42,12 @@ from automation.form_parser import (
 from automation.resume_uploader import maybe_upload_resume
 
 Emit = Callable[..., None]
+
+# B6 — configurable wizard-step timeout; surfaces clearer failure causes.
+EASY_APPLY_STEP_TIMEOUT_S = float(os.environ.get("LINKEDIN_STEP_TIMEOUT", "20"))
+# B6 — optional per-step approval gate (default off to preserve current UX).
+EASY_APPLY_PER_STEP_APPROVAL = os.environ.get("LINKEDIN_APPROVAL_PER_STEP") == "1"
+
 
 
 # ============================================================
