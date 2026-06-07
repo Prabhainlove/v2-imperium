@@ -1,29 +1,35 @@
-import { Suspense, useRef, type MutableRefObject } from "react";
+import { Suspense, useEffect, useMemo, useRef, type MutableRefObject } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { Environment } from "@react-three/drei";
+import { Environment, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
+import katanaAsset from "@/assets/landing/katana.glb.asset.json";
 
 /**
- * Scroll-driven 3D katana.
- * progressRef is a 0→1 value across Hero + KeepScrolling stage.
+ * Scroll-driven 3D katana — real GLB model.
+ * The model has 4 primitives by material:
+ *   Grey_Dark  → blade
+ *   White      → tsuka wrap (handle)
+ *   Yellow.Brass → tsuba + fittings
+ *   Black      → saya (sheath)
+ *
+ * On unsheathe, blade+tsuka+tsuba slide one way, saya recoils the other.
  *
  * Timeline:
- *  - p 0.00–0.15 : macro close-up of saya+tsuba, sheathed, offset right
- *  - p 0.15–0.45 : camera dollies back, group rotates to horizontal, centers
- *  - p 0.40–0.85 : blade unsheathes — bladeGroup slides right, saya recoils left
- *  - p 0.55–0.80 : red flame core fades out
+ *  p 0.00–0.15 : macro close-up of tsuba area, sheathed
+ *  p 0.15–0.45 : camera dollies back, group rotates to horizontal
+ *  p 0.40–0.85 : blade group slides out of saya
+ *  p 0.55–0.80 : red ember light fades
  */
 
-function lerp(a: number, b: number, t: number) {
-  return a + (b - a) * Math.max(0, Math.min(1, t));
-}
-function range(p: number, a: number, b: number) {
-  return Math.max(0, Math.min(1, (p - a) / (b - a)));
-}
-function ease(t: number) {
-  // easeInOutCubic
-  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
-}
+const MODEL_URL = katanaAsset.url;
+useGLTF.preload(MODEL_URL);
+
+const lerp = (a: number, b: number, t: number) =>
+  a + (b - a) * Math.max(0, Math.min(1, t));
+const range = (p: number, a: number, b: number) =>
+  Math.max(0, Math.min(1, (p - a) / (b - a)));
+const ease = (t: number) =>
+  t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 
 function Rig({ progressRef }: { progressRef?: MutableRefObject<number> }) {
   const { camera } = useThree();
@@ -31,22 +37,76 @@ function Rig({ progressRef }: { progressRef?: MutableRefObject<number> }) {
     const p = progressRef?.current ?? 0;
     const dolly = ease(range(p, 0.05, 0.45));
     const settle = ease(range(p, 0.45, 1));
-    const z = lerp(2.6, 5.2, dolly);
-    const z2 = lerp(z, 4.8, settle);
+    const z = lerp(2.4, 5.6, dolly);
+    const z2 = lerp(z, 5.2, settle);
     camera.position.z = z2;
-    camera.position.y = lerp(0, 0.15, dolly);
+    camera.position.y = lerp(-0.1, 0.2, dolly);
     camera.lookAt(0, 0, 0);
   });
   return null;
 }
 
-function Katana({ progressRef }: { progressRef?: MutableRefObject<number> }) {
-  const root = useRef<THREE.Group>(null);
-  const saya = useRef<THREE.Group>(null);
-  const blade = useRef<THREE.Group>(null);
-  const flame = useRef<THREE.MeshStandardMaterial>(null);
-  const flameGlow = useRef<THREE.MeshBasicMaterial>(null);
-  const flamePoint = useRef<THREE.PointLight>(null);
+function KatanaModel({ progressRef }: { progressRef?: MutableRefObject<number> }) {
+  const { scene } = useGLTF(MODEL_URL) as unknown as { scene: THREE.Group };
+  const rootRef = useRef<THREE.Group>(null);
+  const bladeRef = useRef<THREE.Group>(null);
+  const sayaRef = useRef<THREE.Group>(null);
+  const emberRef = useRef<THREE.PointLight>(null);
+
+  // Split the loaded mesh into blade-group (blade+tsuka+tsuba) and saya-group.
+  const { bladeMeshes, sayaMeshes } = useMemo(() => {
+    const blade: THREE.Mesh[] = [];
+    const saya: THREE.Mesh[] = [];
+    scene.traverse((obj) => {
+      if (!(obj as THREE.Mesh).isMesh) return;
+      const mesh = obj as THREE.Mesh;
+      const mat = mesh.material as THREE.MeshStandardMaterial | THREE.MeshStandardMaterial[];
+      const matName = Array.isArray(mat) ? mat[0]?.name : mat?.name;
+      const isSaya = /black/i.test(matName ?? "");
+      // upgrade materials so they react to lights nicely
+      const upgrade = (m: THREE.Material) => {
+        const std = m as THREE.MeshStandardMaterial;
+        if (std.isMaterial) {
+          if (/grey|gray/i.test(std.name)) {
+            std.metalness = 1;
+            std.roughness = 0.18;
+            std.color = new THREE.Color("#dfe6ee");
+          } else if (/yellow|brass/i.test(std.name)) {
+            std.metalness = 1;
+            std.roughness = 0.32;
+            std.color = new THREE.Color("#caa14a");
+          } else if (/white/i.test(std.name)) {
+            std.metalness = 0;
+            std.roughness = 0.85;
+            std.color = new THREE.Color("#efe8da");
+          } else if (/black/i.test(std.name)) {
+            std.metalness = 0.4;
+            std.roughness = 0.35;
+            std.color = new THREE.Color("#0a0a0a");
+            std.emissive = new THREE.Color("#3a0a04");
+            std.emissiveIntensity = 0.25;
+          }
+          std.needsUpdate = true;
+        }
+      };
+      if (Array.isArray(mat)) mat.forEach(upgrade);
+      else if (mat) upgrade(mat);
+
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+
+      // Re-parent later; for now mark which bucket
+      (isSaya ? saya : blade).push(mesh);
+    });
+    return { bladeMeshes: blade, sayaMeshes: saya };
+  }, [scene]);
+
+  // Re-parent the meshes under our two animated groups exactly once.
+  useEffect(() => {
+    if (!bladeRef.current || !sayaRef.current) return;
+    bladeMeshes.forEach((m) => bladeRef.current!.attach(m));
+    sayaMeshes.forEach((m) => sayaRef.current!.attach(m));
+  }, [bladeMeshes, sayaMeshes]);
 
   useFrame((state) => {
     const t = state.clock.elapsedTime;
@@ -54,175 +114,58 @@ function Katana({ progressRef }: { progressRef?: MutableRefObject<number> }) {
 
     const dolly = ease(range(p, 0.05, 0.45));
     const unsheath = ease(range(p, 0.4, 0.85));
-    const flameFade = ease(range(p, 0.55, 0.8));
+    const emberFade = ease(range(p, 0.55, 0.8));
 
-    if (root.current) {
-      // start offset right (macro), center as camera pulls back
-      root.current.position.x = lerp(0.55, 0, dolly);
-      root.current.position.y = lerp(-0.05, 0, dolly) + Math.sin(t * 0.5) * 0.015;
-      // start slightly diagonal, rotate to horizontal then a tiny tilt down
-      root.current.rotation.z =
-        lerp(-0.05, -0.32, dolly) + Math.sin(t * 0.4) * 0.008;
-      root.current.rotation.y = lerp(0.18, 0, dolly);
+    if (rootRef.current) {
+      rootRef.current.position.x = lerp(0.45, 0, dolly);
+      rootRef.current.position.y = lerp(-0.1, 0, dolly) + Math.sin(t * 0.5) * 0.02;
+      // rotate from sheathed angle to horizontal display
+      rootRef.current.rotation.z =
+        lerp(-0.15, -0.28, dolly) + Math.sin(t * 0.4) * 0.01;
+      rootRef.current.rotation.y = lerp(0.35, 0, dolly) + Math.sin(t * 0.3) * 0.02;
     }
 
-    if (saya.current) {
-      saya.current.position.x = lerp(0, -0.45, unsheath);
+    if (bladeRef.current) {
+      bladeRef.current.position.x = lerp(0, 1.7, unsheath);
     }
-    if (blade.current) {
-      blade.current.position.x = lerp(0, 1.9, unsheath);
+    if (sayaRef.current) {
+      sayaRef.current.position.x = lerp(0, -0.5, unsheath);
     }
-
-    const flameI = lerp(1, 0, flameFade);
-    if (flame.current) flame.current.emissiveIntensity = 2.4 * flameI;
-    if (flameGlow.current) flameGlow.current.opacity = 0.35 * flameI;
-    if (flamePoint.current) flamePoint.current.intensity = 3 * flameI;
+    if (emberRef.current) {
+      emberRef.current.intensity = lerp(2.6, 0, emberFade);
+    }
   });
 
-  const wrapSegments = Array.from({ length: 10 }, (_, i) => i);
+  // Auto-scale & center the loaded model so timeline math is consistent.
+  const fit = useMemo(() => {
+    const box = new THREE.Box3().setFromObject(scene);
+    const size = new THREE.Vector3();
+    const center = new THREE.Vector3();
+    box.getSize(size);
+    box.getCenter(center);
+    const maxDim = Math.max(size.x, size.y, size.z) || 1;
+    const targetLength = 3.6; // world units we want the katana to be long
+    const scale = targetLength / maxDim;
+    return { scale, center };
+  }, [scene]);
 
   return (
-    <group ref={root} rotation={[0, 0, -0.05]}>
-      {/* ===== BLADE GROUP — slides right on unsheathe ===== */}
-      <group ref={blade}>
-        {/* main blade — long thin curved steel */}
-        <mesh position={[-2.0, 0.0, 0]} castShadow>
-          <boxGeometry args={[3.2, 0.07, 0.018]} />
-          <meshPhysicalMaterial
-            color="#e8eef4"
-            metalness={1}
-            roughness={0.12}
-            clearcoat={1}
-            clearcoatRoughness={0.08}
-          />
-        </mesh>
-        {/* hamon temper line — faint warm strip */}
-        <mesh position={[-2.0, -0.015, 0.0095]}>
-          <planeGeometry args={[3.1, 0.012]} />
-          <meshBasicMaterial color="#fff4d8" transparent opacity={0.45} />
-        </mesh>
-        {/* blade tip */}
-        <mesh position={[-3.62, 0.0, 0]} rotation={[0, 0, Math.PI / 2]}>
-          <coneGeometry args={[0.035, 0.18, 16]} />
-          <meshPhysicalMaterial color="#e8eef4" metalness={1} roughness={0.12} />
-        </mesh>
-        {/* habaki — small collar at blade base */}
-        <mesh position={[-0.4, 0, 0]} castShadow>
-          <boxGeometry args={[0.12, 0.11, 0.05]} />
-          <meshPhysicalMaterial color="#d4a84a" metalness={1} roughness={0.3} />
-        </mesh>
-      </group>
-
-      {/* ===== SAYA GROUP — recoils left on unsheathe ===== */}
-      <group ref={saya}>
-        <mesh position={[-2.2, 0, 0]} rotation={[0, 0, Math.PI / 2]} castShadow receiveShadow>
-          <cylinderGeometry args={[0.16, 0.18, 3.4, 32]} />
-          <meshPhysicalMaterial
-            color="#0a0a0a"
-            metalness={0.3}
-            roughness={0.25}
-            clearcoat={1}
-            clearcoatRoughness={0.15}
-          />
-        </mesh>
-        {/* cutaway window — red emissive flame core */}
-        <mesh position={[-1.6, 0.05, 0.17]}>
-          <planeGeometry args={[1.4, 0.22]} />
-          <meshStandardMaterial
-            ref={flame}
-            color="#ff1a0a"
-            emissive="#ff3818"
-            emissiveIntensity={2.4}
-            toneMapped={false}
-          />
-        </mesh>
-        {/* outer flame glow */}
-        <mesh position={[-1.6, 0.05, 0.18]}>
-          <planeGeometry args={[1.5, 0.32]} />
-          <meshBasicMaterial
-            ref={flameGlow}
-            color="#ff2a14"
-            transparent
-            opacity={0.35}
-            toneMapped={false}
-          />
-        </mesh>
-        {/* kanji patch */}
-        <mesh position={[-0.55, 0.05, 0.18]}>
-          <planeGeometry args={[0.18, 0.18]} />
-          <meshStandardMaterial color="#c9a14a" roughness={0.6} />
-        </mesh>
-        {/* koiguchi */}
-        <mesh position={[-0.42, 0, 0]} rotation={[0, 0, Math.PI / 2]} castShadow>
-          <cylinderGeometry args={[0.18, 0.18, 0.08, 32]} />
-          <meshPhysicalMaterial color="#1a1a1a" metalness={0.5} roughness={0.3} />
-        </mesh>
-        {/* inner red point light */}
-        <pointLight
-          ref={flamePoint}
-          position={[-1.6, 0.05, 0.4]}
-          intensity={3}
-          color="#ff2a14"
-          distance={1.8}
-        />
-      </group>
-
-      {/* ===== HILT — stays with tsuka, anchored at origin (does not move on unsheathe) ===== */}
-      {/* fuchi */}
-      <mesh position={[-0.32, 0, 0]} rotation={[0, 0, Math.PI / 2]} castShadow>
-        <cylinderGeometry args={[0.14, 0.14, 0.06, 32]} />
-        <meshPhysicalMaterial color="#d4a84a" metalness={1} roughness={0.25} />
-      </mesh>
-      {/* tsuba — gold guard (already perpendicular) */}
-      <mesh position={[-0.22, 0, 0]} rotation={[0, 0, Math.PI / 2]} castShadow>
-        <cylinderGeometry args={[0.42, 0.42, 0.04, 48]} />
-        <meshPhysicalMaterial
-          color="#b8893a"
-          metalness={1}
-          roughness={0.35}
-          clearcoat={0.6}
-        />
-      </mesh>
-      <mesh position={[-0.21, 0, 0.001]} rotation={[Math.PI / 2, 0, 0]}>
-        <torusGeometry args={[0.34, 0.015, 16, 64]} />
-        <meshPhysicalMaterial color="#8b6520" metalness={1} roughness={0.4} />
-      </mesh>
-      {/* tsuka ferrule */}
-      <mesh position={[-0.13, 0, 0]} rotation={[0, 0, Math.PI / 2]} castShadow>
-        <cylinderGeometry args={[0.14, 0.14, 0.08, 32]} />
-        <meshPhysicalMaterial color="#d4a84a" metalness={1} roughness={0.25} />
-      </mesh>
-      {/* tsuka body */}
-      <mesh position={[0.75, 0, 0]} rotation={[0, 0, Math.PI / 2]} castShadow>
-        <cylinderGeometry args={[0.13, 0.14, 1.7, 32]} />
-        <meshPhysicalMaterial color="#f0ebe2" roughness={0.85} metalness={0} />
-      </mesh>
-      {wrapSegments.map((i) => {
-        const x = -0.05 + i * 0.17;
-        return (
-          <group key={i}>
-            <mesh position={[x, 0, 0.14]} rotation={[0, 0, Math.PI / 4]}>
-              <planeGeometry args={[0.09, 0.09]} />
-              <meshStandardMaterial color="#0a0a0a" roughness={0.7} />
-            </mesh>
-            <mesh position={[x, 0, -0.14]} rotation={[0, Math.PI, Math.PI / 4]}>
-              <planeGeometry args={[0.09, 0.09]} />
-              <meshStandardMaterial color="#0a0a0a" roughness={0.7} />
-            </mesh>
-            {i % 3 === 1 && (
-              <mesh position={[x, -0.04, 0.141]}>
-                <circleGeometry args={[0.012, 16]} />
-                <meshPhysicalMaterial color="#d4a84a" metalness={1} roughness={0.3} />
-              </mesh>
-            )}
-          </group>
-        );
-      })}
-      {/* kashira */}
-      <mesh position={[1.65, 0, 0]} rotation={[0, 0, Math.PI / 2]} castShadow>
-        <cylinderGeometry args={[0.135, 0.13, 0.08, 32]} />
-        <meshPhysicalMaterial color="#d4a84a" metalness={1} roughness={0.3} />
-      </mesh>
+    <group
+      ref={rootRef}
+      scale={fit.scale}
+      position={[-fit.center.x * fit.scale, -fit.center.y * fit.scale, 0]}
+    >
+      <group ref={bladeRef} />
+      <group ref={sayaRef} />
+      {/* warm ember light tucked at the tsuba area for the flame beat */}
+      <pointLight
+        ref={emberRef}
+        position={[0, 0, 0.4]}
+        intensity={2.6}
+        color="#ff3a14"
+        distance={3}
+        decay={2}
+      />
     </group>
   );
 }
@@ -237,16 +180,22 @@ export default function KatanaCanvas({ progressRef }: Props) {
       shadows
       dpr={[1, 1.6]}
       gl={{ antialias: true, alpha: true }}
-      camera={{ position: [0, 0, 2.6], fov: 28 }}
+      camera={{ position: [0, 0, 2.4], fov: 30 }}
       style={{ width: "100%", height: "100%" }}
     >
       <Suspense fallback={null}>
-        <directionalLight position={[-3, 4, 4]} intensity={2.2} color="#ffe4b5" castShadow />
-        <directionalLight position={[4, 1, 2]} intensity={1.1} color="#b8d4ff" />
+        <directionalLight
+          position={[-3, 4, 4]}
+          intensity={2.4}
+          color="#ffe4b5"
+          castShadow
+        />
+        <directionalLight position={[4, 1, 2]} intensity={1.2} color="#b8d4ff" />
+        <directionalLight position={[0, -3, 2]} intensity={0.6} color="#ff8a5a" />
         <ambientLight intensity={0.35} />
         <Rig progressRef={progressRef} />
-        <Katana progressRef={progressRef} />
-        <Environment preset="studio" />
+        <KatanaModel progressRef={progressRef} />
+        <Environment preset="warehouse" />
       </Suspense>
     </Canvas>
   );
