@@ -76,12 +76,16 @@ class Handler(BaseHTTPRequestHandler):
     # ---- helpers ----
     def _cors_headers(self) -> Dict[str, str]:
         origin = self.headers.get("Origin")
-        return {
+        headers = {
             "Access-Control-Allow-Origin": _origin_header(origin),
             "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
             "Access-Control-Allow-Headers": "Content-Type, Authorization",
             "Vary": "Origin",
         }
+        if self.headers.get("Access-Control-Request-Private-Network") == "true":
+            headers["Access-Control-Allow-Private-Network"] = "true"
+            headers["Vary"] = "Origin, Access-Control-Request-Private-Network"
+        return headers
 
     def _send_json(self, status: int, payload: Any) -> None:
         body = json.dumps(payload).encode("utf-8")
@@ -120,6 +124,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send_response(204)
         for k, v in self._cors_headers().items():
             self.send_header(k, v)
+        self.send_header("Access-Control-Max-Age", "600")
         self.end_headers()
 
     # ---- routing ----
