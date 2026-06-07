@@ -219,7 +219,7 @@ function Katana({ progressRef }: { progressRef?: MutableRefObject<number> }) {
         );
       })}
       {/* kashira */}
-      <mesh position={[1.65, 0, 0]} castShadow>
+      <mesh position={[1.65, 0, 0]} rotation={[0, 0, Math.PI / 2]} castShadow>
         <cylinderGeometry args={[0.135, 0.13, 0.08, 32]} />
         <meshPhysicalMaterial color="#d4a84a" metalness={1} roughness={0.3} />
       </mesh>
