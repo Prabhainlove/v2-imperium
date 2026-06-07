@@ -1,10 +1,16 @@
-import portrait from "@/assets/landing/bento_portrait.jpg";
+import portrait from "@/assets/landing/bento_red_portrait.jpg";
 import logo from "@/assets/landing/imperium_logo.png";
 
 export default function BentoSection() {
   return (
     <section className="relative w-full bg-[#e8e4dd] py-24">
-      <div className="mx-auto grid max-w-7xl grid-cols-2 gap-3 px-4 md:grid-cols-6 md:grid-rows-3 md:gap-4 md:px-8">
+      <div className="mx-auto max-w-7xl px-8">
+        <p className="font-mono text-[11px] uppercase tracking-[0.25em] text-black/55">( Principles )</p>
+        <h2 className="mt-3 font-sans text-[clamp(48px,9vw,140px)] font-medium leading-[0.92] tracking-[-0.04em] text-black">
+          Principles
+        </h2>
+      </div>
+      <div className="mx-auto mt-10 grid max-w-7xl grid-cols-2 gap-3 px-4 md:grid-cols-6 md:grid-rows-3 md:gap-4 md:px-8">
         {/* Scroll smoothly */}
         <div className="rounded-3xl bg-white p-6 ring-1 ring-black/5 md:row-span-2">
           <div className="flex h-full flex-col items-center justify-between">
