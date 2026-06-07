@@ -6,6 +6,7 @@ import heroKatana from "@/assets/landing/katana_hero.png";
 const LandingShell = lazy(() => import("@/components/landing/LandingShell"));
 
 export const Route = createFileRoute("/")({
+  ssr: false,
   head: () => ({
     meta: [
       { title: "IMPERIUM — Master Your Craft" },
