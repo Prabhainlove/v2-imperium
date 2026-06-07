@@ -20,7 +20,7 @@ export const Route = createFileRoute("/")({
         property: "og:description",
         content: "An AI job agent that orchestrates resumes, applications, and interviews end-to-end.",
       },
-      { property: "og:image", content: heroKatana },
+      
       { property: "og:url", content: "/" },
     ],
     links: [{ rel: "canonical", href: "/" }],
