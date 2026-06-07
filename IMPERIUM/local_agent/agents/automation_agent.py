@@ -215,3 +215,8 @@ def run_job(job_id: str) -> None:
                 driver.quit()
             except Exception:
                 pass
+        # B8 — best-effort HMAC callback to the web app on terminal states.
+        try:
+            _notify_terminal(job_id)
+        except Exception:
+            pass
