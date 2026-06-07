@@ -1036,7 +1036,51 @@ export const updateApplicationFields = createServerFn({ method: "POST" })
     const { error } = await supabase.from("applications").update(patch as never).eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };
+
+/* ---------- B8: attach local-agent run id to an application ---------- */
+const AttachAgentRunInput = z.object({
+  application_id: z.string().min(1),
+  local_agent_job_id: z.string().min(1).max(120),
+});
+
+/**
+ * Persists the local Python agent's run id inside `applications.notes` JSON
+ * so the HMAC callback at /api/public/agent-callback can locate the right
+ * application when the agent reports a terminal state.
+ *
+ * Note: Phase 1 stores this in the existing `notes` JSON to avoid a schema
+ * migration. A dedicated column can be added later without UI changes.
+ */
+export const attachLocalAgentRun = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => AttachAgentRunInput.parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+    const { data: row, error: readErr } = await supabase
+      .from("applications")
+      .select("notes")
+      .eq("id", data.application_id)
+      .maybeSingle();
+    if (readErr) throw new Error(readErr.message);
+    if (!row) throw new Error("Application not found");
+    let meta: Record<string, unknown> = {};
+    try {
+      meta = JSON.parse((row.notes as string) || "{}") as Record<string, unknown>;
+    } catch {
+      meta = {};
+    }
+    meta.local_agent_job_id = data.local_agent_job_id;
+    const { error: updErr } = await supabase
+      .from("applications")
+      .update({
+        notes: JSON.stringify(meta),
+        updated_at: new Date().toISOString(),
+      } as never)
+      .eq("id", data.application_id);
+    if (updErr) throw new Error(updErr.message);
+    return { ok: true };
   });
+
 
 export const getApplicationTimeline = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
