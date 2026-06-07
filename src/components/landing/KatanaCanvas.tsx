@@ -115,7 +115,7 @@ function Katana({ progressRef }: { progressRef?: MutableRefObject<number> }) {
 
       {/* ===== SAYA GROUP — recoils left on unsheathe ===== */}
       <group ref={saya}>
-        <mesh position={[-2.2, 0, 0]} castShadow receiveShadow>
+        <mesh position={[-2.2, 0, 0]} rotation={[0, 0, Math.PI / 2]} castShadow receiveShadow>
           <cylinderGeometry args={[0.16, 0.18, 3.4, 32]} />
           <meshPhysicalMaterial
             color="#0a0a0a"
@@ -153,7 +153,7 @@ function Katana({ progressRef }: { progressRef?: MutableRefObject<number> }) {
           <meshStandardMaterial color="#c9a14a" roughness={0.6} />
         </mesh>
         {/* koiguchi */}
-        <mesh position={[-0.42, 0, 0]} castShadow>
+        <mesh position={[-0.42, 0, 0]} rotation={[0, 0, Math.PI / 2]} castShadow>
           <cylinderGeometry args={[0.18, 0.18, 0.08, 32]} />
           <meshPhysicalMaterial color="#1a1a1a" metalness={0.5} roughness={0.3} />
         </mesh>
@@ -169,11 +169,11 @@ function Katana({ progressRef }: { progressRef?: MutableRefObject<number> }) {
 
       {/* ===== HILT — stays with tsuka, anchored at origin (does not move on unsheathe) ===== */}
       {/* fuchi */}
-      <mesh position={[-0.32, 0, 0]} castShadow>
+      <mesh position={[-0.32, 0, 0]} rotation={[0, 0, Math.PI / 2]} castShadow>
         <cylinderGeometry args={[0.14, 0.14, 0.06, 32]} />
         <meshPhysicalMaterial color="#d4a84a" metalness={1} roughness={0.25} />
       </mesh>
-      {/* tsuba — gold guard */}
+      {/* tsuba — gold guard (already perpendicular) */}
       <mesh position={[-0.22, 0, 0]} rotation={[0, 0, Math.PI / 2]} castShadow>
         <cylinderGeometry args={[0.42, 0.42, 0.04, 48]} />
         <meshPhysicalMaterial
@@ -188,12 +188,12 @@ function Katana({ progressRef }: { progressRef?: MutableRefObject<number> }) {
         <meshPhysicalMaterial color="#8b6520" metalness={1} roughness={0.4} />
       </mesh>
       {/* tsuka ferrule */}
-      <mesh position={[-0.13, 0, 0]} castShadow>
+      <mesh position={[-0.13, 0, 0]} rotation={[0, 0, Math.PI / 2]} castShadow>
         <cylinderGeometry args={[0.14, 0.14, 0.08, 32]} />
         <meshPhysicalMaterial color="#d4a84a" metalness={1} roughness={0.25} />
       </mesh>
       {/* tsuka body */}
-      <mesh position={[0.75, 0, 0]} castShadow>
+      <mesh position={[0.75, 0, 0]} rotation={[0, 0, Math.PI / 2]} castShadow>
         <cylinderGeometry args={[0.13, 0.14, 1.7, 32]} />
         <meshPhysicalMaterial color="#f0ebe2" roughness={0.85} metalness={0} />
       </mesh>
@@ -219,7 +219,7 @@ function Katana({ progressRef }: { progressRef?: MutableRefObject<number> }) {
         );
       })}
       {/* kashira */}
-      <mesh position={[1.65, 0, 0]} castShadow>
+      <mesh position={[1.65, 0, 0]} rotation={[0, 0, Math.PI / 2]} castShadow>
         <cylinderGeometry args={[0.135, 0.13, 0.08, 32]} />
         <meshPhysicalMaterial color="#d4a84a" metalness={1} roughness={0.3} />
       </mesh>
