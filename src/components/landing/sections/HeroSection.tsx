@@ -75,18 +75,8 @@ export default function HeroSection({ heroProgressRef }: Props) {
       <div className="hero-card absolute bottom-14 left-10 z-10 hidden md:block md:left-14">
         <p className="mb-3 font-sans text-[14px] text-[#f1ece6]/85">Skill Hub</p>
         <div className="h-[170px] w-[260px] rounded-2xl bg-white/[0.04] p-3 ring-1 ring-white/15 backdrop-blur-sm">
-          <div className="relative h-full w-full overflow-hidden rounded-xl">
-            <img
-              src={skillBalance}
-              alt="Balance"
-              loading="lazy"
-              width={512}
-              height={512}
-              className="h-full w-full object-cover"
-            />
-            <div className="absolute inset-0 grid place-items-center bg-black/25">
-              <span className="font-sans text-[22px] font-medium text-white/95">Balance</span>
-            </div>
+          <div className="grid h-full w-full place-items-center rounded-xl bg-white/[0.03]">
+            <span className="font-sans text-[22px] font-medium text-white/95">Balance</span>
           </div>
         </div>
       </div>
