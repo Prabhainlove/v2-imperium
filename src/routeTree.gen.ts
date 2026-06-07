@@ -26,7 +26,6 @@ import { Route as AuthenticatedCoverLettersRouteImport } from './routes/_authent
 import { Route as AuthenticatedAutopilotRouteImport } from './routes/_authenticated/autopilot'
 import { Route as AuthenticatedApplicationsRouteImport } from './routes/_authenticated/applications'
 import { Route as AuthenticatedActivityRouteImport } from './routes/_authenticated/activity'
-import { Route as ApiPublicAgentCallbackRouteImport } from './routes/api/public/agent-callback'
 import { Route as AuthenticatedReviewIdRouteImport } from './routes/_authenticated/review.$id'
 
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
@@ -116,11 +115,6 @@ const AuthenticatedActivityRoute = AuthenticatedActivityRouteImport.update({
   path: '/activity',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const ApiPublicAgentCallbackRoute = ApiPublicAgentCallbackRouteImport.update({
-  id: '/api/public/agent-callback',
-  path: '/api/public/agent-callback',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AuthenticatedReviewIdRoute = AuthenticatedReviewIdRouteImport.update({
   id: '/review/$id',
   path: '/review/$id',
@@ -145,7 +139,6 @@ export interface FileRoutesByFullPath {
   '/settings': typeof AuthenticatedSettingsRoute
   '/skills': typeof AuthenticatedSkillsRoute
   '/review/$id': typeof AuthenticatedReviewIdRoute
-  '/api/public/agent-callback': typeof ApiPublicAgentCallbackRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -165,7 +158,6 @@ export interface FileRoutesByTo {
   '/settings': typeof AuthenticatedSettingsRoute
   '/skills': typeof AuthenticatedSkillsRoute
   '/review/$id': typeof AuthenticatedReviewIdRoute
-  '/api/public/agent-callback': typeof ApiPublicAgentCallbackRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -187,7 +179,6 @@ export interface FileRoutesById {
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/skills': typeof AuthenticatedSkillsRoute
   '/_authenticated/review/$id': typeof AuthenticatedReviewIdRoute
-  '/api/public/agent-callback': typeof ApiPublicAgentCallbackRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -209,7 +200,6 @@ export interface FileRouteTypes {
     | '/settings'
     | '/skills'
     | '/review/$id'
-    | '/api/public/agent-callback'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -229,7 +219,6 @@ export interface FileRouteTypes {
     | '/settings'
     | '/skills'
     | '/review/$id'
-    | '/api/public/agent-callback'
   id:
     | '__root__'
     | '/'
@@ -250,7 +239,6 @@ export interface FileRouteTypes {
     | '/_authenticated/settings'
     | '/_authenticated/skills'
     | '/_authenticated/review/$id'
-    | '/api/public/agent-callback'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -258,7 +246,6 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
-  ApiPublicAgentCallbackRoute: typeof ApiPublicAgentCallbackRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -382,13 +369,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedActivityRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/api/public/agent-callback': {
-      id: '/api/public/agent-callback'
-      path: '/api/public/agent-callback'
-      fullPath: '/api/public/agent-callback'
-      preLoaderRoute: typeof ApiPublicAgentCallbackRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/_authenticated/review/$id': {
       id: '/_authenticated/review/$id'
       path: '/review/$id'
@@ -441,8 +421,17 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   ResetPasswordRoute: ResetPasswordRoute,
-  ApiPublicAgentCallbackRoute: ApiPublicAgentCallbackRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
