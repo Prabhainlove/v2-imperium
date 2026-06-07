@@ -962,6 +962,7 @@ const UpdateStatusInput = z.object({
     "Saved",
     "Preparing",
     "Applied",
+    "ManualApplyPending", // B9 — agent could not finish; needs human action
     "Assessment",
     "Interview",
     "Offer",
