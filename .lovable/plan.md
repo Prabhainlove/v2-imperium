@@ -1,61 +1,61 @@
-## What I see vs. what we have (honest diff)
+## Goal
+Match the reference hero ~95%: a photoreal **3D katana** macro shot filling the right ~65% of the screen, with a tight editorial title block on the left, populated Skill Hub card, and corrected top chrome.
 
-**Reference katana** (image 1 + hero shot):
-- BLACK lacquered saya with a RED flame/marbling core showing through a cutaway window
-- WHITE ito-wrapped tsuka with BLACK diamond menuki spacing, gold fuchi/kashira
-- Brand kanji ベ on the saya near the koiguchi
-- Composition: sheathed katana enters from lower-left, runs diagonally up to the right, handle exits top-right corner
-
-**Our `katana_hero.png`**: opposite — RED saya with BLACK smoke, and it shows the bare blade crossed with the saya (an unsheathing pose, not the sealed sheathed hero pose). Wrong colors, wrong pose.
-
-**Our `katana_horizontal.png`**: plain naked blade with a black-wrap tsuka. Fine as the "drawn blade" image for later sections, but not the hero.
-
-**Reference hero background**: dark near-black canvas with a delicate, almost ukiyo-e ink-drawn tree forming a circular mandala silhouette behind the katana, tiny red blossoms dotted across it. No moon. Very muted, ~20% luminance.
-
-**Our `branches_backdrop.png`**: bright pink cherry blossoms with a giant yellow moon — wrong era, wrong mood, wrong density, wrong shape.
-
-**Reference hero layout**:
-```
-[logo+®] [red-pill icon]  Master                V_ 1.2.0           [i] [Dev Guides] [Skill Hub]   0%
-                          Your
-                          Skills  Built by
-                                  Fiddle.Digital
-
-         Skill Hub
-         ┌─────────────┐                                  Hey there, wanderer! 🎮 Welcome to the
-         │             │   ← empty rounded card           realm of StringTune, where precision
-         │             │                                  meets mastery
-         └─────────────┘                                                                  [ Next ]
-                                                                                          🧍 AIKA
+## 1. Add 3D stack
+```bash
+bun add three @react-three/fiber @react-three/drei
+bun add -d @types/three
 ```
 
-**Our hero**: title split between SlashText("Master") and a separate h1("Your / Skills") — they desync; "Built by IMPERIUM" stacked vertically at bottom-left instead of inline; Skill Hub card is bottom-RIGHT (collides with companion); extra full-bleed black gradient overlay washes out the backdrop.
+## 2. Source the katana GLB
+- Use a CC0/CC-BY katana model (Poly Pizza / Sketchfab CC0 / Quaternius). I'll fetch one via `curl` into `public/models/katana.glb` (kept out of bundle, served as static asset, lazy-loaded).
+- If no suitable free model is found at fetch time, fall back to a procedural katana built from primitives in R3F (cylinder tsuka + torus tsuba + box saya with emissive red inner material + thin box blade). Procedural still beats the flat PNG because it has real lighting and depth.
 
-## Plan (focus: hero only, surgical)
+## 3. New component: `src/components/landing/KatanaCanvas.tsx`
+- `<Canvas>` absolutely positioned right side, `camera={{ position: [0, 0, 2.2], fov: 28 }}` for a tight macro framing
+- Load GLB with `useGLTF`, rotated so tsuka points upper-right, blade exits lower-left of canvas
+- Lighting: 1 key directional light (warm), 1 rim light (cool), 1 small red point light **inside the saya cutaway** for the volumetric flame glow
+- Emissive red marble material applied to the inner saya geometry (or a red emissive sphere placed inside if the model lacks a cutaway)
+- Subtle scroll-driven rotation (~6°) and slow idle bob via `useFrame`
+- Lazy-mount with `<Suspense fallback={null}>`; render only after ColdOpen finishes (delay 5s or via prop)
+- `dpr={[1, 1.5]}`, `gl={{ antialias: true, alpha: true }}`, `frameloop="demand"` when idle
 
-### 1. Regenerate two assets (premium quality, transparent where needed)
+## 4. Rewrite `HeroSection.tsx`
+- Remove `<img src={katanaHero}>`
+- Remove the CSS radial flame blob (the red light is now part of the 3D scene)
+- Keep `branches_backdrop.png` but lower opacity to ~0.45 and shift left so the 3D katana visually occludes the right side
+- Mount `<KatanaCanvas />` absolute, `right-0 top-0 h-full w-[65%]`
+- Title block:
+  - Shrink to `clamp(48px, 7.5vw, 120px)` (currently 11vw is too large)
+  - `leading-[0.92]`, `tracking-[-0.025em]`
+  - Position `top-24 left-10`
+  - "Built by Fiddle.Digital" inline next to the "Skills" baseline as a tiny `text-[13px]` block (flex row, `items-end`, gap-3) — not stacked below
+- Skill Hub card (bottom-left): add a real thumbnail tile inside — generate `src/assets/landing/skill_balance.jpg` (athletic figure, soft warm light, "Balance" label overlay rendered in JSX, not baked in)
+- `V_ 1.2.0` stays top-center
 
-- `src/assets/landing/katana_hero.png` — sheathed katana, transparent PNG. Prompt locked to: black lacquered saya, red flame/marble core visible through a cutaway window mid-saya, white cotton ito-wrap on tsuka with black diamond menuki, gold tsuba with floral relief, kanji ベ on saya. Diagonal pose, blade pointing lower-left, handle upper-right.
-- `src/assets/landing/branches_backdrop.png` — dark muted ink-painted bare tree branches forming a soft circular mandala, sparse tiny red blossoms, near-black background, subtle paper grain. No moon. Premium tier.
+## 5. Fix `TopChrome.tsx`
+- Replace `Dashboard` / `Console` labels with `Dev Guides` / `Skill Hub`
+- Add a small **red rounded katana chip** next to the logo (32×28 rounded-lg, `bg-[#ff3a2a]`, contains a tiny katana glyph) — matches reference TL
+- Keep `0%` progress at TR
 
-### 2. Rewrite `HeroSection.tsx` to match the reference
+## 6. Asset cleanup
+- `katana_hero.png` becomes unused → delete via `rm`
+- Keep `katana_horizontal.png` (still used by `AwakeningSection`)
 
-- Single `<h1>` with three lines `Master / Your / Skills`, left-aligned, top-left at `top-28 left-8`, tight `leading-[0.88]`, weight 500, tracking `-0.03em`, color `#f1ece6`.
-- Inline `Built by\nFiddle.Digital` as a small block beside the "Skills" line (flex row, items-end), small sans `text-[18px]` muted `text-white/70`.
-- Remove the `<SlashText text="Master">` — it desyncs with the static lines; the hero title should be calm, not slash-blurred (reference is static).
-- Move Skill Hub card to bottom-LEFT (`bottom-8 left-8`), keep it as an empty rounded card with just the "Skill Hub" label top-left inside it.
-- Remove the heavy `bg-gradient-to-b from-black/40 ... to-black/70` overlay so the backdrop reads.
-- Reduce the red flame glow radius and opacity (currently bleeds across the whole canvas; reference has a tight glow only inside the saya cutaway, so push opacity to ~0.25 and shrink to 35vh).
-- Add subtle paper grain via existing CSS; keep `V_ 1.2.0` top-center-right as already placed.
-- Companion (`AIKA`) stays bottom-right — already correct.
+## Files touched
+- **new** `src/components/landing/KatanaCanvas.tsx`
+- **new** `public/models/katana.glb` (downloaded) or procedural fallback
+- **new** `src/assets/landing/skill_balance.jpg` (generated)
+- **edit** `src/components/landing/sections/HeroSection.tsx` (rewrite layout, mount Canvas)
+- **edit** `src/components/landing/chrome/TopChrome.tsx` (nav labels, red katana chip)
+- **delete** `src/assets/landing/katana_hero.png`
 
-### 3. No changes to other sections this turn
+## Out of scope
+KeepScrolling, Awakening, Cloud band, Bento, Audience Wheel, Compass, etc. Untouched this turn — we finish Hero first, then move to the next section per your one-by-one plan.
 
-The user explicitly asked to focus on starting / hero / katana. KeepScrolling, Awakening, FeatureSword, Bento, etc. stay as-is this pass.
+## Risk / notes
+- Free GLB katana availability is the only unknown. If the fetched model is low-quality or licensing is unclear, I'll use the procedural R3F fallback so we still get true 3D depth and lighting without a flat PNG. Either way, the result is real 3D, not a regenerated image.
+- Bundle impact: ~250KB gz for three+fiber+drei. Acceptable for a landing page.
+- No backend / auth / routing changes.
 
-### Files touched
-- `src/assets/landing/katana_hero.png` (regenerate)
-- `src/assets/landing/branches_backdrop.png` (regenerate)
-- `src/components/landing/sections/HeroSection.tsx` (rewrite layout)
-
-No new dependencies. No backend changes.
+Approve and I'll implement.
