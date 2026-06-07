@@ -9,6 +9,8 @@ export function useLenisScroll() {
   const progressRef = useRef(0);
   const scrollYRef = useRef(0);
   const fpsRef = useRef(60);
+  // Combined 0→1 progress across Hero + KeepScrolling stage. Owned by HeroSection ScrollTrigger.
+  const heroProgressRef = useRef(0);
 
   useEffect(() => {
     const lenis = new Lenis({
@@ -55,5 +57,5 @@ export function useLenisScroll() {
     };
   }, []);
 
-  return { progressRef, scrollYRef, fpsRef };
+  return { progressRef, scrollYRef, fpsRef, heroProgressRef };
 }
