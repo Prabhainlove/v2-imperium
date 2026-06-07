@@ -3,7 +3,6 @@ import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import branches from "@/assets/landing/branches_backdrop.png";
-import skillBalance from "@/assets/landing/skill_balance.jpg";
 
 interface Props {
   heroProgressRef: React.MutableRefObject<number>;
