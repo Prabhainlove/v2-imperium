@@ -43,7 +43,7 @@ export default function HeroSection({ heroProgressRef }: Props) {
   );
 
   return (
-    <section ref={ref} className="relative h-screen w-full overflow-hidden bg-black">
+    <section ref={ref} className="relative h-screen w-full overflow-hidden bg-transparent">
       {/* ukiyo-e branches backdrop */}
       <img
         src={branches}
