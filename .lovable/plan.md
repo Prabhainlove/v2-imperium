@@ -1,44 +1,46 @@
-## What the reference video actually does (frame by frame)
+## Why the current katana looks cheap
 
-- **0–15% scroll** — macro close-up: tsuba + saya cutaway fill ~70% of the screen, sheathed. Title "Master / Your / Skills" sits top-left, "Skill Hub" thumbnail bottom-left. Katana is **static** here; just gentle idle.
-- **15–40%** — **camera dollies back + rotates**. The katana shrinks from "macro fill" to a "full-weapon shot" angled ~10° tilt. Title + Skill Hub fade out. Big "StringTune©" word appears center, katana is now small and horizontal across the screen, blade still sheathed.
-- **40–70%** — **unsheathe begins**. The blade slides out of the saya to the right while the saya stays/drifts left. Camera rotates further so the weapon is near-horizontal. "Concentrate" text crossfades in.
-- **70–100%** — fully unsheathed: bare blade fully separated from saya, both horizontal, "Keep Scrolling" text behind them. AIKA companion swaps to Oji sprite.
+The current `KatanaCanvas.tsx` builds the sword from raw Three.js primitives:
+- Blade = a flat `boxGeometry`
+- Saya / tsuka / fuchi / kashira = bare `cylinderGeometry`
+- Ito wrap = rotated `planeGeometry` squares
+- Hamon, flame, kanji = flat `planeGeometry` with solid colors
 
-My current build is **static** — no camera move, no unsheathe, no separation. That's the gap.
+These shapes have no real geometry, no UV-mapped textures, no painted saya art, no woven ito, no curvature on the blade. That is the cap — procedural primitives will never look like your reference image. The fix is to load a real katana 3D model (GLB) with PBR textures.
 
-## Implementation plan
+## Plan
 
-### 1. Make `KatanaCanvas` scroll-driven
-- Already accepts `progressRef`. Wire it to a **page-level scroll progress** (0 → 1 across the combined Hero + KeepScrolling sticky stage), not just the hero's local progress.
-- Split the katana group into two named sub-groups: `sayaGroup` (saya + cutaway + koiguchi + fuchi + tsuba) and `bladeGroup` (new — thin reflective steel blade extending from tsuka through where the saya was).
-- New `useFrame` timeline based on `p = progressRef.current`:
-  - **Camera dolly**: `camera.position.z` lerps `2.6 → 5.2` over `p ∈ [0.05, 0.45]`, then `5.2 → 4.6` over `[0.45, 1]`. `camera.position.y` slight `0 → 0.2`.
-  - **Group rotation**: whole katana `rotation.z` lerps `-0.05 → -0.35 → 0` (tilts down then levels horizontal); `rotation.y` `0.15 → 0` (turns to face camera flat).
-  - **Group position**: lerps from `[0.3, -0.1, 0]` (offset right macro) to `[0, 0, 0]` (centered).
-  - **Unsheathe**: `bladeGroup.position.x` lerps `0 → +1.8` over `p ∈ [0.4, 0.85]` (blade slides out right); `sayaGroup.position.x` lerps `0 → -0.4` over same range (slight recoil left).
-  - **Flame fade**: red emissive plane + point light intensity ramp `2.4 → 0` over `[0.55, 0.8]` (no flame once unsheathed).
-- Add a real blade mesh: long thin `boxGeometry` ~3.2×0.06×0.02, `meshPhysicalMaterial` (metalness 1, roughness 0.1, clearcoat 1, color `#e8eef2`), with subtle curve via slight rotation. Add `hamon` (temper line) via a second thinner emissive-ish strip.
+### 1. Source the model
+- Find a free CC0 / CC-BY katana GLB (Sketchfab, Poly Pizza, Quaternius). Target: stylized anime/Demon-Slayer-style katana with painted saya, ito wrap, gold tsuba — matching your reference image. Backup: if no suitable free model surfaces, ask you to upload a `.glb` (you confirmed this path is OK).
+- Upload via `lovable-assets create` so the GLB is served from CDN, not committed to repo.
 
-### 2. Restructure the Hero + KeepScrolling stage
-- Lift `KatanaCanvas` out of `HeroSection` and into a **fixed full-screen canvas** in `LandingShell`, mounted once, positioned `fixed inset-0 z-0 pointer-events-none`, only visible while combined progress < ~1.05.
-- Build a single `ScrollTrigger` in `useLenisScroll` (or a new `useHeroProgress` hook) that measures scroll from `top of HeroSection` to `bottom of KeepScrollingSection` and writes 0–1 into a new `heroProgressRef`. Pass that ref into `KatanaCanvas` instead of the global page progress.
-- `HeroSection`: keep title, V_1.2.0, Skill Hub card. Add GSAP scrub fading these out at local progress > 0.6.
-- `KeepScrollingSection`: **remove the two `<img>` katana copies entirely** (the 3D canvas now owns the katana). Keep the pinned text reveals ("Control", "StringTune", "Concentrate", "Keep Scrolling") timed to align with the 3D timeline beats.
+### 2. Rewrite `KatanaCanvas.tsx`
+- Delete the entire procedural `<Katana>` component (every box/cylinder/plane).
+- Replace with a `<KatanaModel>` that uses drei's `useGLTF(modelUrl)` and renders the loaded scene.
+- Split the loaded scene into two refs at load time: `bladeGroup` (everything with "blade"/"katana_blade" in the node name) and `sayaGroup` (everything with "saya"/"sheath"). These two groups are what slide apart on unsheathe.
+- Keep the existing scroll timeline math (`range`, `ease`, `lerp`) and the `Rig` camera dolly — only the geometry source changes.
+- Lighting: keep the warm key + cool fill + ambient, add `Environment preset="warehouse"` (better metal reflections than "studio" for a katana), and an `<AccumulativeShadows>` ground catcher so it doesn't float.
+- Use `<Suspense fallback={null}>` so the rest of the page renders while the GLB downloads. Add `useGLTF.preload(modelUrl)` at module scope.
 
-### 3. Fix the layout gap (title vs 3D katana overlap on current screenshot)
-- Currently the canvas covers the right 68% but the katana sits centered-right inside it, so it visually crashes into "Master / Your / Skills". Adjust initial camera framing: at `p=0`, position the katana so its visible bulk sits in the right ~55% (move group `position.x` to `+0.6` at start).
-- Move title block to `left-14 top-32`, cap font at `clamp(40px, 6.5vw, 104px)` so it fits in the left 35% column.
-- Move Skill Hub card to bottom-left with `left-14 bottom-14`, shrink to `w-[260px] h-[170px]`.
+### 3. Use your reference image
+- Save your uploaded katana reference as the Hero's mood backdrop (low opacity, behind the canvas, sepia-tinted like the existing `branches_backdrop`) so the painted-saya/flame art bleeds through visually even before the model loads. Upload via `lovable-assets`.
 
-### 4. Files touched
-- **edit** `src/components/landing/useLenisScroll.ts` — add `heroProgressRef` measured against hero+keepScrolling stage.
-- **edit** `src/components/landing/KatanaCanvas.tsx` — add bladeGroup, scroll-driven camera + unsheathe + rotation timeline.
-- **edit** `src/components/landing/LandingShell.tsx` — mount `KatanaCanvas` once as fixed background, fade out after sections pass.
-- **edit** `src/components/landing/sections/HeroSection.tsx` — remove local KatanaCanvas, fix title/card layout, scrub-fade text.
-- **edit** `src/components/landing/sections/KeepScrollingSection.tsx` — remove img katanas, re-time text beats to match 3D unsheathe.
+### 4. Scroll animation (unchanged behavior, real geometry)
+- `p 0.00–0.15`: macro close-up of the tsuba area, sheathed
+- `p 0.15–0.45`: camera dollies back, group rotates to horizontal
+- `p 0.40–0.85`: `bladeGroup.position.x` lerps +1.9, `sayaGroup.position.x` lerps −0.45 → blade pulls out
+- `p 0.55–0.80`: a red emissive `pointLight` inside the saya fades from 3 → 0 (keeps the "flame core" beat from your reference without faking it with a plane)
 
-### Out of scope
-Everything below KeepScrolling (Awakening → Footer) untouched. No new packages.
+### 5. Files touched
+- `src/components/landing/KatanaCanvas.tsx` — rewrite
+- `src/assets/katana.glb.asset.json` — new (CDN pointer)
+- `src/assets/katana_reference.png.asset.json` — new (CDN pointer for your uploaded image, used as Hero backdrop)
+- `src/components/landing/sections/HeroSection.tsx` — swap backdrop image source
+- No changes to `useLenisScroll.ts`, `LandingShell.tsx`, or `KeepScrollingSection.tsx`
 
-Approve and I'll implement in one pass.
+### 6. Dependencies
+Already installed: `three`, `@react-three/fiber`, `@react-three/drei`. No new packages needed — `useGLTF`, `Environment`, `AccumulativeShadows` all ship with drei.
+
+### Risks / honest caveats
+- Free CC0 katana models vary a lot in quality. If I can't find a stylized anime-style one that matches your red-flame-saya reference, the realistic outcome is: I wire in a decent generic katana GLB now, and you provide a custom `.glb` later for an exact match. I will tell you which model I picked and link the source so you can swap it.
+- A real GLB is typically 1–5 MB. It loads async — first paint shows the page without the sword, then it pops in. We mitigate with `useGLTF.preload` + the reference-image backdrop so the hero never looks empty.
