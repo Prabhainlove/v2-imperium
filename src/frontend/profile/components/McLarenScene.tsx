@@ -40,7 +40,9 @@ function Car({ hovered }: { hovered: boolean }) {
       action.clampWhenFinished = false;
       actionRef.current = action;
     }
-    return () => mixer.stopAllAction();
+    return () => {
+      mixer.stopAllAction();
+    };
   }, [fbx, mixer]);
 
   useEffect(() => {
