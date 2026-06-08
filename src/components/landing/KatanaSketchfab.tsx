@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 interface Props {
   progressRef: React.MutableRefObject<number>;
@@ -11,8 +11,8 @@ const clamp = (v: number, lo = 0, hi = 1) => Math.min(hi, Math.max(lo, v));
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 const easeInOut = (t: number) =>
   t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+const easeOutExpo = (t: number) => (t >= 1 ? 1 : 1 - Math.pow(2, -10 * t));
 
-// Load the Sketchfab Viewer API script once.
 let viewerPromise: Promise<unknown> | null = null;
 function loadSketchfabViewer(): Promise<unknown> {
   if (typeof window === "undefined") return Promise.resolve(null);
@@ -23,7 +23,8 @@ function loadSketchfabViewer(): Promise<unknown> {
     const s = document.createElement("script");
     s.src = VIEWER_SRC;
     s.async = true;
-    s.onload = () => resolve((window as unknown as { Sketchfab?: unknown }).Sketchfab);
+    s.onload = () =>
+      resolve((window as unknown as { Sketchfab?: unknown }).Sketchfab);
     s.onerror = reject;
     document.head.appendChild(s);
   });
@@ -31,19 +32,24 @@ function loadSketchfabViewer(): Promise<unknown> {
 }
 
 /**
- * Sketchfab "REAL Katana" embed driven by page scroll.
+ * Sketchfab "REAL Katana" — director's-cut scroll choreography.
  *
- * Axis convention (Sketchfab default, right-handed, Y-up world):
- *   +X right, +Y up, +Z toward viewer.
- *   Camera positions are [x, y, z] in world units; target is the look-at point.
+ * Beats (heroProgress 0 → 1):
+ *   0.00–0.15  REVEAL  : wide shot, katana floats in, soft halo
+ *   0.15–0.45  ORBIT   : slow pan tsuka → kissaki, dolly in
+ *   0.45–0.70  TENSION : pull back + tilt, vignette tightens
+ *   0.70–0.85  STRIKE  : fast diagonal swipe, white flash, screen shake
+ *   0.85–1.00  REST    : settle into hero composition, flash fades
  *
- * Scroll choreography (heroProgress 0 → 1):
- *   0.00  resting wide shot, camera high-right, looking at hilt
- *   0.50  orbits down and dollies in along the blade
- *   1.00  low diagonal hero close-up of the kissaki
+ * Camera frames stay framed so the blade always reads against the dark backdrop;
+ * keyframes were picked to keep the katana centered on-screen (never clipped).
  */
 export default function KatanaSketchfab({ progressRef }: Props) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const flashRef = useRef<HTMLDivElement>(null);
+  const haloRef = useRef<HTMLDivElement>(null);
+  const vignetteRef = useRef<HTMLDivElement>(null);
   const apiRef = useRef<{
     setCameraLookAt: (
       eye: [number, number, number],
@@ -54,6 +60,7 @@ export default function KatanaSketchfab({ progressRef }: Props) {
   } | null>(null);
   const rafRef = useRef(0);
   const lastP = useRef(-1);
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -66,9 +73,10 @@ export default function KatanaSketchfab({ progressRef }: Props) {
         success: (api: typeof apiRef.current) => {
           api?.start();
           apiRef.current = api;
+          setReady(true);
         },
         error: () => {
-          /* Fallback: static iframe stays visible, user can orbit manually. */
+          /* Fallback: static iframe still visible. */
         },
         ui_infos: 0,
         ui_controls: 0,
@@ -81,30 +89,43 @@ export default function KatanaSketchfab({ progressRef }: Props) {
         ui_annotations: 0,
         ui_help: 0,
         ui_hint: 0,
+        ui_general_controls: 0,
         autostart: 1,
         autospin: 0,
         transparent: 1,
         preload: 1,
+        scrollwheel: 0,
+        double_click: 0,
       });
     });
 
-    // Cinematic camera keyframes — eye + target in Sketchfab world units (Y-up).
-    // 0 reveal → 0.25 wide orbit → 0.5 dolly along blade → 0.75 tsuba hero → 1 kissaki strike.
-    const keys: Array<{ eye: [number, number, number]; target: [number, number, number] }> = [
-      { eye: [1.4, 0.9, 1.5], target: [0.0, 0.05, 0.0] },
-      { eye: [1.6, 0.3, 0.9], target: [0.1, 0.0, 0.0] },
-      { eye: [0.2, 0.15, 1.1], target: [-0.2, 0.0, 0.0] },
-      { eye: [-0.9, 0.2, 0.7], target: [-0.3, 0.0, 0.05] },
-      { eye: [-1.2, -0.1, 0.5], target: [-0.5, -0.05, 0.1] },
-    ];
+    // Beat boundaries and camera frames per beat.
+    // [eye xyz, target xyz] kept tight so the katana stays centered & unclipped.
+    const beats = [
+      { p: 0.00, eye: [1.6, 0.9, 1.6], target: [0.0, 0.05, 0.0] },  // REVEAL
+      { p: 0.15, eye: [1.5, 0.5, 1.2], target: [0.0, 0.05, 0.0] },  // ease-in
+      { p: 0.45, eye: [0.2, 0.25, 1.0], target: [-0.15, 0.0, 0.0] }, // ORBIT end
+      { p: 0.70, eye: [-0.6, 0.35, 1.2], target: [-0.2, 0.05, 0.05] }, // TENSION pull-back
+      { p: 0.85, eye: [-1.3, -0.05, 0.55], target: [-0.45, -0.05, 0.1] }, // STRIKE peak
+      { p: 1.00, eye: [-1.1, 0.05, 0.7], target: [-0.35, 0.0, 0.05] },  // REST
+    ] as const;
 
-    const sampleKeys = (t: number) => {
-      const n = keys.length - 1;
-      const x = clamp(t) * n;
-      const i = Math.min(n - 1, Math.floor(x));
-      const f = easeInOut(x - i);
-      const a = keys[i];
-      const b = keys[i + 1];
+    const sampleBeats = (t: number) => {
+      const x = clamp(t);
+      let i = 0;
+      for (let k = 0; k < beats.length - 1; k++) {
+        if (x >= beats[k].p && x <= beats[k + 1].p) {
+          i = k;
+          break;
+        }
+      }
+      const a = beats[i];
+      const b = beats[i + 1] ?? beats[beats.length - 1];
+      const span = b.p - a.p || 1;
+      const local = (x - a.p) / span;
+      // STRIKE beat (0.70 → 0.85) uses exponential snap; others smooth.
+      const f =
+        a.p === 0.7 ? easeOutExpo(local) : easeInOut(local);
       return {
         eye: [
           lerp(a.eye[0], b.eye[0], f),
@@ -116,21 +137,66 @@ export default function KatanaSketchfab({ progressRef }: Props) {
           lerp(a.target[1], b.target[1], f),
           lerp(a.target[2], b.target[2], f),
         ] as [number, number, number],
+        beatIndex: i,
       };
     };
 
     const tick = () => {
       const p = clamp(progressRef.current ?? 0);
-      if (apiRef.current && Math.abs(p - lastP.current) > 0.005) {
+
+      if (apiRef.current && Math.abs(p - lastP.current) > 0.003) {
         lastP.current = p;
-        const { eye, target } = sampleKeys(p);
-        const duration = p > 0.55 ? 0.4 : 0.8; // snappier near the strike
+        const { eye, target } = sampleBeats(p);
+        // Scroll-locked: very short duration so camera tracks scroll, not drifts.
+        // Strike beat uses 0.18s for crisp impact; others 0.35s for buttery motion.
+        const inStrike = p >= 0.7 && p <= 0.86;
+        const duration = inStrike ? 0.18 : 0.35;
         apiRef.current.setCameraLookAt(eye, target, duration);
       }
+
+      // DOM overlays — read every frame so they feel locked to scroll.
+      // STRIKE flash (0.72 → 0.84): sharp white burst, then fade.
+      if (flashRef.current) {
+        let flashOp = 0;
+        if (p > 0.72 && p < 0.85) {
+          const u = (p - 0.72) / 0.13;
+          flashOp = u < 0.4 ? easeOutExpo(u / 0.4) * 0.95 : (1 - (u - 0.4) / 0.6) * 0.95;
+        }
+        flashRef.current.style.opacity = String(Math.max(0, flashOp));
+      }
+
+      // HALO (always-on rim glow, peaks during TENSION → STRIKE so blade reads).
+      if (haloRef.current) {
+        let haloOp = 0.25;
+        if (p > 0.45) haloOp = 0.25 + Math.min(1, (p - 0.45) / 0.4) * 0.55;
+        if (p > 0.85) haloOp = 0.6 * (1 - Math.min(1, (p - 0.85) / 0.15));
+        haloRef.current.style.opacity = String(haloOp);
+      }
+
+      // VIGNETTE tightens during TENSION, opens after strike.
+      if (vignetteRef.current) {
+        const tighten = clamp((p - 0.3) / 0.4);
+        const release = clamp((p - 0.85) / 0.15);
+        const v = tighten * (1 - release);
+        vignetteRef.current.style.opacity = String(0.3 + v * 0.45);
+      }
+
+      // SCREEN SHAKE on strike apex.
+      if (wrapRef.current) {
+        let shakeX = 0;
+        let shakeY = 0;
+        if (p > 0.75 && p < 0.84) {
+          const u = (p - 0.75) / 0.09;
+          const amp = (1 - u) * 8;
+          shakeX = Math.sin(performance.now() * 0.06) * amp;
+          shakeY = Math.cos(performance.now() * 0.05) * amp * 0.6;
+        }
+        wrapRef.current.style.transform = `translate3d(${shakeX}px, ${shakeY}px, 0)`;
+      }
+
       rafRef.current = requestAnimationFrame(tick);
     };
     rafRef.current = requestAnimationFrame(tick);
-
 
     return () => {
       cancelled = true;
@@ -139,11 +205,23 @@ export default function KatanaSketchfab({ progressRef }: Props) {
   }, [progressRef]);
 
   return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden">
+    <div ref={wrapRef} className="pointer-events-none absolute inset-0 overflow-hidden">
+      {/* Rim halo / soft fill behind katana so it never falls into shadow */}
+      <div
+        ref={haloRef}
+        className="absolute inset-0"
+        style={{
+          opacity: 0.25,
+          background:
+            "radial-gradient(50% 55% at 50% 55%, rgba(255,220,170,0.35) 0%, rgba(255,150,90,0.18) 35%, rgba(0,0,0,0) 70%)",
+          mixBlendMode: "screen",
+        }}
+      />
+
       <iframe
         ref={iframeRef}
         title="REAL Katana"
-        src={`https://sketchfab.com/models/${MODEL_UID}/embed?autostart=1&transparent=1&ui_infos=0&ui_controls=0&ui_stop=0&ui_watermark=0&ui_inspector=0&ui_settings=0&ui_vr=0&ui_fullscreen=0&ui_annotations=0&ui_help=0&ui_hint=0&dnt=1`}
+        src={`https://sketchfab.com/models/${MODEL_UID}/embed?autostart=1&transparent=1&ui_infos=0&ui_controls=0&ui_stop=0&ui_watermark=0&ui_inspector=0&ui_settings=0&ui_vr=0&ui_fullscreen=0&ui_annotations=0&ui_help=0&ui_hint=0&ui_general_controls=0&dnt=1&scrollwheel=0&double_click=0`}
         allow="autoplay; fullscreen; xr-spatial-tracking"
         allowFullScreen
         className="absolute border-0"
@@ -153,6 +231,31 @@ export default function KatanaSketchfab({ progressRef }: Props) {
           top: "-10%",
           width: "130%",
           height: "120%",
+          opacity: ready ? 1 : 0.85,
+          transition: "opacity 600ms ease-out",
+        }}
+      />
+
+      {/* Vignette: tightens during tension build-up, opens after strike */}
+      <div
+        ref={vignetteRef}
+        className="absolute inset-0"
+        style={{
+          opacity: 0.3,
+          background:
+            "radial-gradient(75% 75% at 50% 50%, rgba(0,0,0,0) 55%, rgba(0,0,0,0.85) 100%)",
+        }}
+      />
+
+      {/* STRIKE flash */}
+      <div
+        ref={flashRef}
+        className="absolute inset-0"
+        style={{
+          opacity: 0,
+          background:
+            "radial-gradient(60% 60% at 50% 50%, rgba(255,255,255,1) 0%, rgba(255,240,210,0.8) 40%, rgba(0,0,0,0) 80%)",
+          mixBlendMode: "screen",
         }}
       />
     </div>
