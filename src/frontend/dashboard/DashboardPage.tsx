@@ -1,14 +1,20 @@
 import "./dashboard.css";
-import { useDashboardPage } from "./dashboard.logic";
+import { useDashboardData } from "./dashboard.data";
+import { TopBar } from "./components/TopBar";
+import { LeftPanel } from "./components/LeftPanel";
+import { CenterPanel } from "./components/CenterPanel";
+import { RightPanel } from "./components/RightPanel";
 
 export function DashboardPage() {
-  const { title } = useDashboardPage();
+  const data = useDashboardData();
   return (
-    <div className="dashboard-root min-h-screen flex flex-col items-center justify-center p-8 text-center">
-      <h1 className="dashboard-title text-3xl font-semibold">{title}</h1>
-      <p className="dashboard-subtitle mt-3 text-sm text-muted-foreground">
-        This page is part of the new architecture skeleton. UI coming soon.
-      </p>
+    <div className="dash-root">
+      <TopBar gems={data.resources.gems} coins={data.resources.coins} />
+      <div className="dash-grid">
+        <LeftPanel data={data} />
+        <CenterPanel data={data} />
+        <RightPanel data={data} />
+      </div>
     </div>
   );
 }
