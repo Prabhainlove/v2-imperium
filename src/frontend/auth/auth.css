@@ -43,22 +43,9 @@
 /* Top row */
 .auth-top {
   position: relative; z-index: 2;
-  display: grid; grid-template-columns: 1fr 1fr; gap: 32px;
+  display: flex; justify-content: flex-end;
   align-items: start;
 }
-.auth-intro { display: flex; gap: 20px; align-items: flex-start; max-width: 520px; }
-.auth-icon {
-  width: 64px; height: 64px; border-radius: 14px; background: #ff5a3a;
-  display: grid; place-items: center; flex-shrink: 0;
-  box-shadow: 0 12px 40px rgba(255,90,58,0.35);
-}
-.auth-icon img { width: 36px; height: 36px; object-fit: contain; }
-.auth-intro-text {
-  font-family: "JetBrains Mono", ui-monospace, monospace;
-  font-size: 13px; line-height: 1.55; color: rgba(241,236,230,0.55);
-  letter-spacing: 0.01em;
-}
-.auth-intro-text .auth-brand { color: #f1ece6; }
 
 .auth-top-right {
   display: flex; align-items: center; justify-content: flex-end; gap: 24px;
@@ -84,14 +71,35 @@
   font-size: 13px; color: rgba(241,236,230,0.65);
 }
 
-/* Form column */
-.auth-form-wrap {
+/* Main layout — left intro + video, right form */
+.auth-main {
   position: relative; z-index: 2;
   margin-top: 24px;
   display: grid; grid-template-columns: 1fr 1fr; gap: 32px;
+  align-items: start;
 }
-.auth-form-col {
-  grid-column: 2; max-width: 560px; margin-left: auto; width: 100%;
+
+/* Left column */
+.auth-left {
+  display: flex; flex-direction: column; gap: 40px;
+}
+.auth-intro { display: flex; gap: 20px; align-items: flex-start; max-width: 520px; }
+.auth-icon {
+  width: 64px; height: 64px; border-radius: 14px; background: #ff5a3a;
+  display: grid; place-items: center; flex-shrink: 0;
+  box-shadow: 0 12px 40px rgba(255,90,58,0.35);
+}
+.auth-icon img { width: 36px; height: 36px; object-fit: contain; }
+.auth-intro-text {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 13px; line-height: 1.55; color: rgba(241,236,230,0.55);
+  letter-spacing: 0.01em;
+}
+.auth-intro-text .auth-brand { color: #f1ece6; }
+
+/* Right column (form) */
+.auth-right {
+  max-width: 560px; margin-left: auto; width: 100%;
 }
 .auth-arrow {
   color: #ff5a3a; font-size: 18px; margin-bottom: 6px;
