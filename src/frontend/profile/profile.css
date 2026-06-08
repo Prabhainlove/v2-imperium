@@ -49,6 +49,7 @@
 .profile-root > *:not(.profile-bg-3d) {
   position: relative;
   z-index: 1;
+}
 
 .profile-root * { box-sizing: border-box; }
 
