@@ -8,20 +8,24 @@ interface Props {
 
 const clamp = (v: number, lo = 0, hi = 1) => Math.min(hi, Math.max(lo, v));
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
-const ease = (t: number) => t * t * (3 - 2 * t); // smoothstep
+const ease = (t: number) => t * t * (3 - 2 * t);
 
 /**
- * 2D sprite katana with CSS-perspective 3D feel.
- * - Two layered PNGs (saya behind, blade in front) inside a perspective wrapper.
- * - Scroll progress unsheathes the blade while both pieces roll.
- * - Idle breathing tilt keeps it alive even when not scrolling.
+ * Cinematic katana composition.
+ * - Saya behind (anchored bottom-left, behind Skill Hub card)
+ * - Blade in front, diagonal across the hero from lower-left to upper-right
+ * - Scroll progress drives unsheathe (blade slides toward upper-right along its own axis)
+ * - Idle breathing keeps it alive
  */
 export default function KatanaSprite({ progressRef }: Props) {
-  const wrapRef = useRef<HTMLDivElement>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
   const bladeRef = useRef<HTMLImageElement>(null);
   const sayaRef = useRef<HTMLImageElement>(null);
   const glowRef = useRef<HTMLDivElement>(null);
   const sheenRef = useRef<HTMLDivElement>(null);
+
+  // Diagonal angle of the composition (degrees). Blade lies along this axis.
+  const ANGLE = -22;
 
   useEffect(() => {
     let raf = 0;
@@ -31,44 +35,41 @@ export default function KatanaSprite({ progressRef }: Props) {
       const t = (now - start) / 1000;
       const p = clamp(progressRef.current ?? 0);
 
-      // ----- Stage curves -----
-      // Camera / wrapper tilt: starts above-the-blade, settles horizontal
-      const cam = ease(clamp((p - 0.0) / 0.45));
-      const rotX = lerp(-14, 0, cam); // looking down → flat
-      const rotY = lerp(14, 0, cam);
+      // Camera breathing
+      const breatheY = Math.sin(t * 0.6) * 0.8;
+      const breatheT = Math.sin(t * 0.8) * 3;
 
-      // Unsheathe (0.40 → 0.85)
-      const u = ease(clamp((p - 0.4) / 0.45));
-      const bladeX = lerp(0, 32, u); // % to the LEFT visually = blade slides out toward left tip
-      const sayaX = lerp(0, -14, u);
-      const rollZ = lerp(-4, 2, u); // shared roll
+      // Unsheathe progress (0.15 → 0.85)
+      const u = ease(clamp((p - 0.15) / 0.7));
 
-      // Idle breathing (independent of scroll)
-      const breatheY = Math.sin(t * 0.6) * 1.5;
-      const breatheT = Math.sin(t * 0.8) * 4;
+      // Blade slides ALONG its own axis (toward the tip = upper-right).
+      // We translate in unrotated space — the parent applies the rotation.
+      const slidePx = lerp(0, 520, u); // px along blade axis
 
-      // Glow under the junction fades 0.55 → 0.85
-      const glowP = 1 - ease(clamp((p - 0.55) / 0.3));
+      // Saya recoils slightly the opposite direction
+      const sayaSlide = lerp(0, -60, u);
 
-      // Highlight sheen sweeps with unsheathe
-      const sheenX = lerp(-40, 120, u);
+      // Junction glow fades as blade leaves the saya
+      const glowP = (1 - ease(clamp((p - 0.5) / 0.35))) * 0.7;
 
-      if (wrapRef.current) {
-        wrapRef.current.style.transform = `translate3d(0, ${breatheT}px, 0) rotateX(${rotX + breatheY}deg) rotateY(${rotY}deg)`;
+      // Sheen sweep on blade
+      const sheenX = lerp(-30, 130, u);
+
+      if (stageRef.current) {
+        stageRef.current.style.transform = `translate3d(0, ${breatheT}px, 0) rotate(${ANGLE + breatheY * 0.2}deg)`;
       }
       if (bladeRef.current) {
-        // blade exits to the LEFT (handle stays in center, blade tip leads)
-        bladeRef.current.style.transform = `translate3d(${-bladeX}%, 0, 24px) rotateZ(${rollZ}deg) scale(${lerp(1, 1.04, cam)})`;
+        bladeRef.current.style.transform = `translate3d(${slidePx}px, 0, 0)`;
       }
       if (sayaRef.current) {
-        sayaRef.current.style.transform = `translate3d(${-sayaX}%, 0, 0) rotateZ(${rollZ}deg)`;
+        sayaRef.current.style.transform = `translate3d(${sayaSlide}px, 0, 0)`;
       }
       if (glowRef.current) {
-        glowRef.current.style.opacity = String(glowP * 0.85);
+        glowRef.current.style.opacity = String(glowP);
       }
       if (sheenRef.current) {
         sheenRef.current.style.transform = `translateX(${sheenX}%)`;
-        sheenRef.current.style.opacity = String(u * 0.6);
+        sheenRef.current.style.opacity = String(u * 0.55);
       }
 
       raf = requestAnimationFrame(tick);
@@ -78,68 +79,82 @@ export default function KatanaSprite({ progressRef }: Props) {
   }, [progressRef]);
 
   return (
-    <div className="pointer-events-none absolute inset-0 grid place-items-center">
+    <div className="pointer-events-none absolute inset-0 overflow-hidden">
+      {/* Stage is anchored so saya bottom sits behind the Skill Hub card (bottom-left of hero).
+          Width is intentionally wider than viewport so blade tip can extend off the top-right. */}
       <div
-        ref={wrapRef}
-        className="relative w-[92%] max-w-[1400px]"
+        ref={stageRef}
+        className="absolute"
         style={{
-          perspective: "1400px",
-          transformStyle: "preserve-3d",
+          // anchor near bottom-left, slightly off-screen so saya end is behind Skill Hub card
+          left: "-6%",
+          bottom: "8%",
+          width: "150vw",
+          maxWidth: "2200px",
+          height: "44vh",
+          minHeight: "360px",
+          transformOrigin: "12% 70%",
           willChange: "transform",
-          aspectRatio: "21 / 9",
         }}
       >
-        {/* ember glow behind junction */}
-        <div
-          ref={glowRef}
-          className="absolute left-1/2 top-1/2 h-[55%] w-[40%] -translate-x-1/2 -translate-y-1/2"
-          style={{
-            background:
-              "radial-gradient(ellipse at center, rgba(255,90,40,0.65) 0%, rgba(255,40,20,0.25) 35%, transparent 70%)",
-            filter: "blur(28px)",
-            opacity: 0,
-            willChange: "opacity",
-          }}
-        />
-
-        {/* SAYA — behind */}
+        {/* SAYA — behind, fills full stage so it reads as the sheath body */}
         <img
           ref={sayaRef}
           src={sayaAsset.url}
           alt=""
           draggable={false}
-          className="absolute inset-0 h-full w-full object-contain"
+          className="absolute inset-0 h-full w-full object-contain object-left"
           style={{
-            transformStyle: "preserve-3d",
             willChange: "transform",
-            filter: "drop-shadow(0 30px 35px rgba(0,0,0,0.55))",
+            filter: "drop-shadow(0 35px 45px rgba(0,0,0,0.75)) contrast(1.05) saturate(1.05)",
           }}
         />
 
-        {/* BLADE — front */}
+        {/* Ember glow at the junction where blade exits saya */}
+        <div
+          ref={glowRef}
+          className="absolute"
+          style={{
+            left: "38%",
+            top: "42%",
+            width: "22%",
+            height: "32%",
+            background:
+              "radial-gradient(ellipse at center, rgba(255,110,55,0.85) 0%, rgba(255,50,30,0.35) 40%, transparent 75%)",
+            filter: "blur(30px)",
+            opacity: 0,
+            willChange: "opacity",
+            mixBlendMode: "screen",
+          }}
+        />
+
+        {/* BLADE — front, same stage so it shares the rotation */}
         <img
           ref={bladeRef}
           src={bladeAsset.url}
           alt="Katana"
           draggable={false}
-          className="absolute inset-0 h-full w-full object-contain"
+          className="absolute inset-0 h-full w-full object-contain object-left"
           style={{
-            transformStyle: "preserve-3d",
             willChange: "transform",
             filter:
-              "drop-shadow(0 25px 30px rgba(0,0,0,0.7)) drop-shadow(0 0 18px rgba(180,210,255,0.08))",
+              "drop-shadow(0 28px 35px rgba(0,0,0,0.8)) drop-shadow(0 0 22px rgba(190,215,255,0.1))",
           }}
         />
 
-        {/* light sheen swept across the blade */}
+        {/* Sheen sweeping across the blade */}
         <div
           ref={sheenRef}
-          className="absolute left-0 top-[38%] h-[24%] w-[18%]"
+          className="absolute"
           style={{
+            left: 0,
+            top: "44%",
+            height: "16%",
+            width: "14%",
             background:
-              "linear-gradient(115deg, transparent 0%, rgba(255,255,255,0.55) 50%, transparent 100%)",
+              "linear-gradient(115deg, transparent 0%, rgba(255,255,255,0.6) 50%, transparent 100%)",
             mixBlendMode: "screen",
-            filter: "blur(8px)",
+            filter: "blur(10px)",
             opacity: 0,
             willChange: "transform, opacity",
           }}
