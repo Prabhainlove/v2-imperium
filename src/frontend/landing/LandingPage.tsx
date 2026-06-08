@@ -1,20 +1,20 @@
-import { useLenisScroll } from "./useLenisScroll";
-import ColdOpen from "./ColdOpen";
-import TopChrome from "./chrome/TopChrome";
-import SideTicker from "./chrome/SideTicker";
-import Companion from "./chrome/Companion";
-import KatanaSketchfab from "./KatanaSketchfab";
-import HeroSection from "./sections/HeroSection";
-import KeepScrollingSection from "./sections/KeepScrollingSection";
-import AwakeningSection from "./sections/AwakeningSection";
-import BambooSection from "./sections/BambooSection";
-import CompassSection from "./sections/CompassSection";
-import FeatureSwordSection from "./sections/FeatureSwordSection";
-import AndListenSection from "./sections/AndListenSection";
-import BentoSection from "./sections/BentoSection";
-import AudienceWheelSection from "./sections/AudienceWheelSection";
-import ClaritySection from "./sections/ClaritySection";
-import FooterCTASection from "./sections/FooterCTASection";
+import { useLenisScroll } from "./landing.logic";
+import ColdOpen from "./components/ColdOpen";
+import TopChrome from "./components/TopChrome";
+import SideTicker from "./components/SideTicker";
+import Companion from "./components/Companion";
+import KatanaSketchfab from "./components/KatanaSketchfab";
+import HeroSection from "./components/HeroSection";
+import KeepScrollingSection from "./components/KeepScrollingSection";
+import AwakeningSection from "./components/AwakeningSection";
+import BambooSection from "./components/BambooSection";
+import CompassSection from "./components/CompassSection";
+import FeatureSwordSection from "./components/FeatureSwordSection";
+import AndListenSection from "./components/AndListenSection";
+import BentoSection from "./components/BentoSection";
+import AudienceWheelSection from "./components/AudienceWheelSection";
+import ClaritySection from "./components/ClaritySection";
+import FooterCTASection from "./components/FooterCTASection";
 
 interface Props {
   cta: string;
