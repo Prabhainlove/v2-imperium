@@ -70,9 +70,11 @@ function CoverLettersPage() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-7xl space-y-6 p-4 md:p-6">
+    <div className="page-font-resume mx-auto w-full max-w-7xl space-y-6 p-4 md:p-6">
       <PageHeader
         title="Cover Letters"
+        kanji="信"
+        kanjiLabel="Shinsho · 信書 · Letter"
         description="Imperium writes tailored cover letters per application. Watch them stream in live."
         actions={
           <Button asChild className="bg-gradient-primary text-primary-foreground hover:opacity-95">

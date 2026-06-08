@@ -68,9 +68,11 @@ function JobsPage() {
   }, [data]);
 
   return (
-    <div className="mx-auto w-full max-w-7xl space-y-5 p-4 md:p-6">
+    <div className="page-font-jobs mx-auto w-full max-w-7xl space-y-5 p-4 md:p-6">
       <PageHeader
         title="Discovered Jobs"
+        kanji="業"
+        kanjiLabel="Gyō · 業務 · Trade"
         description="Every listing Imperium has pulled from real job sources, scored and de-duplicated."
         actions={
           <Button asChild className="bg-gradient-primary text-primary-foreground hover:opacity-95">

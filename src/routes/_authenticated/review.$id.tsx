@@ -141,9 +141,11 @@ function ReviewPage() {
   const isPending = a.status === "Preparing";
 
   return (
-    <div className="mx-auto w-full max-w-7xl space-y-5 p-4 md:p-6">
+    <div className="page-font-jobs mx-auto w-full max-w-7xl space-y-5 p-4 md:p-6">
       <PageHeader
         title="Application Review"
+        kanji="審"
+        kanjiLabel="Shinsa · 審査 · Review"
         description="Final user-approval gate. Imperium has prepared the package — you decide what is sent."
         actions={
           <Button asChild variant="outline">

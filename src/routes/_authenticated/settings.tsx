@@ -75,9 +75,11 @@ function SettingsPage() {
   const gh = draft.github_intel as { username?: string; summary?: string; top_languages?: { name: string }[]; error?: string };
 
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-6 p-4 md:p-6">
+    <div className="page-font-settings mx-auto w-full max-w-6xl space-y-6 p-4 md:p-6">
       <PageHeader
         title="Profile & Settings"
+        kanji="設"
+        kanjiLabel="Settei · 設定 · Configure"
         description="Your profile is the source of truth for every Imperium workflow."
         actions={
           <Button onClick={persist} disabled={save.isPending} className="bg-gradient-primary text-primary-foreground shadow-glow hover:opacity-95">

@@ -46,9 +46,11 @@ function ProfilePreviewPage() {
   const ctx = agent_context;
 
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-6 p-4 md:p-6">
+    <div className="page-font-settings mx-auto w-full max-w-6xl space-y-6 p-4 md:p-6">
       <PageHeader
         title="Profile Preview"
+        kanji="人"
+        kanjiLabel="Jinbutsu · 人物 · Persona"
         description="This is the exact, source-of-truth payload every Imperium agent receives. Resume, cover letter and job-match outputs are built ONLY from these facts — never invented."
         actions={
           <Button asChild variant="outline">
