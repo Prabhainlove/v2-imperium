@@ -95,6 +95,14 @@
   border: 1px solid var(--p-border);
   box-shadow: 0 20px 60px rgba(0,0,0,0.55);
 }
+.profile-hero-model > video,
+.profile-hero-model > div,
+.profile-hero-model > canvas {
+  width: 100% !important;
+  height: 100% !important;
+  display: block;
+}
+
 .profile-hero-text { padding: 4px 6px; }
 .profile-hero-eyebrow {
   display: inline-flex; align-items: center; gap: 8px;
