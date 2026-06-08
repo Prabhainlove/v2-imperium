@@ -101,13 +101,15 @@ export default function KatanaSketchfab({ progressRef }: Props) {
 
     // Beat boundaries and camera frames per beat.
     // [eye xyz, target xyz] kept tight so the katana stays centered & unclipped.
+    // Beat frames — STRIKE pulled back so the FULL sword stays in frame and
+    // arcs diagonally across the viewport instead of going close-up.
     const beats = [
-      { p: 0.00, eye: [1.6, 0.9, 1.6], target: [0.0, 0.05, 0.0] },  // REVEAL
-      { p: 0.15, eye: [1.5, 0.5, 1.2], target: [0.0, 0.05, 0.0] },  // ease-in
-      { p: 0.45, eye: [0.2, 0.25, 1.0], target: [-0.15, 0.0, 0.0] }, // ORBIT end
-      { p: 0.70, eye: [-0.6, 0.35, 1.2], target: [-0.2, 0.05, 0.05] }, // TENSION pull-back
-      { p: 0.85, eye: [-1.3, -0.05, 0.55], target: [-0.45, -0.05, 0.1] }, // STRIKE peak
-      { p: 1.00, eye: [-1.1, 0.05, 0.7], target: [-0.35, 0.0, 0.05] },  // REST
+      { p: 0.00, eye: [1.8, 1.0, 1.8], target: [0.0, 0.05, 0.0] },   // REVEAL wide
+      { p: 0.15, eye: [1.6, 0.5, 1.4], target: [0.0, 0.05, 0.0] },   // ease-in
+      { p: 0.45, eye: [0.2, 0.25, 1.3], target: [-0.15, 0.0, 0.0] }, // ORBIT end
+      { p: 0.65, eye: [-1.4, 0.6, 1.7], target: [0.1, 0.1, 0.0] },   // TENSION wind-up (camera lifts, full sword in view)
+      { p: 0.80, eye: [1.6, -0.6, 1.6], target: [-0.2, 0.05, 0.0] }, // STRIKE apex — diagonal swipe across, full blade visible
+      { p: 1.00, eye: [1.2, 0.2, 1.6], target: [0.0, 0.0, 0.0] },    // REST — settle, full sword centered
     ] as const;
 
     const sampleBeats = (t: number) => {
@@ -123,9 +125,8 @@ export default function KatanaSketchfab({ progressRef }: Props) {
       const b = beats[i + 1] ?? beats[beats.length - 1];
       const span = b.p - a.p || 1;
       const local = (x - a.p) / span;
-      // STRIKE beat (0.70 → 0.85) uses exponential snap; others smooth.
-      const f =
-        a.p === 0.7 ? easeOutExpo(local) : easeInOut(local);
+      // STRIKE beat (0.65 → 0.80) uses exponential snap for crisp impact.
+      const f = a.p === 0.65 ? easeOutExpo(local) : easeInOut(local);
       return {
         eye: [
           lerp(a.eye[0], b.eye[0], f),
@@ -147,52 +148,54 @@ export default function KatanaSketchfab({ progressRef }: Props) {
       if (apiRef.current && Math.abs(p - lastP.current) > 0.003) {
         lastP.current = p;
         const { eye, target } = sampleBeats(p);
-        // Scroll-locked: very short duration so camera tracks scroll, not drifts.
-        // Strike beat uses 0.18s for crisp impact; others 0.35s for buttery motion.
-        const inStrike = p >= 0.7 && p <= 0.86;
-        const duration = inStrike ? 0.18 : 0.35;
+        // Scroll-locked timing. Strike beat (0.65→0.80) uses very short
+        // duration so the camera SNAPS across — that's the visible strike.
+        const inStrike = p >= 0.65 && p <= 0.82;
+        const duration = inStrike ? 0.12 : 0.35;
         apiRef.current.setCameraLookAt(eye, target, duration);
       }
 
-      // DOM overlays — read every frame so they feel locked to scroll.
-      // STRIKE flash (0.72 → 0.84): sharp white burst, then fade.
+      // STRIKE flash — kept brief & late so the sword stays visible.
+      // Fires AFTER the camera swipe peaks (0.78 → 0.86), so user sees the
+      // arc first, then the impact burst.
       if (flashRef.current) {
         let flashOp = 0;
-        if (p > 0.72 && p < 0.85) {
-          const u = (p - 0.72) / 0.13;
-          flashOp = u < 0.4 ? easeOutExpo(u / 0.4) * 0.95 : (1 - (u - 0.4) / 0.6) * 0.95;
+        if (p > 0.78 && p < 0.88) {
+          const u = (p - 0.78) / 0.1;
+          flashOp = u < 0.25 ? easeOutExpo(u / 0.25) * 0.7 : (1 - (u - 0.25) / 0.75) * 0.7;
         }
         flashRef.current.style.opacity = String(Math.max(0, flashOp));
       }
 
-      // HALO (always-on rim glow, peaks during TENSION → STRIKE so blade reads).
+      // HALO rim glow peaks during TENSION → STRIKE so the blade reads.
       if (haloRef.current) {
         let haloOp = 0.25;
-        if (p > 0.45) haloOp = 0.25 + Math.min(1, (p - 0.45) / 0.4) * 0.55;
-        if (p > 0.85) haloOp = 0.6 * (1 - Math.min(1, (p - 0.85) / 0.15));
+        if (p > 0.45) haloOp = 0.25 + Math.min(1, (p - 0.45) / 0.35) * 0.6;
+        if (p > 0.85) haloOp = 0.85 * (1 - Math.min(1, (p - 0.85) / 0.15));
         haloRef.current.style.opacity = String(haloOp);
       }
 
-      // VIGNETTE tightens during TENSION, opens after strike.
+      // VIGNETTE tightens during tension, releases after strike.
       if (vignetteRef.current) {
-        const tighten = clamp((p - 0.3) / 0.4);
-        const release = clamp((p - 0.85) / 0.15);
+        const tighten = clamp((p - 0.3) / 0.35);
+        const release = clamp((p - 0.82) / 0.18);
         const v = tighten * (1 - release);
-        vignetteRef.current.style.opacity = String(0.3 + v * 0.45);
+        vignetteRef.current.style.opacity = String(0.3 + v * 0.4);
       }
 
-      // SCREEN SHAKE on strike apex.
+      // SCREEN SHAKE just after strike apex (0.78 → 0.86).
       if (wrapRef.current) {
         let shakeX = 0;
         let shakeY = 0;
-        if (p > 0.75 && p < 0.84) {
-          const u = (p - 0.75) / 0.09;
-          const amp = (1 - u) * 8;
+        if (p > 0.78 && p < 0.86) {
+          const u = (p - 0.78) / 0.08;
+          const amp = (1 - u) * 10;
           shakeX = Math.sin(performance.now() * 0.06) * amp;
           shakeY = Math.cos(performance.now() * 0.05) * amp * 0.6;
         }
         wrapRef.current.style.transform = `translate3d(${shakeX}px, ${shakeY}px, 0)`;
       }
+
 
       rafRef.current = requestAnimationFrame(tick);
     };
