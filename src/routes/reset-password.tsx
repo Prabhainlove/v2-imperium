@@ -49,44 +49,43 @@ function ResetPasswordPage() {
   };
 
   return (
-    <div className="page-font-auth imp-surface flex min-h-screen items-center justify-center px-4 py-12">
-      <span aria-hidden className="imp-kanji imp-kanji-xl right-[-4vw] top-[8vh] !text-[rgba(255,107,61,0.07)]">鍵</span>
+    <div className="app-surface-studio flex min-h-screen items-center justify-center px-4 py-12">
       <div className="relative z-10 w-full max-w-md">
         <Link to="/" className="mb-10 flex items-center justify-center gap-3">
-          <span className="imp-mark-sm" aria-hidden />
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl" style={{ background: "#FF5A3A" }}>
+            <span className="text-base font-bold text-black">I</span>
+          </div>
           <div className="text-center">
-            <div className="imp-display text-base text-[#d8e3f2]">IMPERIUM</div>
-            <div className="imp-eyebrow">Saiki · 再起 · Reset</div>
+            <div className="text-[13px] font-semibold tracking-[0.18em] text-white">IMPERIUM</div>
+            <div className="text-[10px] uppercase tracking-[0.28em] text-white/40">Reset password</div>
           </div>
         </Link>
-        <Card className="imp-panel p-6">
-          <h1 className="imp-h text-2xl text-foreground">Forge a new key.</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {ready
-              ? "Choose a strong password (min. 8 characters)."
-              : "Verifying recovery link…"}
+        <div className="rounded-3xl border border-white/10 bg-white/[0.02] p-6 backdrop-blur-sm">
+          <h1 className="studio-display text-3xl text-white">Set a new password.</h1>
+          <p className="mt-2 text-sm text-white/55">
+            {ready ? "Choose a strong password (min. 8 characters)." : "Verifying recovery link…"}
           </p>
           <form onSubmit={submit} className="mt-6 space-y-3">
             <div className="space-y-1.5">
-              <Label htmlFor="np">New password</Label>
+              <Label htmlFor="np" className="text-[11px] uppercase tracking-[0.18em] text-white/55">New password</Label>
               <Input
-                id="np"
-                type="password"
-                minLength={8}
-                required
-                value={pwd}
-                onChange={(e) => setPwd(e.target.value)}
+                id="np" type="password" minLength={8} required
+                value={pwd} onChange={(e) => setPwd(e.target.value)}
+                className="h-11 rounded-full border-white/12 bg-white/[0.03] px-4 text-white placeholder:text-white/30"
               />
             </div>
-            <Button type="submit" disabled={busy || !ready} className="w-full">
+            <Button type="submit" disabled={busy || !ready}
+              className="h-11 w-full rounded-full text-[14px] font-medium"
+              style={{ background: "#FF5A3A", color: "#0A0A0A" }}>
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Update password"}
             </Button>
           </form>
-          <p className="mt-4 text-center text-xs text-muted-foreground">
+          <p className="mt-4 text-center text-xs text-white/50">
             <Link to="/auth" className="underline">Back to sign in</Link>
           </p>
-        </Card>
+        </div>
       </div>
     </div>
   );
 }
+
