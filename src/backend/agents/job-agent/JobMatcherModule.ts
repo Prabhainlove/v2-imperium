@@ -8,4 +8,4 @@
  * Responsibility: Scoring math + recommendation. Shares the analysis
  *                module with `job_filter`.
  */
-export * from "@/lib/imperium/brain/job-analysis.server";
+export * from "@backend/ai/jd-analyzer/JobDescriptionAnalyzer.server";

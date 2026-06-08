@@ -9,5 +9,5 @@
 export {
   renderCoverLetterHtml,
   downloadCoverLetterPdf,
-} from "@/lib/imperium/resume-render";
-export type { CoverLetterFields } from "@/lib/imperium/resume-render";
+} from "@backend/resume/ResumeGenerator";
+export type { CoverLetterFields } from "@backend/resume/ResumeGenerator";

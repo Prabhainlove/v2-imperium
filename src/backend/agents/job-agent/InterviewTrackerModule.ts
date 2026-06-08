@@ -10,4 +10,4 @@ export {
   upsertInterview,
   getInterviews,
   deleteInterview,
-} from "@/lib/imperium/server.functions";
+} from "@backend/api/imperium.api";

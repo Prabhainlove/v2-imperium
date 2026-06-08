@@ -9,4 +9,4 @@
  *                imports its own memory surface instead of reaching into
  *                the brain folder.
  */
-export * from "@/lib/imperium/brain/memory.server";
+export * from "@backend/ai/PromptMemory.server";

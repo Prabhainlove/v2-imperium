@@ -7,4 +7,4 @@
  * Outputs      : HTML, PDF blobs, keyword stats.
  * Responsibility: Presentation only — safe to import from the browser.
  */
-export * from "@/lib/imperium/resume-render";
+export * from "@backend/resume/ResumeGenerator";

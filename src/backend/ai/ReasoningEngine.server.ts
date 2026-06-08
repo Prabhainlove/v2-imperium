@@ -2,7 +2,7 @@
  * Imperium Brain — Reasoning primitives. Tolerant JSON extraction so
  * downstream specialists never explode on slightly malformed model output.
  */
-import { routeBrainCall, type BrainModelCallInput } from "./model-router.server";
+import { routeBrainCall, type BrainModelCallInput } from "@backend/ai/ModelRouter.server";
 
 export function extractJson(raw: string): unknown {
   const s = raw.trim();

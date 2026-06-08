@@ -1,7 +1,7 @@
 import { useRef } from "react";
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
-import logo from "@/assets/landing/imperium_logo.png";
+import logo from "@frontend/landing/assets/imperium_logo.png";
 
 const AUDIENCES = [
   { label: "New Grads", sub: "Start fast. First role ready.", angle: 0 },

@@ -1,8 +1,8 @@
 import { useRef } from "react";
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
-import bamboo from "@/assets/landing/bamboo_stalks.png";
-import bonsai from "@/assets/landing/bonsai_tree.png";
+import bamboo from "@frontend/landing/assets/bamboo_stalks.png";
+import bonsai from "@frontend/landing/assets/bonsai_tree.png";
 
 export default function BambooSection() {
   const ref = useRef<HTMLElement>(null);

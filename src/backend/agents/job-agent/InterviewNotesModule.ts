@@ -8,4 +8,4 @@
  * Outputs      : Updated interview.
  * Responsibility: Notes write path.
  */
-export { upsertInterview as saveInterviewNotes } from "@/lib/imperium/server.functions";
+export { upsertInterview as saveInterviewNotes } from "@backend/api/imperium.api";

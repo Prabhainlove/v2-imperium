@@ -1,5 +1,5 @@
 /** Small formatting helpers used across Imperium views. */
-import type { ApplicationStatus } from "./types";
+import type { ApplicationStatus } from "@backend/ai/AiTypes";
 
 export function formatRelativeTime(iso?: string | null): string {
   if (!iso) return "—";

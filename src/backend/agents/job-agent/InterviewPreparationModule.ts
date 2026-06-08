@@ -8,4 +8,4 @@
  * Outputs      : Career intelligence insights.
  * Responsibility: Prep reasoning only.
  */
-export { getCareerIntelligence } from "@/lib/imperium/server.functions";
+export { getCareerIntelligence } from "@backend/api/imperium.api";

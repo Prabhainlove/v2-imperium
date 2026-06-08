@@ -2,7 +2,7 @@ import { useRef } from "react";
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import branches from "@/assets/landing/branches_backdrop.png";
+import branches from "@frontend/landing/assets/branches_backdrop.png";
 
 interface Props {
   heroProgressRef: React.MutableRefObject<number>;

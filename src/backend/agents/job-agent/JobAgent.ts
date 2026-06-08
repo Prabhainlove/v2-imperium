@@ -10,9 +10,9 @@
  * Responsibility: Stable facade. Routes should import from here, not from
  *                `src/lib/imperium/**` directly.
  */
-export * as Brain from "@/lib/imperium/brain/brain.server";
-export * as Jobs from "./modules/jobs/job_search";
-export * as Resumes from "./modules/resumes/resume_builder";
-export * as CoverLetters from "./modules/cover_letters/cover_letter_builder";
-export * as Applications from "./modules/applications/application_tracker";
-export * as Interviews from "./modules/interviews/interview_tracker";
+export * as Brain from "@backend/ai/index.server";
+export * as Jobs from "./JobSearchModule";
+export * as Resumes from "./ResumeBuilderModule";
+export * as CoverLetters from "./CoverLetterBuilderModule";
+export * as Applications from "./ApplicationTrackerModule";
+export * as Interviews from "./InterviewTrackerModule";

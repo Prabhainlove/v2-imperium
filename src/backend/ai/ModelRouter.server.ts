@@ -13,7 +13,7 @@
  *
  * Server-only. Never import from client code.
  */
-import type { BrainModelInfo } from "./types";
+import type { BrainModelInfo } from "@backend/ai/AiTypes";
 
 type Provider = "ollama" | "openrouter" | "openai" | "anthropic";
 

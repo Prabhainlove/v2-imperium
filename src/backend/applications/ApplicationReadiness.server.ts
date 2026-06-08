@@ -1,9 +1,9 @@
 /**
  * Imperium Brain — Application readiness engine.
  */
-import { brainJson } from "./reasoning.server";
-import { brainKey, brainOnce } from "./memory.server";
-import type { ApplicationReadiness, JobScore } from "./types";
+import { brainJson } from "@backend/ai/ReasoningEngine.server";
+import { brainKey, brainOnce } from "@backend/ai/PromptMemory.server";
+import type { ApplicationReadiness, JobScore } from "@backend/ai/AiTypes";
 
 export interface ApplicationReadinessInput {
   job_score: JobScore;

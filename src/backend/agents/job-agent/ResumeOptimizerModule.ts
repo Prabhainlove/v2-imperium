@@ -7,4 +7,4 @@
  * Outputs      : `ResumeOptimization` (new markdown + score delta).
  * Responsibility: Optimization reasoning only. No persistence.
  */
-export * from "@/lib/imperium/brain/resume-optimizer.server";
+export * from "@backend/ai/resume-optimizer/ResumeOptimizer.server";

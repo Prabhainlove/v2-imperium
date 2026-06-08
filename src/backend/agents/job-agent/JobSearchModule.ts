@@ -8,4 +8,4 @@
  * Responsibility: Source I/O only. Filtering, scoring, and persistence
  *                happen in the other `modules/jobs/*` files.
  */
-export * from "@/lib/imperium/sources.server";
+export * from "@backend/jobs/JobSources.server";

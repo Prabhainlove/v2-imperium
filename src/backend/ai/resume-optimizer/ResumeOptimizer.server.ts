@@ -3,18 +3,18 @@
  * Profile-first, JD-adaptive. The profile is the source of truth; the JD
  * Analysis engine drives ordering, summary, and ATS scoring.
  */
-import { brainKey, brainOnce } from "./memory.server";
-import type { ResumeOptimization } from "./types";
+import { brainKey, brainOnce } from "@backend/ai/PromptMemory.server";
+import type { ResumeOptimization } from "@backend/ai/AiTypes";
 import {
   buildAgentContext,
   type AgentContext,
-} from "../profile/agent-context";
-import { buildResumeFromProfile } from "../profile/generators";
-import { analyzeJobDescription } from "../profile/jd-analysis";
-import { calculateATSMatch } from "../profile/ats-score";
-import { runQualityGate } from "../profile/quality-gate";
-import { validateProfileLinks } from "../profile/link-validator";
-import type { ImperiumProfile } from "../profile/types";
+} from "@backend/profile/AgentContextBuilder";
+import { buildResumeFromProfile } from "@backend/profile/ProfileTextGenerators";
+import { analyzeJobDescription } from "@backend/profile/JobDescriptionLocalAnalysis";
+import { calculateATSMatch } from "@backend/profile/AtsScorer";
+import { runQualityGate } from "@backend/profile/ProfileQualityGate";
+import { validateProfileLinks } from "@backend/profile/LinkValidator";
+import type { ImperiumProfile } from "@backend/profile/ProfileTypes";
 
 export interface ResumeOptimizeInput {
   profile: Partial<ImperiumProfile>;

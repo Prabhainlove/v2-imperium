@@ -1,5 +1,5 @@
-import portrait from "@/assets/landing/bento_red_portrait.jpg";
-import logo from "@/assets/landing/imperium_logo.png";
+import portrait from "@frontend/landing/assets/bento_red_portrait.jpg";
+import logo from "@frontend/landing/assets/imperium_logo.png";
 
 export default function BentoSection() {
   return (

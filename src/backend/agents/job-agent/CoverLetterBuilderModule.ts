@@ -6,4 +6,4 @@
  * Outputs      : `CoverLetterPackage` (markdown + alignment notes).
  * Responsibility: Generation only — presentation templates live alongside.
  */
-export * from "@/lib/imperium/brain/cover-letter-generator.server";
+export * from "@backend/ai/cover-letter-writer/CoverLetterWriter.server";

@@ -7,4 +7,4 @@
  * Outputs      : Structured job analysis.
  * Responsibility: Job-level reasoning. No source I/O, no persistence.
  */
-export * from "@/lib/imperium/brain/job-analysis.server";
+export * from "@backend/ai/jd-analyzer/JobDescriptionAnalyzer.server";

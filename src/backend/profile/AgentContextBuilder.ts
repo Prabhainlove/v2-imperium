@@ -15,7 +15,7 @@ import type {
   ProjectItem,
   CertificationItem,
   LanguageItem,
-} from "./types";
+} from "@backend/ai/AiTypes";
 
 export interface AgentContext {
   personal: {

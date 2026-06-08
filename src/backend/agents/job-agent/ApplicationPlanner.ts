@@ -7,4 +7,4 @@
  * Outputs      : `ApplicationReadiness` verdict.
  * Responsibility: Planning only. Execution happens in `workflow_engine`.
  */
-export * from "@/lib/imperium/brain/application-engine.server";
+export * from "@backend/applications/ApplicationReadiness.server";

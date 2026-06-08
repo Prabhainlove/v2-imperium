@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type MutableRefObject } from "react";
-import sprite from "@/assets/landing/companion_sprite.png";
+import sprite from "@frontend/landing/assets/companion_sprite.png";
 
 const LINES: { p: number; text: string }[] = [
   { p: 0.0, text: "Hey there, wanderer 🎮 Welcome to the realm of IMPERIUM — where precision meets mastery." },

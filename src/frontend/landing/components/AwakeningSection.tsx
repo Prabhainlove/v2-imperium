@@ -1,8 +1,8 @@
 import { useRef } from "react";
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
-import katana from "@/assets/landing/katana_horizontal.png";
-import master from "@/assets/landing/master_portrait.png";
+import katana from "@frontend/landing/assets/katana_horizontal.png";
+import master from "@frontend/landing/assets/master_portrait.png";
 import SlashText from "../SlashText";
 
 /**

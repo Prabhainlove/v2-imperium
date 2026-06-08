@@ -3,9 +3,9 @@
  * Aggregates signals from applications, saved jobs, and resume performance
  * into market & skill recommendations.
  */
-import { brainJson } from "./reasoning.server";
-import { brainKey, brainOnce } from "./memory.server";
-import type { CareerInsight } from "./types";
+import { brainJson } from "@backend/ai/ReasoningEngine.server";
+import { brainKey, brainOnce } from "@backend/ai/PromptMemory.server";
+import type { CareerInsight } from "@backend/ai/AiTypes";
 
 export interface CareerInputSnapshot {
   candidate_role: string;

@@ -1,9 +1,9 @@
 import { createFileRoute, ClientOnly } from "@tanstack/react-router";
 import { lazy, Suspense, useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@backend/database/SupabaseClient";
 
 
-const LandingShell = lazy(() => import("@/components/landing/LandingShell"));
+const LandingShell = lazy(() => import("@frontend/landing/LandingPage"));
 
 export const Route = createFileRoute("/")({
   ssr: false,

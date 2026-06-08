@@ -4,9 +4,9 @@
  * produces strengths, weaknesses, skill gaps, role/industry recommendations,
  * ATS assessment and growth opportunities. Cached per profile signature.
  */
-import { brainJson } from "./reasoning.server";
-import { brainKey, brainOnce } from "./memory.server";
-import type { ProfileIntelligence } from "./types";
+import { brainJson } from "@backend/ai/ReasoningEngine.server";
+import { brainKey, brainOnce } from "@backend/ai/PromptMemory.server";
+import type { ProfileIntelligence } from "@backend/ai/AiTypes";
 
 export interface ProfileInput {
   name: string;

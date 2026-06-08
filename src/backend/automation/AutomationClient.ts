@@ -9,4 +9,4 @@
  * Outputs      : DTOs returned by TanStack server functions.
  * Responsibility: Transport only.
  */
-export * from "@/lib/imperium/client";
+export * from "@backend/api/imperium.api";

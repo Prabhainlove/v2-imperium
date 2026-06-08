@@ -8,4 +8,4 @@
  * Responsibility: Read/write of agent state in Lovable Cloud. No business
  *                logic — that lives in modules.
  */
-export * from "@/lib/imperium/server.functions";
+export * from "@backend/api/imperium.api";

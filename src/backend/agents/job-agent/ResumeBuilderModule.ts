@@ -8,4 +8,4 @@
  * Responsibility: Build/render only — optimization lives in
  *                `resume_optimizer`.
  */
-export * from "@/lib/imperium/rendercv.server";
+export * from "@backend/resume/ResumeRenderer.server";

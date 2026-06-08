@@ -1,8 +1,8 @@
 import { useRef } from "react";
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
-import katana from "@/assets/landing/katana_horizontal.png";
-import clouds from "@/assets/landing/cloud_band_wide.jpg";
+import katana from "@frontend/landing/assets/katana_horizontal.png";
+import clouds from "@frontend/landing/assets/cloud_band_wide.jpg";
 
 const features = [
   { tag: "→", title: "Full Range\nof Modes", body: "From calm passive search to sharp aggressive outreach.", icon: "◐◑" },

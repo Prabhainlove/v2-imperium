@@ -4,17 +4,17 @@
  * for freshers. Falls back to deterministic profile-driven text if the model
  * is unavailable or hallucinates facts not in the profile.
  */
-import { brainText } from "./reasoning.server";
-import { brainKey, brainOnce } from "./memory.server";
-import type { CoverLetterPackage } from "./types";
+import { brainText } from "@backend/ai/ReasoningEngine.server";
+import { brainKey, brainOnce } from "@backend/ai/PromptMemory.server";
+import type { CoverLetterPackage } from "@backend/ai/AiTypes";
 import {
   buildAgentContext,
   validateAgainstProfile,
   stripHallucinations,
   type AgentContext,
-} from "../profile/agent-context";
-import { buildCoverFromProfile } from "../profile/generators";
-import type { ImperiumProfile } from "../profile/types";
+} from "@backend/profile/AgentContextBuilder";
+import { buildCoverFromProfile } from "@backend/profile/ProfileTextGenerators";
+import type { ImperiumProfile } from "@backend/profile/ProfileTypes";
 
 export interface CoverLetterInput {
   /** Full profile snapshot. Generation reads only from this. */

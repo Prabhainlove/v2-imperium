@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
-import type { ActivityLogEntry } from "@/lib/imperium/types";
+import type { ActivityLogEntry } from "@backend/applications/ApplicationTypes";
 
 /**
  * Auto-advances the user through the workflow as the pipeline reaches

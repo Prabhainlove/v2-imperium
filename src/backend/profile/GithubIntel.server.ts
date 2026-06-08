@@ -2,7 +2,7 @@
  * GitHub Intelligence.
  * Server-only. Fetches public GitHub data and summarizes it locally.
  */
-import type { GithubIntel } from "@/lib/imperium/profile/types";
+import type { GithubIntel } from "@backend/profile/ProfileTypes";
 
 function parseUsername(url: string): string | null {
   if (!url) return null;

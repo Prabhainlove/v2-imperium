@@ -4,7 +4,7 @@
  */
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireSupabaseAuth } from "@backend/database/AuthMiddleware";
 
 /* ---------- Health (public) ---------- */
 export const getHealth = createServerFn({ method: "GET" }).handler(async () => ({

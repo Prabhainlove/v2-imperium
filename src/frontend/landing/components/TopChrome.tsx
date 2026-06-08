@@ -1,6 +1,6 @@
 import { useEffect, useRef, type MutableRefObject } from "react";
 import { Link } from "@tanstack/react-router";
-import logo from "@/assets/landing/imperium_logo.png";
+import logo from "@frontend/landing/assets/imperium_logo.png";
 
 interface Props {
   progressRef: MutableRefObject<number>;

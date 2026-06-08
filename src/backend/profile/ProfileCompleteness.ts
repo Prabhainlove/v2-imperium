@@ -2,7 +2,7 @@
  * Imperium Profile — Completeness Engine.
  * Deterministic scoring across 10 weighted categories. Client-safe (no IO).
  */
-import type { ImperiumProfile } from "./types";
+import type { ImperiumProfile } from "@backend/ai/AiTypes";
 
 export interface CategoryScore {
   key: string;

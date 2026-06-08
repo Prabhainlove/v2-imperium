@@ -1,8 +1,8 @@
 import { useRef } from "react";
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
-import emblem from "@/assets/landing/diamond_emblem.jpg";
-import katana from "@/assets/landing/katana_horizontal.png";
+import emblem from "@frontend/landing/assets/diamond_emblem.jpg";
+import katana from "@frontend/landing/assets/katana_horizontal.png";
 
 export default function CompassSection() {
   const ref = useRef<HTMLElement>(null);

@@ -2,7 +2,7 @@
 import * as React from "react";
 import { useRef, useState, useCallback, useEffect } from "react";
 import { motion, useSpring, useTransform, type SpringOptions } from "framer-motion";
-import { cn } from "@/lib/utils";
+import { cn } from "@shared/utils/classnames";
 
 type SpotlightCursorProps = {
   className?: string;

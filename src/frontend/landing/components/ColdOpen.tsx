@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import glyph from "@/assets/landing/loader_glyph.png";
+import glyph from "@frontend/landing/assets/loader_glyph.png";
 
 /**
  * 5-second cold-open: black canvas + centered glyph + corner spinner.

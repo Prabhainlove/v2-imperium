@@ -11,10 +11,10 @@
  *   4. Hard fallback when models are unreachable — never throws, always
  *      returns a complete `JobScore`.
  */
-import { brainJson } from "./reasoning.server";
-import { brainKey, brainOnce } from "./memory.server";
-import { analyzeJobDescription, skillMatches } from "../profile/jd-analysis";
-import type { JobScore } from "./types";
+import { brainJson } from "@backend/ai/ReasoningEngine.server";
+import { brainKey, brainOnce } from "@backend/ai/PromptMemory.server";
+import { analyzeJobDescription, skillMatches } from "@backend/profile/JobDescriptionLocalAnalysis";
+import type { JobScore } from "@backend/ai/AiTypes";
 
 export interface JobAnalysisInput {
   title: string;

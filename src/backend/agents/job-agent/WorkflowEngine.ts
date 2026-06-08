@@ -7,4 +7,4 @@
  * Outputs      : Created application records + activity events.
  * Responsibility: Orchestration only. Each step delegates to a module.
  */
-export * from "@/lib/imperium/pipeline.server";
+export * from "@backend/jobs/JobPipeline.server";
