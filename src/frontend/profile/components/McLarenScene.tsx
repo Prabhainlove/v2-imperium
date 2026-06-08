@@ -57,7 +57,7 @@ export function McLarenScene() {
         if (disposed) return;
         model = gltf.scene;
 
-        // Center & scale to fit
+        // Center model
         const box = new THREE.Box3().setFromObject(model);
         const size = new THREE.Vector3();
         const center = new THREE.Vector3();
@@ -69,15 +69,18 @@ export function McLarenScene() {
         const scale = targetSize / maxDim;
         model.scale.setScalar(scale);
 
-        // Sit on ground baseline
-        const box2 = new THREE.Box3().setFromObject(model);
-        model.position.y -= box2.min.y;
-
-        // Frame camera
-        const fov = (camera.fov * Math.PI) / 180;
-        const dist = (targetSize / 2) / Math.tan(fov / 2) * 1.6;
-        camera.position.set(dist * 0.7, targetSize * 0.45, dist);
-        camera.lookAt(0, targetSize * 0.3, 0);
+        // Frame camera so model fills the viewport box
+        const fitModel = () => {
+          const aspect = camera.aspect;
+          const fov = (camera.fov * Math.PI) / 180;
+          const fitHeight = targetSize / (2 * Math.tan(fov / 2));
+          const fitWidth = fitHeight / aspect;
+          const dist = Math.max(fitHeight, fitWidth) * 1.05;
+          camera.position.set(dist * 0.55, targetSize * 0.18, dist);
+          camera.lookAt(0, 0, 0);
+        };
+        fitModel();
+        (model as any).userData.fitModel = fitModel;
 
         scene.add(model);
       },
@@ -87,7 +90,6 @@ export function McLarenScene() {
 
     const animate = () => {
       rafId = requestAnimationFrame(animate);
-      if (model) model.rotation.y += 0.0025;
       renderer.render(scene, camera);
     };
     animate();
@@ -98,6 +100,7 @@ export function McLarenScene() {
       renderer.setSize(width, height);
       camera.aspect = width / height;
       camera.updateProjectionMatrix();
+      if (model && (model as any).userData.fitModel) (model as any).userData.fitModel();
     });
     ro.observe(mount);
 

@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import videoAsset from "@/assets/profile/f1-race.mp4.asset.json";
 
-const START = 3;
+const START = 4;
 const END = 40;
 const RATE = 1.5;
 
