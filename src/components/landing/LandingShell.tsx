@@ -3,7 +3,7 @@ import ColdOpen from "./ColdOpen";
 import TopChrome from "./chrome/TopChrome";
 import SideTicker from "./chrome/SideTicker";
 import Companion from "./chrome/Companion";
-import KatanaSprite from "./KatanaSprite";
+import KatanaSketchfab from "./KatanaSketchfab";
 import HeroSection from "./sections/HeroSection";
 import KeepScrollingSection from "./sections/KeepScrollingSection";
 import AwakeningSection from "./sections/AwakeningSection";
@@ -33,8 +33,8 @@ export default function LandingShell({ cta, ctaLabel }: Props) {
 
       {/* Fixed black backdrop + 2D sprite katana visible through transparent Hero/KeepScrolling */}
       <div className="pointer-events-none fixed inset-0 z-0 bg-black" />
-      <div className="pointer-events-none fixed inset-0 z-[1] h-screen w-screen">
-        <KatanaSprite progressRef={heroProgressRef} />
+      <div className="fixed inset-0 z-[1] h-screen w-screen">
+        <KatanaSketchfab progressRef={heroProgressRef} />
       </div>
 
       <main className="relative z-10">
