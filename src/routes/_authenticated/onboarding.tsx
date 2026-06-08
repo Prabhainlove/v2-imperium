@@ -171,15 +171,18 @@ function OnboardingPage() {
         </Button>
         {step < STEPS.length - 1 ? (
           <Button disabled={!canNext} onClick={() => setStep((s) => s + 1)}>
-            Continue · 次 <ArrowRight className="ml-2 h-4 w-4" />
+            Continue <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
         ) : (
           <Button onClick={finish} disabled={saving} className="bg-gradient-primary text-primary-foreground shadow-glow hover:opacity-95">
             {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
-            Enter Imperium · 抜刀
+            Enter Imperium
+
           </Button>
         )}
       </div>
     </div>
+    </div>
   );
 }
+
