@@ -94,20 +94,20 @@ export default function KatanaSketchfab({ progressRef }: Props) {
         lastP.current = p;
         const u = easeInOut(p);
 
-        // Camera rig — interpolate eye + target across scroll.
-        // Sketchfab world units, Y-up: eye [x, y, z], target = look-at point.
+        // Camera rig — pulled in close so the katana reads large on screen.
         const eye: [number, number, number] = [
-          lerp(2.4, -1.8, u), // sweep right → left
-          lerp(1.6, 0.4, u),  // descend
-          lerp(2.6, 1.4, u),  // dolly in
+          lerp(1.2, -1.0, u), // sweep right → left
+          lerp(0.7, 0.2, u),  // descend
+          lerp(1.3, 0.7, u),  // dolly in
         ];
         const target: [number, number, number] = [
-          lerp(0.2, -0.4, u), // track along the blade
-          lerp(0.1, 0.0, u),
-          lerp(0.0, 0.1, u),
+          lerp(0.0, -0.3, u),
+          lerp(0.05, 0.0, u),
+          lerp(0.0, 0.05, u),
         ];
 
         apiRef.current.setCameraLookAt(eye, target, 0.9);
+
       }
       rafRef.current = requestAnimationFrame(tick);
     };
