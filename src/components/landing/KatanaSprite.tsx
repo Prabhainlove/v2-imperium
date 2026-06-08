@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import katanaAsset from "@/assets/landing/katana_reference_full.png.asset.json";
+import katanaAsset from "@/assets/landing/katana_clean.png.asset.json";
 
 interface Props {
   progressRef: React.MutableRefObject<number>;
