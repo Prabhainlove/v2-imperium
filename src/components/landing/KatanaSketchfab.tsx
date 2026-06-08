@@ -185,6 +185,14 @@ export default function KatanaSketchfab({ progressRef }: Props) {
         apiRef.current.setCameraLookAt(eye, target, duration);
       }
 
+      // Scrub the model's built-in STRIKE animation by scroll progress.
+      // Map 0→1 of heroProgress to 0→duration of the animation timeline.
+      if (apiRef.current && animRef.current) {
+        const t = clamp(p) * animRef.current.duration;
+        apiRef.current.seekTo?.(t);
+      }
+
+
       // STRIKE flash — kept brief & late so the sword stays visible.
       // Fires AFTER the camera swipe peaks (0.78 → 0.86), so user sees the
       // arc first, then the impact burst.
