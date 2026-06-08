@@ -109,7 +109,7 @@ export function McLarenScene() {
       renderer.setSize(width, height);
       camera.aspect = width / height;
       camera.updateProjectionMatrix();
-      if (model && (model as any).userData.fitModel) (model as any).userData.fitModel();
+      fitModel();
     });
     ro.observe(mount);
 
