@@ -21,7 +21,10 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true,
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@frontend/*": ["./src/frontend/*"],
+      "@shared/*": ["./src/frontend/shared/*"],
+      "@backend/*": ["./src/backend/*"]
     }
   }
 }
