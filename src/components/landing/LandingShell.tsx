@@ -31,7 +31,7 @@ export default function LandingShell({ cta, ctaLabel }: Props) {
       <SideTicker scrollYRef={scrollYRef} fpsRef={fpsRef} />
       <Companion progressRef={progressRef} />
 
-      {/* Fixed black backdrop + 2D sprite katana visible through transparent Hero/KeepScrolling */}
+      {/* Fixed black backdrop — Sketchfab katana floats on top, fully visible */}
       <div className="pointer-events-none fixed inset-0 z-0 bg-black" />
       <div className="fixed inset-0 z-[1] h-screen w-screen">
         <KatanaSketchfab progressRef={heroProgressRef} />

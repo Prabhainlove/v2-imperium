@@ -43,12 +43,12 @@ export default function HeroSection({ heroProgressRef }: Props) {
 
   return (
     <section ref={ref} className="relative h-screen w-full overflow-hidden bg-transparent">
-      {/* ukiyo-e branches backdrop */}
+      {/* ukiyo-e branches backdrop — kept subtle so the 3D katana stays the hero */}
       <img
         src={branches}
         alt=""
-        className="hero-branches pointer-events-none absolute inset-y-0 left-0 h-full w-[70%] object-cover opacity-50"
-        style={{ filter: "sepia(0.25) saturate(0.85) brightness(0.75)" }}
+        className="hero-branches pointer-events-none absolute inset-y-0 left-0 h-full w-[40%] object-cover opacity-20"
+        style={{ filter: "sepia(0.25) saturate(0.85) brightness(0.7)", maskImage: "linear-gradient(to right, black 40%, transparent 100%)", WebkitMaskImage: "linear-gradient(to right, black 40%, transparent 100%)" }}
       />
 
       {/* Note: KatanaCanvas is mounted globally in LandingShell as a fixed background */}
