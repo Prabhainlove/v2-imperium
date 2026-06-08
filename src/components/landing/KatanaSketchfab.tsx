@@ -57,7 +57,14 @@ export default function KatanaSketchfab({ progressRef }: Props) {
       duration: number,
     ) => void;
     start: () => void;
+    getAnimations?: (cb: (err: unknown, anims: Array<[string, string, ...unknown[]]>) => void) => void;
+    setCurrentAnimationByUID?: (uid: string, cb?: (err: unknown) => void) => void;
+    seekTo?: (time: number, cb?: (err: unknown) => void) => void;
+    pause?: (cb?: (err: unknown) => void) => void;
+    play?: (cb?: (err: unknown) => void) => void;
+    setCycleMode?: (mode: "one" | "loop" | "none", cb?: (err: unknown) => void) => void;
   } | null>(null);
+  const animRef = useRef<{ uid: string; duration: number } | null>(null);
   const rafRef = useRef(0);
   const lastP = useRef(-1);
   const [ready, setReady] = useState(false);
@@ -74,6 +81,29 @@ export default function KatanaSketchfab({ progressRef }: Props) {
           api?.start();
           apiRef.current = api;
           setReady(true);
+
+          // Discover the model's built-in animations and pick the "strike"
+          // (or the longest one as a fallback). Sketchfab returns an array
+          // of [uid, name, ...meta] tuples where meta[3] is duration (seconds).
+          api?.getAnimations?.((err, anims) => {
+            if (err || !anims || !anims.length) return;
+            const named = anims.map((a) => ({
+              uid: a[0] as string,
+              name: String(a[1] ?? "").toLowerCase(),
+              // duration is commonly at index 3
+              duration: Number((a as unknown as unknown[])[3] ?? 0) || 2,
+            }));
+            const strike =
+              named.find((a) => /strike|attack|slash|swing|cut/.test(a.name)) ??
+              named.reduce((p, c) => (c.duration > p.duration ? c : p), named[0]);
+            animRef.current = { uid: strike.uid, duration: strike.duration };
+            api.setCurrentAnimationByUID?.(strike.uid, () => {
+              api.setCycleMode?.("none");
+              // Pause and hold at frame 0 — scroll will scrub through it.
+              api.pause?.();
+              api.seekTo?.(0);
+            });
+          });
         },
         error: () => {
           /* Fallback: static iframe still visible. */
@@ -154,6 +184,14 @@ export default function KatanaSketchfab({ progressRef }: Props) {
         const duration = inStrike ? 0.12 : 0.35;
         apiRef.current.setCameraLookAt(eye, target, duration);
       }
+
+      // Scrub the model's built-in STRIKE animation by scroll progress.
+      // Map 0→1 of heroProgress to 0→duration of the animation timeline.
+      if (apiRef.current && animRef.current) {
+        const t = clamp(p) * animRef.current.duration;
+        apiRef.current.seekTo?.(t);
+      }
+
 
       // STRIKE flash — kept brief & late so the sword stays visible.
       // Fires AFTER the camera swipe peaks (0.78 → 0.86), so user sees the
