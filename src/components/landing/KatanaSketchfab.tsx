@@ -65,6 +65,8 @@ export default function KatanaSketchfab({ progressRef }: Props) {
     setCycleMode?: (mode: "one" | "loop" | "none", cb?: (err: unknown) => void) => void;
   } | null>(null);
   const animRef = useRef<{ uid: string; duration: number } | null>(null);
+  const strikePlayingRef = useRef(false);
+  const strikeDoneRef = useRef(false);
   const rafRef = useRef(0);
   const lastP = useRef(-1);
   const [ready, setReady] = useState(false);
