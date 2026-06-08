@@ -1,33 +1,21 @@
 import { ClientOnly } from "@tanstack/react-router";
 import { lazy, Suspense } from "react";
-import trackBg from "@/assets/profile/racing-track.jpg";
 
 const McLarenScene = lazy(() => import("./McLarenScene"));
 
 export function ProfileHeader() {
   return (
-    <div className="profile-hero-stage">
-      <img
-        src={trackBg}
-        alt=""
-        className="profile-hero-bg"
-        width={1920}
-        height={1024}
-        aria-hidden
-      />
-      <div className="profile-hero-overlay" aria-hidden />
-
-      <div className="profile-hero-3d">
+    <div className="profile-hero-block">
+      <div className="profile-hero-model">
         <ClientOnly fallback={null}>
           <Suspense fallback={null}>
             <McLarenScene />
           </Suspense>
         </ClientOnly>
       </div>
-
-      <div className="profile-hero-copy">
+      <div className="profile-hero-text">
         <p className="profile-hero-eyebrow">
-          <span className="flag" aria-hidden>🏁</span> Imperium · Career Grand Prix
+          <span aria-hidden>🏁</span> Imperium · Career Grand Prix
         </p>
         <h1 className="profile-hero-tagline">
           Life is a race. Your career is the <em>championship</em>.
