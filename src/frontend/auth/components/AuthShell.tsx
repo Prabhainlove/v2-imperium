@@ -17,15 +17,6 @@ export function AuthShell({ mode, intro, heading, children }: Props) {
       <div className="auth-cross" aria-hidden />
 
       <header className="auth-top">
-        <div className="auth-intro">
-          <div className="auth-icon">
-            <img src={logo} alt="" />
-          </div>
-          <p className="auth-intro-text">
-            <span className="auth-brand">IMPERIUM</span> {intro}
-          </p>
-        </div>
-
         <div className="auth-top-right">
           <nav className="auth-toggle" aria-label="Auth mode">
             <Link to="/auth" data-active={mode === "signin"}>Sign In</Link>
@@ -35,17 +26,26 @@ export function AuthShell({ mode, intro, heading, children }: Props) {
         </div>
       </header>
 
-      <section className="auth-form-wrap">
-        <div className="auth-form-col">
+      <section className="auth-main">
+        <div className="auth-left">
+          <div className="auth-intro">
+            <div className="auth-icon">
+              <img src={logo} alt="" />
+            </div>
+            <p className="auth-intro-text">
+              <span className="auth-brand">IMPERIUM</span> {intro}
+            </p>
+          </div>
+
+          <div className="auth-video" aria-label="Intro video placeholder">
+            <div className="auth-video-label">VIDEO COMING SOON</div>
+          </div>
+        </div>
+
+        <div className="auth-right">
           <div className="auth-arrow" aria-hidden>↓</div>
           <h1 className="auth-heading">{heading}</h1>
           {children}
-        </div>
-      </section>
-
-      <section className="auth-video-wrap" aria-label="Intro video placeholder">
-        <div className="auth-video">
-          <div className="auth-video-label">VIDEO COMING SOON</div>
         </div>
       </section>
     </div>
