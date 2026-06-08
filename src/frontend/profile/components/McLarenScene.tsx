@@ -50,6 +50,29 @@ export function McLarenScene() {
     let rafId = 0;
     let disposed = false;
 
+    let modelSize = new THREE.Vector3(1, 1, 1);
+
+    const fitModel = () => {
+      if (!model) return;
+      const aspect = camera.aspect;
+      const fov = (camera.fov * Math.PI) / 180;
+      // Use model bounding box to fit exactly
+      const sizeX = modelSize.x;
+      const sizeY = modelSize.y;
+      const sizeZ = modelSize.z;
+      // distance needed for height to fit
+      const distH = sizeY / (2 * Math.tan(fov / 2));
+      // distance needed for width to fit
+      const distW = sizeX / (2 * Math.tan(fov / 2) * aspect);
+      // account for model depth so it never clips
+      const dist = Math.max(distH, distW) + sizeZ / 2;
+      camera.position.set(0, 0, dist);
+      camera.lookAt(0, 0, 0);
+      camera.near = Math.max(0.01, dist - sizeZ * 2);
+      camera.far = dist + sizeZ * 4 + 100;
+      camera.updateProjectionMatrix();
+    };
+
     const loader = new GLTFLoader();
     loader.load(
       modelAsset.url,
@@ -57,32 +80,18 @@ export function McLarenScene() {
         if (disposed) return;
         model = gltf.scene;
 
-        // Center model
+        // Center model on origin
         const box = new THREE.Box3().setFromObject(model);
-        const size = new THREE.Vector3();
         const center = new THREE.Vector3();
-        box.getSize(size);
         box.getCenter(center);
         model.position.sub(center);
-        const maxDim = Math.max(size.x, size.y, size.z);
-        const targetSize = 4;
-        const scale = targetSize / maxDim;
-        model.scale.setScalar(scale);
 
-        // Frame camera so model fills the viewport box
-        const fitModel = () => {
-          const aspect = camera.aspect;
-          const fov = (camera.fov * Math.PI) / 180;
-          const fitHeight = targetSize / (2 * Math.tan(fov / 2));
-          const fitWidth = fitHeight / aspect;
-          const dist = Math.max(fitHeight, fitWidth) * 1.05;
-          camera.position.set(dist * 0.55, targetSize * 0.18, dist);
-          camera.lookAt(0, 0, 0);
-        };
-        fitModel();
-        (model as any).userData.fitModel = fitModel;
+        // Recompute size after centering
+        const box2 = new THREE.Box3().setFromObject(model);
+        box2.getSize(modelSize);
 
         scene.add(model);
+        fitModel();
       },
       undefined,
       (err) => console.error("[McLarenScene] GLB load failed", err)
