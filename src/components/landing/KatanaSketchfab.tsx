@@ -101,13 +101,15 @@ export default function KatanaSketchfab({ progressRef }: Props) {
 
     // Beat boundaries and camera frames per beat.
     // [eye xyz, target xyz] kept tight so the katana stays centered & unclipped.
+    // Beat frames — STRIKE pulled back so the FULL sword stays in frame and
+    // arcs diagonally across the viewport instead of going close-up.
     const beats = [
-      { p: 0.00, eye: [1.6, 0.9, 1.6], target: [0.0, 0.05, 0.0] },  // REVEAL
-      { p: 0.15, eye: [1.5, 0.5, 1.2], target: [0.0, 0.05, 0.0] },  // ease-in
-      { p: 0.45, eye: [0.2, 0.25, 1.0], target: [-0.15, 0.0, 0.0] }, // ORBIT end
-      { p: 0.70, eye: [-0.6, 0.35, 1.2], target: [-0.2, 0.05, 0.05] }, // TENSION pull-back
-      { p: 0.85, eye: [-1.3, -0.05, 0.55], target: [-0.45, -0.05, 0.1] }, // STRIKE peak
-      { p: 1.00, eye: [-1.1, 0.05, 0.7], target: [-0.35, 0.0, 0.05] },  // REST
+      { p: 0.00, eye: [1.8, 1.0, 1.8], target: [0.0, 0.05, 0.0] },   // REVEAL wide
+      { p: 0.15, eye: [1.6, 0.5, 1.4], target: [0.0, 0.05, 0.0] },   // ease-in
+      { p: 0.45, eye: [0.2, 0.25, 1.3], target: [-0.15, 0.0, 0.0] }, // ORBIT end
+      { p: 0.65, eye: [-1.4, 0.6, 1.7], target: [0.1, 0.1, 0.0] },   // TENSION wind-up (camera lifts, full sword in view)
+      { p: 0.80, eye: [1.6, -0.6, 1.6], target: [-0.2, 0.05, 0.0] }, // STRIKE apex — diagonal swipe across, full blade visible
+      { p: 1.00, eye: [1.2, 0.2, 1.6], target: [0.0, 0.0, 0.0] },    // REST — settle, full sword centered
     ] as const;
 
     const sampleBeats = (t: number) => {
