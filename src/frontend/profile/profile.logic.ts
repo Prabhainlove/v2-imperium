@@ -1,4 +1,4 @@
-/** Profile page logic — hooks, queries, helpers. */
+/** Profile page logic — title only; per-card state lives in components. */
 export function useProfilePage() {
-  return { title: "Profile" };
+  return { title: "Imperium Profile" };
 }
