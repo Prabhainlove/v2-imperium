@@ -4,10 +4,10 @@ import gsap from "gsap";
 import logo from "@/assets/landing/imperium_logo.png";
 
 const AUDIENCES = [
-  { label: "Beginners", sub: "Start fast. Markup-first.", angle: 0 },
-  { label: "Designers", sub: "Tune behavior visually.", angle: 90 },
-  { label: "Developers", sub: "Extend & compose.", angle: 180 },
-  { label: "Teams", sub: "Ship in any stack.", angle: 270 },
+  { label: "New Grads", sub: "Start fast. First role ready.", angle: 0 },
+  { label: "Creatives", sub: "Portfolio-led applications.", angle: 90 },
+  { label: "Engineers", sub: "Tailored technical resumes.", angle: 180 },
+  { label: "Leaders", sub: "Land your next senior role.", angle: 270 },
 ];
 
 /**
@@ -41,7 +41,7 @@ export default function AudienceWheelSection() {
         </p>
         <h2 className="mt-3 font-sans text-[clamp(40px,7vw,96px)] font-medium leading-[0.95] tracking-[-0.03em] text-black">
           Built for everyone<br />
-          <span className="text-black/40">who builds.</span>
+          <span className="text-black/40">who applies.</span>
         </h2>
       </div>
 
@@ -81,7 +81,7 @@ export default function AudienceWheelSection() {
         </div>
 
         <div className="absolute right-0 top-0 text-right font-mono text-[10px] uppercase tracking-[0.2em] text-black/55">
-          Extend, override,<br />and compose.
+          Search, tailor,<br />and apply.
         </div>
       </div>
     </section>

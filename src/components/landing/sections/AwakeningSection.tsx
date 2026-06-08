@@ -45,7 +45,7 @@ export default function AwakeningSection() {
       {/* slash-blur title centered */}
       <div className="relative z-10 flex h-[60vh] items-center justify-center">
         <SlashText
-          text="The Spirit Awakened"
+          text="IMPERIUM Awakens"
           className="font-sans text-[clamp(40px,7vw,110px)] font-medium tracking-[-0.03em] text-white/80"
           ghosts={3}
         />
@@ -62,9 +62,9 @@ export default function AwakeningSection() {
         />
         <div className="aw-master pb-2">
           <p className="font-sans text-[20px] leading-tight text-white md:text-[26px]">
-            🌩️ Ah, you've finally awoken……
+            🌩️ Your agent is ready……
           </p>
-          <p className="mt-2 font-mono text-[10px] tracking-[0.3em] text-white/50">MASTER OJI</p>
+          <p className="mt-2 font-mono text-[10px] tracking-[0.3em] text-white/50">IMPERIUM AGENT</p>
         </div>
       </div>
     </section>

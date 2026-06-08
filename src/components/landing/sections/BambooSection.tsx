@@ -26,7 +26,7 @@ export default function BambooSection() {
 
       <div className="relative z-10 flex h-screen items-center justify-end px-12">
         <p className="font-mono text-[12px] uppercase leading-relaxed tracking-[0.15em] text-black/80">
-          Animate with elegance,<br />not overhead.
+          Apply with intention,<br />not exhaustion.
         </p>
       </div>
     </section>
