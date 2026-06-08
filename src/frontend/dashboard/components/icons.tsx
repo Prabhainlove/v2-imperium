@@ -1,9 +1,9 @@
 /** Inline SVG icon set for the dashboard. Keep flat, single-color, currentColor. */
-import type { SVGProps } from "react";
+import type { SVGProps, ReactNode, ReactElement } from "react";
 
-type I = (p: SVGProps<SVGSVGElement>) => JSX.Element;
+type I = (p: SVGProps<SVGSVGElement>) => ReactElement;
 
-const wrap = (path: JSX.Element): I => (p) => (
+const wrap = (path: ReactNode): I => (p) => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}>
     {path}
   </svg>
