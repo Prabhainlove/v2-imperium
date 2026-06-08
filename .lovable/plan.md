@@ -1,62 +1,87 @@
 ## Goal
 
-Fix the profile hero per feedback:
-1. Racing-track image becomes the **whole profile page background** (not a small framed card).
-2. McLaren W1 3D model loads **fully, HD, with all FBX textures**, anchored in one place — no floating, no auto-rotate drift.
-3. Tagline + emoji line sits **below the 3D model**, not overlaid on top of it.
-4. Hover on the model plays its built-in **Take 001** action; leave returns to idle pose.
+Replace the Sketchfab iframe in the profile hero box with a two-phase experience:
+
+1. **Phase 1** — F1 race intro video plays inside the box.
+2. **Phase 2** — at video end, swap to a static 3D model of the new McLaren MCL39 GLB (no hover, no animations — just load and display).
+
+## Video choice
+
+Use the uploaded `f1_race.mp4` (not the YouTube embed). A local `<video>` lets us hit `currentTime=3`, `playbackRate=1.5`, and a hard cutoff at 40s reliably; YouTube's iframe API can't guarantee any of those on every browser, and it injects branding/ads.
+
+Plays from **t=3s → t=40s at 1.5×**, muted, autoplay, `playsInline`, no controls.
+
+## 3D model
+
+Use the newly uploaded `2025-mclaren-mcl39.zip` → `source/f1-2025_mclaren_mcl39.glb` (43 MB, textures embedded). Render only — no `take_001`, no hover interaction, no auto-rotate.
 
 ## Files
 
-**Edit**
-- `src/frontend/profile/profile.css`
-  - `.profile-root` gets the racing-track image as a fixed, full-page background (cover, center, with a dark gradient overlay for readability). Remove the radial violet/green tints so the track reads cleanly.
-  - Delete `.profile-hero-stage`, `.profile-hero-bg`, `.profile-hero-overlay`, `.profile-hero-3d`, `.profile-hero-copy` overlay positioning.
-  - Add new `.profile-hero-block` (transparent, no card chrome): vertical stack — `.profile-hero-model` (fixed-height stage just for the 3D canvas, transparent) above `.profile-hero-text` (eyebrow + tagline + sub + hint), centered/left-aligned.
-- `src/frontend/profile/components/ProfileHeader.tsx`
-  - Remove the background `<img>` and overlay div.
-  - Render `<McLarenScene />` in its own block, then the tagline copy underneath.
-- `src/frontend/profile/components/McLarenScene.tsx`
-  - Remove auto-rotate; the car stays still at a fixed camera angle.
-  - Disable `OrbitControls` (or set it to look-only with no user spin) so the model is anchored.
-  - Texture/material fix: FBXLoader needs a `THREE.LoadingManager` with a URL modifier so embedded texture references (`textures/Screenshot_*.png`, `alcantaraseamless.jpeg`, etc.) resolve to CDN URLs. Plan: upload all 23 texture files from the zip via `lovable-assets` and build a `{filename → cdnUrl}` map; the manager rewrites any incoming texture path to the matching CDN URL. This restores the model's real paint/tire/interior textures instead of fallback grey.
-  - Ensure correct color space: set `renderer.outputColorSpace = SRGB`, mark all loaded textures `colorSpace = SRGBColorSpace`, enable `physicallyCorrectLights`, and turn on tone mapping (`ACESFilmicToneMapping`) for HD look.
-  - Lighting upgrade: stronger key light + rim + ground bounce; add a subtle contact-shadow plane so the car visually sits on the track instead of floating.
-  - Keep the hover → play `Take 001` (or first clip if not named) animation; on leave, fade out and reset to t=0.
-  - Camera framed tightly using the model's bounding box so the entire car fits cleanly with no clipping at any viewport width.
+**New CDN pointers**
+- `src/assets/profile/f1-race.mp4.asset.json` — `lovable-assets create --file /mnt/user-uploads/f1_race.mp4 --filename f1-race.mp4`
+- `src/assets/profile/mclaren-mcl39.glb.asset.json` — `lovable-assets create --file /tmp/mcl39/source/f1-2025_mclaren_mcl39.glb --filename mclaren-mcl39.glb` (extracted from the user's zip; textures are embedded in the GLB so no separate texture uploads needed)
 
-**New (CDN uploads only, no source files)**
-- `src/assets/profile/mclaren-textures/*.asset.json` — one pointer per texture file from the zip, used by the LoadingManager URL modifier.
+**Delete**
+- `src/assets/profile/mclaren-w1.fbx.asset.json` — obsolete (old FBX model)
+- `src/assets/profile/mclaren-textures.map.json` and the 23 `mclaren-textures/*.asset.json` pointers — obsolete (FBX-era texture map, no longer referenced once McLarenScene is rewritten)
+
+**New**
+- `src/frontend/profile/components/HeroIntroVideo.tsx` — `<video>` element:
+  - `src` from `f1-race.mp4.asset.json`, `muted`, `autoPlay`, `playsInline`, `preload="auto"`, no controls
+  - `onLoadedMetadata` → `currentTime = 3`, `playbackRate = 1.5`
+  - `onTimeUpdate` → when `currentTime >= 40` (or `onEnded`) → call `onFinish()` once
+  - CSS: `width:100%; height:100%; object-fit:cover; display:block;`
+
+**Edit**
+- `src/frontend/profile/components/McLarenScene.tsx` — rewrite. No more Sketchfab iframe.
+  - Use existing `three` (already installed at `^0.184.0`) directly — no new deps, no `@react-three/fiber`.
+  - Inside the component: create `Scene`, `PerspectiveCamera`, `WebGLRenderer` (antialias, `outputColorSpace = SRGBColorSpace`, `toneMapping = ACESFilmicToneMapping`).
+  - Load GLB via `GLTFLoader` from `three/examples/jsm/loaders/GLTFLoader.js`. Center the model via `Box3` and frame the camera using the bounding sphere so it fits the canvas at any aspect.
+  - Lighting: `HemisphereLight` + one `DirectionalLight` (key) + soft `AmbientLight`. Add an `Environment`-style fallback by loading a simple `RoomEnvironment` from `three/examples/jsm/environments/RoomEnvironment.js` via `PMREMGenerator` for clean PBR reflections.
+  - Slow continuous gentle yaw on the model (`model.rotation.y += 0.0025` per frame) so it doesn't feel frozen, but **no user interaction, no OrbitControls, no hover triggers**.
+  - `ResizeObserver` on the container to keep renderer/camera in sync.
+  - Cleanup on unmount: dispose geometries/materials/textures, stop RAF, drop renderer.
+  - Export a `preloadMclarenModel()` helper that fires a `fetch(url)` early so the GLB is in the HTTP cache by the time the video ends.
+
+- `src/frontend/profile/components/ProfileHeader.tsx`
+  - Add `phase` state: `"video" | "model"`.
+  - On mount: call `preloadMclarenModel()` so the 43 MB GLB downloads in parallel with video playback.
+  - Phase `"video"`: render `<HeroIntroVideo onFinish={() => setPhase("model")} />`.
+  - Phase `"model"`: render `<McLarenScene />` (inside the existing `ClientOnly`/`Suspense`).
+  - Tagline copy block below the box stays unchanged.
+
+- `src/frontend/profile/profile.css`
+  - Add: `.profile-hero-model > video { width:100%; height:100%; object-fit:cover; display:block; }`
+  - Add: `.profile-hero-model > canvas { width:100% !important; height:100% !important; display:block; }`
+  - No other layout changes.
 
 **No changes**
-- Routes, data layer, other profile cards (status row, info cards, right rail) stay as-is. Only the hero header block changes.
+- Racing-track page background, ProfileCard, status cards, info cards, right rail, routes, data layer — all untouched.
 
-## Layout sketch
+## Sequence
 
 ```text
-┌──────────────────────────────────────────────────────────────┐
-│  (entire page background = racing track image, fixed)        │
-│                                                              │
-│   ┌────────────────────────┐   ┌──────────────┐ ┌──────────┐ │
-│   │      3D McLaren W1     │   │ ProfileCard  │ │ RightRail│ │
-│   │   (anchored, HD, no    │   │   (Dinesh)   │ │          │ │
-│   │      float, hover →    │   │              │ │          │ │
-│   │      Take 001)         │   │              │ │          │ │
-│   └────────────────────────┘   └──────────────┘ └──────────┘ │
-│   🏁 Imperium · Career Grand Prix                            │
-│   Life is a race. Your career is the championship.           │
-│   Navigate like a champion… 🏆✨                              │
-│   (hover the car to start the engine)                        │
-│                                                              │
-│   [status cards / info cards continue below, unchanged]      │
-└──────────────────────────────────────────────────────────────┘
+ProfileHeader mounts
+  ├── preloadMclarenModel()   ← 43 MB GLB starts downloading
+  ▼
+phase = "video"
+  ┌──────────────────────────────────────────┐
+  │ <video> f1-race.mp4, muted, autoplay     │
+  │   loadedmetadata → t=3, rate=1.5×        │
+  │   timeupdate → t >= 40 → onFinish()      │
+  └──────────────────────────────────────────┘
+  ▼ (GLB already cached → instant swap)
+phase = "model"
+  ┌──────────────────────────────────────────┐
+  │ WebGLRenderer + GLTFLoader               │
+  │   MCL39, centered, slow yaw, no controls │
+  └──────────────────────────────────────────┘
 ```
 
 ## Acceptance
 
-- Racing track image covers the entire profile page background, readable through a dark gradient.
-- McLaren renders in full HD with its real paint/tire/interior textures (not grey shaded).
-- Car is centered, anchored, does not auto-spin or drift.
-- Hovering the car plays Take 001 once-through and loops; leaving fades back to idle.
-- Tagline copy sits below the model, never overlapping it.
-- Existing profile cards/sections remain visually intact on top of the new track background.
+- Hero box first plays `f1_race.mp4` clip from 3 s to 40 s at 1.5× speed, muted, no controls.
+- At ~40 s, video disappears and the McLaren MCL39 GLB renders in the same box with no perceptible loading gap.
+- No hover effect, no animation playback, no orbit/drag controls — model just sits there with a gentle idle rotation.
+- No Sketchfab iframe, no YouTube embed, no old FBX/texture pointers remain.
+- Rest of the profile page is unchanged.

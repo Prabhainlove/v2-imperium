@@ -1,17 +1,29 @@
 import { ClientOnly } from "@tanstack/react-router";
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
+import { HeroIntroVideo } from "./HeroIntroVideo";
+import { preloadMclarenModel } from "./McLarenScene";
 
 const McLarenScene = lazy(() => import("./McLarenScene"));
 
 export function ProfileHeader() {
+  const [phase, setPhase] = useState<"video" | "model">("video");
+
+  useEffect(() => {
+    preloadMclarenModel();
+  }, []);
+
   return (
     <div className="profile-hero-block">
       <div className="profile-hero-model">
-        <ClientOnly fallback={null}>
-          <Suspense fallback={null}>
-            <McLarenScene />
-          </Suspense>
-        </ClientOnly>
+        {phase === "video" ? (
+          <HeroIntroVideo onFinish={() => setPhase("model")} />
+        ) : (
+          <ClientOnly fallback={null}>
+            <Suspense fallback={null}>
+              <McLarenScene />
+            </Suspense>
+          </ClientOnly>
+        )}
       </div>
       <div className="profile-hero-text">
         <p className="profile-hero-eyebrow">
@@ -23,7 +35,6 @@ export function ProfileHeader() {
         <p className="profile-hero-sub">
           Navigate like a champion, accelerate through opportunities, and chase glory. <span aria-hidden>🏆✨</span>
         </p>
-        <p className="profile-hero-hint">Hover the car to start the engine</p>
       </div>
     </div>
   );
