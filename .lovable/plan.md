@@ -1,127 +1,94 @@
+# Imperium Profile Page — Implementation Plan
 
-# Imperium Dashboard — Soft Peach Command Center (v2)
+Rebuild `/profile` to mirror the attached F1 Cards Pack layout exactly (proportions, card placement, density), replacing all F1 content with Imperium career-identity content. Premium dark glassmorphism, isolated from the peach dashboard theme.
 
-New reference approved: **light cream/peach palette, soft shadows, rounded cards, professional friendly tone** (not the dark fantasy version). Same structural layout, new visual language, expanded inventory.
+## Visual Structure (locked to reference)
 
----
+```text
+┌─ Logo ─┬──────────────────────────────┬─ ProfileCard ─┬─ TopBar (gems/coins/settings)
+│ Vert.  │  IMPERIUM PROFILE (H1)       │  [portrait]   │ ┌─ Basic Info ─────────┐
+│ bars:  │  Career Identity System      │  Dinesh Kumar │ │ Name/Title/Email/    │
+│ • PS   │                              │  AI Engineer  │ │ Phone/Location/Web   │
+│ • ATS  │                              │  Lvl 12       │ ├─ Professional Links ─┤
+│ • RQ   │                              │               │ │ LI/GH/Portfolio/     │
+│        │                              │               │ │ LeetCode/HackerRank  │
+│        ├─ GREEN ─┬─ RED ──┬─ YELLOW ──┤               │ └──────────────────────┘
+│        │ Extract │ Missing│ Optimize  │               │
+│        ├─ EDU ───┬─ EXP ──┬─ JOB PREF ┤
+│        ├─ Professional Summary ───────┤
+│        ├─ SKILLS ─┬─ PROJECTS ─┬─ RESUME ─┤
+│        ├─ CERTIFICATIONS ──────┬─ JOB PREF (detailed) ─┤
+```
 
-## 1. Visual language (matches new reference)
+Three status cards (green/red/yellow) stay exactly in row-2 position. Profile card stays top-right of main column. Right rail is two stacked glass panels.
 
-- Background: warm cream `#f7eee6` with subtle peach radial wash.
-- Cards: pure white `#ffffff`, radius `20px`, soft shadow `0 6px 24px rgba(217,140,110,.10)`, no borders.
-- Accent coral `#ee7b5a`, mint `#7fc7b8`, butter yellow `#f5c452`, lavender `#b9a7e0`, sky `#7fb8d8`, soft red `#e76a6a` — used as rarity/category colors on icons only.
-- Typography: Inter Tight (headings), Inter (body), JetBrains Mono (micro labels). All already loaded in root.
-- Text: near-black `#1f1d1b` headings, coral `#ee7b5a` subtitles, muted `#7a716a` meta.
-- No gold filigree, no particles, no dark fantasy chrome. Clean, premium, modern SaaS-meets-character-sheet.
+## Files
 
----
+**New**
+- `src/frontend/profile/components/ProfileHeader.tsx` — H1 "IMPERIUM PROFILE" + subtitle + vertical strength bars (Profile Strength, ATS Readiness, Resume Quality)
+- `src/frontend/profile/components/ProfileCard.tsx` — portrait + name/role/exp/location/level (placeholder for future 3D avatar)
+- `src/frontend/profile/components/StatusCard.tsx` — variant `green | red | yellow`, used 3×
+- `src/frontend/profile/components/InfoCard.tsx` — generic glass card with title + Edit button
+- `src/frontend/profile/components/SkillsCard.tsx`, `ProjectsCard.tsx`, `ResumeCard.tsx`, `CertificationsCard.tsx`, `JobPrefDetailedCard.tsx`, `SummaryCard.tsx`, `EducationCard.tsx`, `ExperienceCard.tsx`, `JobPreferencesCard.tsx`
+- `src/frontend/profile/components/RightRail.tsx` — Basic Info + Professional Links
+- `src/frontend/profile/components/VerticalProgress.tsx`
+- `src/frontend/profile/profile.data.ts` — `useProfilePageData()` hook returning typed profile derived from existing `SAMPLE_PROFILE` (Dinesh) + computed strength/ATS/resume scores; overlays mockAuth session name/email
+- `src/frontend/profile/profile.extraction.ts` — stubs `extractFromResume(file)`, `importFromLinkedIn(url)`, `mergeProfile()` (wired to existing `ResumeFileParser`; LinkedIn returns "coming soon" toast for now)
+- `src/assets/profile/avatar-placeholder.png` — generated AI portrait (dark premium style)
 
-## 2. Layout (unchanged from prior plan)
+**Edited**
+- `src/frontend/profile/ProfilePage.tsx` — full layout per reference
+- `src/frontend/profile/profile.css` — dark glassmorphism scoped under `.profile-root` (no leak to dashboard/landing)
+- `src/frontend/profile/profile.logic.ts` — page-level handlers (edit toggles, upload, import)
 
-CSS Grid three columns ≥1280px (`320px 1fr 380px`), two columns on tablet, single stack on mobile with order: Profile → Hero → Career Overview → Equipped → Inventory (horizontal snap-scroll) → Activity → Crest.
+**No changes** to dashboard, navbar, routes, backend, or `SAMPLE_PROFILE`.
 
-Top bar: small Imperium wordmark left, two pill resource counters center (`297` gem, `1,258` coin), single gear icon right.
+## Data Layer
 
----
+`useProfilePageData()` composes:
+- Identity from `SAMPLE_PROFILE` (Dinesh) overlaid with `useSession()`
+- `extraction`: derived flags — resumeUploaded, linkedinConnected, profileSynced
+- `missing[]`: scans profile for empty experience/skills/education/resume
+- `optimization[]`: ATS score < 80 → "ATS Score Low"; missing keywords from target_role; etc.
+- `strength`, `atsReadiness`, `resumeQuality`: 0–100 numbers for vertical bars (uses existing `ProfileCompleteness` + `AtsScorer` from backend types, client-safe computation)
 
-## 3. Inventory — now 10 modules
+## Design Tokens (scoped, dark)
 
-| # | Name | Color | Route |
-|---|---|---|---|
-| 1 | Job Agent | coral | `/jobs` |
-| 2 | Resume Studio | mint | `/resume` |
-| 3 | ATS Optimizer | mint | `/ats` |
-| 4 | Application Tracker | lavender | `/applications` |
-| 5 | Interview Coach | coral | `/interviews` |
-| 6 | Skill Builder | mint | `/skills` |
-| 7 | AI Assistant | butter | `/assistant` |
-| 8 | Recruiter Scanner | sky | `/recruiters` |
-| 9 | Networking Hub | lavender | `/networking` (new) |
-| 10 | Salary Insights | mint | `/salary` (new) |
+```css
+.profile-root {
+  --p-bg: #07070a;
+  --p-surface: rgba(20,20,28,0.72);
+  --p-border: rgba(255,255,255,0.06);
+  --p-text: #ececf1; --p-muted: #8a8a96;
+  --p-violet: #8b6cf6; --p-green: #2ecc8b;
+  --p-red: #ef5a6f; --p-amber: #f5b544;
+  --p-blur: blur(18px) saturate(140%);
+  --p-shadow: 0 8px 32px rgba(0,0,0,0.45);
+}
+```
+All cards: `background: var(--p-surface); backdrop-filter: var(--p-blur); border: 1px solid var(--p-border); border-radius: 18px;`. Status cards use accented gradient fills (green/red/amber) matching reference. Hover: subtle lift + border glow.
 
-Grid: 5 cols ≥1280px, 4 on tablet, horizontal snap-scroll on mobile. Each tile = soft pastel rounded-square icon + name + `Lv. N`. Hover: lift 2px + soft glow in the tile's accent color + tooltip with description.
+## Interactions (this pass)
 
----
+- **Edit** buttons → toggle inline edit mode per card (local state, no backend write yet)
+- **Upload resume** → uses existing `extractTextFromFile`, surfaces parsed snippets in green card
+- **LinkedIn import** → input + button; shows toast "Local LinkedIn import — coming with Ollama integration"
+- **Settings cog** → routes to `/settings`
+- Gems/coins in top bar pulled from dashboard data hook (consistent currency)
 
-## 4. Data layer
+## Responsive
 
-`src/frontend/dashboard/dashboard.data.ts` — typed `DashboardData` + `useDashboardData()` hook returning hard-coded **Dinesh** profile, overlaying `name`/`email` from `mockAuth` session when available. Easy swap to a server function later. All numbers, levels, activity rows, and inventory state flow through this hook — zero hardcoded JSX values.
+- ≥1280px: full 3-column layout per reference
+- 1024–1279px: right rail collapses below main grid
+- ≤768px: single column, status cards horizontal scroll-snap, profile card stacks above main
 
----
+## Out of Scope (reserved as placeholders, not built)
 
-## 5. Component tree
+3D avatar, Ollama wiring, real LinkedIn scraping, level/XP progression, server-side profile persistence. Locked Job Agent vs Local Agent boundary respected — Profile page does not surface Local Agent.
 
-`src/frontend/dashboard/`
-- `DashboardPage.tsx` — grid shell
-- `dashboard.css` — `.dash-*` scoped tokens & styles
-- `dashboard.data.ts`, `dashboard.logic.ts`
-- `components/TopBar.tsx`
-- `components/LeftPanel.tsx` (Identity card, AttributesCard, PowersCard, QuoteCard)
-- `components/CenterPanel.tsx` (HeroPortrait, CareerOverview, RecentActivity, ContinueCTA)
-- `components/RightPanel.tsx` (ProfileCard, EquippedCoreCard, InventoryGrid, CrestCard)
-- `components/AttributeBar.tsx`, `PowerEmblem.tsx`, `StatTile.tsx`, `ActivityRow.tsx`, `InventoryTile.tsx`, `HeroPortrait.tsx` (modes: `image | spline | three`)
+## Acceptance
 
-Hero portrait: AI-generated professional male in cream blazer with coral tie, soft peach circular halo — matches reference. Saved to `src/assets/dashboard/hero-portrait.png`.
-
----
-
-## 6. Floating navbar for module pages
-
-`src/frontend/shell/ImperiumNavbar.tsx` + `imperium-navbar.css`
-- Fixed top-center capsule, white/95% + `backdrop-filter: blur(18px)`, soft shadow, thin coral hairline.
-- `framer-motion` animated pill (`layoutId="nav-pill"`) for active item.
-- Items: Dashboard, Job Agent, Resume, ATS, Applications, Interviews, Skills, Assistant, Recruiters, Networking, Salary.
-- Collapses to icon-only ≤640px with horizontal scroll.
-- Route transitions: `<AnimatePresence mode="wait">` wrapping `<Outlet/>` with fade + scale (0.98→1, 180ms).
-
-`AppShell` (used by `_authenticated` layout) renders `ImperiumNavbar` + animated `Outlet` **except** when `useLocation().pathname === "/dashboard"` — dashboard is the only naked page. Delete `Sidebar.tsx` and `Topbar.tsx`.
-
-Install: `framer-motion`.
-
----
-
-## 7. New route stubs
-
-So navbar links don't 404, create placeholder pages with the clean enterprise style (white cards, coral accents, "Coming soon" hero):
-- `/_authenticated/ats.tsx` → `AtsPage`
-- `/_authenticated/assistant.tsx` → `AssistantPage`
-- `/_authenticated/recruiters.tsx` → `RecruitersPage`
-- `/_authenticated/networking.tsx` → `NetworkingPage`
-- `/_authenticated/salary.tsx` → `SalaryPage`
-
-Each ships a 3-file frontend folder (`Page.tsx`, `.css`, `.logic.ts`).
-
----
-
-## 8. Settings menu (top-right gear)
-
-Small popover with Profile, Account, Theme, Logout. Logout → `mockAuth.signOut()` → navigate `/auth`.
-
----
-
-## 9. Responsiveness
-
-- `clamp()` for fluid typography and gaps everywhere.
-- Tabular numbers + `min-width` on stat values to prevent jump (1 vs 5 digits).
-- Long usernames: truncate + tooltip.
-- Empty states for every list (no activity, no modules unlocked).
-- Verified at 1920, 1440, 1366, 1024, 768, 390 via browser tool screenshots after build.
-
----
-
-## 10. Files summary
-
-**Create**: 10 dashboard components + data/logic, hero portrait asset, ImperiumNavbar + css, 5 new module pages (3 files each), 5 new route files.
-**Edit**: `DashboardPage.tsx`, `dashboard.css`, `dashboard.logic.ts`, `AppShell.tsx`, `_authenticated/route.tsx`.
-**Delete**: `Sidebar.tsx`, `Topbar.tsx`.
-**Install**: `framer-motion`.
-
----
-
-## 11. Out of scope
-
-Real backend wiring, true 3D avatar (only abstraction layer in place), full module page implementations beyond placeholder shells, theme switcher logic.
-
----
-
-Approve to build. After build I'll screenshot `/dashboard` at desktop + mobile and one module page to confirm the navbar + transitions.
+- Visual: side-by-side with reference, every card in same position, same proportions, same density
+- Theme: dark glass throughout `.profile-root`; navbar (peach) still renders above and does not bleed
+- Data: all visible fields driven by `profile.data.ts`; no hardcoded JSX strings except labels
+- Build passes; no new deps required
