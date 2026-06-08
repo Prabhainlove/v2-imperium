@@ -15,14 +15,15 @@ export default function HeroSection({ heroProgressRef }: Props) {
     () => {
       if (!ref.current) return;
 
-      // Drive heroProgressRef from this hero section + the next sibling (KeepScrolling).
-      // We measure across hero start → hero+keepScrolling end so progress is 0→1 across both.
+      // Drive heroProgressRef across Hero + KeepScrolling so the full
+      // 5-beat choreography (reveal → orbit → tension → strike → rest)
+      // plays out and the strike lands right as the next section enters.
       const trigger = ScrollTrigger.create({
         trigger: ref.current,
         start: "top top",
         endTrigger: ref.current.nextElementSibling as Element,
-        end: "bottom bottom",
-        scrub: true,
+        end: "bottom top",
+        scrub: 0.4,
         onUpdate: (self) => {
           heroProgressRef.current = self.progress;
         },
