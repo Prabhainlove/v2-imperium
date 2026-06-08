@@ -13,7 +13,7 @@ import {
 import { EMPTY_PROFILE, SAMPLE_PROFILE, type ImperiumProfile } from "@/lib/imperium/profile/types";
 import { computeCompleteness } from "@/lib/imperium/profile/completeness";
 import { getProfile, saveProfile } from "@/lib/imperium/client";
-import fujiAsset from "@/assets/imperium/fuji_ink.jpg.asset.json";
+
 
 export const Route = createFileRoute("/_authenticated/onboarding")({
   head: () => ({
