@@ -52,13 +52,13 @@ export default function TopChrome({ progressRef, cta }: Props) {
           to="/_authenticated/dashboard"
           className="rounded-full px-4 py-2 text-[13px] font-medium text-white/85 hover:bg-white/10 md:px-5"
         >
-          Dev Guides
+          Dashboard
         </Link>
         <Link
           to={cta as "/auth"}
           className="rounded-full bg-white/[0.08] px-4 py-2 text-[13px] font-medium text-white hover:bg-white/15 md:px-5"
         >
-          Skill Hub
+          User Profile
         </Link>
       </nav>
 
