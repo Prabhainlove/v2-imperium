@@ -1,10 +1,11 @@
 import "./profile.css";
-import { useNavigate } from "@tanstack/react-router";
+import { ClientOnly, useNavigate } from "@tanstack/react-router";
 import { useProfilePageData } from "./profile.data";
 import { ProfileHeader } from "./components/ProfileHeader";
 import { ProfileCard } from "./components/ProfileCard";
 import { StatusCard } from "./components/StatusCard";
 import { RightRail } from "./components/RightRail";
+import { McLarenScene } from "./components/McLarenScene";
 import {
   EducationCard, ExperienceCard, JobPreferencesCard, SummaryCard,
   SkillsCard, ProjectsCard, ResumeCard, CertificationsCard, JobPrefDetailedCard,
@@ -15,6 +16,12 @@ export function ProfilePage() {
   const navigate = useNavigate();
   return (
     <div className="profile-root">
+      <div className="profile-bg-3d" aria-hidden>
+        <ClientOnly fallback={null}>
+          <McLarenScene />
+        </ClientOnly>
+      </div>
+
       <div className="profile-topbar">
         <div className="profile-logo" aria-hidden>◐</div>
         <div className="profile-top-actions">
