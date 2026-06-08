@@ -85,7 +85,7 @@ function ResumeStudioPage() {
   const ats = rendered.data?.ats;
 
   return (
-    <div className="page-font-resume mx-auto w-full max-w-7xl space-y-6 p-4 md:p-6">
+    <div className="app-surface-invoice min-h-screen mx-auto w-full max-w-7xl space-y-6 p-4 md:p-6">
       <PageHeader
         title="Resume Studio"
         kanji="履"

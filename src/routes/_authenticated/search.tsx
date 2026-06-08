@@ -281,7 +281,7 @@ function SearchPage() {
   }
 
   return (
-    <div className="page-font-jobs mx-auto w-full max-w-7xl space-y-6 p-4 md:p-6">
+    <div className="app-surface-crm min-h-screen mx-auto w-full max-w-7xl space-y-6 p-4 md:p-6">
       <PageHeader
         title="Job Agent Control Center"
         kanji="探"

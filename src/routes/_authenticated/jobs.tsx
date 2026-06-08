@@ -68,7 +68,7 @@ function JobsPage() {
   }, [data]);
 
   return (
-    <div className="page-font-jobs mx-auto w-full max-w-7xl space-y-5 p-4 md:p-6">
+    <div className="app-surface-energy min-h-screen mx-auto w-full max-w-7xl space-y-5 p-4 md:p-6">
       <PageHeader
         title="Discovered Jobs"
         kanji="業"

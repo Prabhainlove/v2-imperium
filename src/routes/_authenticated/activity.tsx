@@ -52,7 +52,7 @@ function ActivityPage() {
   }, [entries]);
 
   return (
-    <div className="page-font-dashboard mx-auto w-full max-w-5xl space-y-5 p-4 md:p-6">
+    <div className="app-surface-energy min-h-screen mx-auto w-full max-w-5xl space-y-5 p-4 md:p-6">
       <PageHeader
         title="Activity Center"
         kanji="活"

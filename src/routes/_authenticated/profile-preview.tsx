@@ -46,7 +46,7 @@ function ProfilePreviewPage() {
   const ctx = agent_context;
 
   return (
-    <div className="page-font-settings mx-auto w-full max-w-6xl space-y-6 p-4 md:p-6">
+    <div className="app-surface-f1 min-h-screen mx-auto w-full max-w-6xl space-y-6 p-4 md:p-6">
       <PageHeader
         title="Profile Preview"
         kanji="人"

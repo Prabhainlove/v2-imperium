@@ -183,7 +183,7 @@ function AutopilotPage() {
   );
 
   return (
-    <div className="page-font-autopilot space-y-6 p-6">
+    <div className="app-surface-energy min-h-screen space-y-6 p-6">
       <PageHeader
         title="Autopilot"
         kanji="自"
