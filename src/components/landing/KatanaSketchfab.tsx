@@ -57,7 +57,14 @@ export default function KatanaSketchfab({ progressRef }: Props) {
       duration: number,
     ) => void;
     start: () => void;
+    getAnimations?: (cb: (err: unknown, anims: Array<[string, string, ...unknown[]]>) => void) => void;
+    setCurrentAnimationByUID?: (uid: string, cb?: (err: unknown) => void) => void;
+    seekTo?: (time: number, cb?: (err: unknown) => void) => void;
+    pause?: (cb?: (err: unknown) => void) => void;
+    play?: (cb?: (err: unknown) => void) => void;
+    setCycleMode?: (mode: "one" | "loop" | "none", cb?: (err: unknown) => void) => void;
   } | null>(null);
+  const animRef = useRef<{ uid: string; duration: number } | null>(null);
   const rafRef = useRef(0);
   const lastP = useRef(-1);
   const [ready, setReady] = useState(false);
