@@ -1,9 +1,7 @@
 import { createFileRoute, ClientOnly } from "@tanstack/react-router";
-import { lazy, Suspense, useEffect, useState } from "react";
-import { supabase } from "@backend/database/SupabaseClient";
+import { lazy, Suspense } from "react";
 
-
-const LandingShell = lazy(() => import("@frontend/landing/LandingPage"));
+const LandingPage = lazy(() => import("@frontend/landing/LandingPage"));
 
 export const Route = createFileRoute("/")({
   ssr: false,
@@ -20,12 +18,11 @@ export const Route = createFileRoute("/")({
         property: "og:description",
         content: "An AI job agent that orchestrates resumes, applications, and interviews end-to-end.",
       },
-      
       { property: "og:url", content: "/" },
     ],
     links: [{ rel: "canonical", href: "/" }],
   }),
-  component: LandingPage,
+  component: Landing,
 });
 
 function Fallback() {
@@ -38,19 +35,11 @@ function Fallback() {
   );
 }
 
-function LandingPage() {
-  const [signedIn, setSignedIn] = useState(false);
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setSignedIn(!!data.session));
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => setSignedIn(!!s));
-    return () => sub.subscription.unsubscribe();
-  }, []);
-  const cta = signedIn ? "/dashboard" : "/auth";
-  const ctaLabel = signedIn ? "Enter Console" : "Enter Imperium";
+function Landing() {
   return (
     <ClientOnly fallback={<Fallback />}>
       <Suspense fallback={<Fallback />}>
-        <LandingShell cta={cta} ctaLabel={ctaLabel} />
+        <LandingPage cta="/auth" ctaLabel="Enter Imperium" />
       </Suspense>
     </ClientOnly>
   );
