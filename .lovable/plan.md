@@ -1,89 +1,127 @@
-# Auth Pages — Sign In + Sign Up (Local Mock)
 
-Build two routes that share one visual system, matching the reference mockup pixel-for-pixel. Mock auth — no Lovable Cloud. Users are persisted in `localStorage` so login actually works in preview for testing.
+# Imperium Dashboard — Soft Peach Command Center (v2)
 
-## Routes
+New reference approved: **light cream/peach palette, soft shadows, rounded cards, professional friendly tone** (not the dark fantasy version). Same structural layout, new visual language, expanded inventory.
 
-- `/auth` → Sign In (email + password)
-- `/signup` → Sign Up (full name + email + password + confirm password)
-- Both routes link to each other via the top-right "Sign In / Sign Up" pill toggle.
+---
 
-## Layout (identical on both pages)
+## 1. Visual language (matches new reference)
 
-```text
-┌─────────────────────────────────────────────────────────────┐
-│ [icon] IMPERIUM intro copy        [Sign In|Sign Up]   10%   │
-│                                                              │
-│                                   ↓                          │
-│                                   <Big Heading>              │
-│                                   ( email pill input )       │
-│                                   ( password pill input )    │
-│                                   ( + name / confirm )       │
-│                                   forgot? / accept code      │
-│ - - - - - - - - - - - - - - - - - + - - - - - - - - - - -  │ ← dashed guides
-│                                                              │
-│        ┌──────────── device frame ────────────┐              │
-│        │        VIDEO COMING SOON             │              │
-│        └──────────────────────────────────────┘              │
-└─────────────────────────────────────────────────────────────┘
-```
+- Background: warm cream `#f7eee6` with subtle peach radial wash.
+- Cards: pure white `#ffffff`, radius `20px`, soft shadow `0 6px 24px rgba(217,140,110,.10)`, no borders.
+- Accent coral `#ee7b5a`, mint `#7fc7b8`, butter yellow `#f5c452`, lavender `#b9a7e0`, sky `#7fb8d8`, soft red `#e76a6a` — used as rarity/category colors on icons only.
+- Typography: Inter Tight (headings), Inter (body), JetBrains Mono (micro labels). All already loaded in root.
+- Text: near-black `#1f1d1b` headings, coral `#ee7b5a` subtitles, muted `#7a716a` meta.
+- No gold filigree, no particles, no dark fantasy chrome. Clean, premium, modern SaaS-meets-character-sheet.
 
-- Pure black `#000` background, off-white `#f1ece6` text, coral `#ff5a3a` accents, JetBrains-mono for micro labels, thin sans for the big heading.
-- Dashed crosshair guides through the page (CSS only).
-- Bottom device frame is a placeholder `<div>` with a centered "VIDEO COMING SOON" label — ready to swap for a `<video>` tag later.
+---
 
-## Fields & Validation (zod, client-side)
+## 2. Layout (unchanged from prior plan)
 
-**Sign In (`/auth`)**
-- `email` — required, valid email
-- `password` — required, min 8
+CSS Grid three columns ≥1280px (`320px 1fr 380px`), two columns on tablet, single stack on mobile with order: Profile → Hero → Career Overview → Equipped → Inventory (horizontal snap-scroll) → Activity → Crest.
 
-**Sign Up (`/signup`)**
-- `fullName` — required, 2–60 chars, letters/spaces/`.-'`
-- `email` — required, valid email, lowercased, not already registered
-- `password` — required, min 8, ≥1 uppercase, ≥1 number
-- `confirmPassword` — must equal `password`
+Top bar: small Imperium wordmark left, two pill resource counters center (`297` gem, `1,258` coin), single gear icon right.
 
-Inline error text appears under each pill input. Submit button disabled until valid.
+---
 
-## Mock Auth Logic (local, no backend)
+## 3. Inventory — now 10 modules
 
-A tiny `mockAuth.ts` module in `src/frontend/auth/`:
+| # | Name | Color | Route |
+|---|---|---|---|
+| 1 | Job Agent | coral | `/jobs` |
+| 2 | Resume Studio | mint | `/resume` |
+| 3 | ATS Optimizer | mint | `/ats` |
+| 4 | Application Tracker | lavender | `/applications` |
+| 5 | Interview Coach | coral | `/interviews` |
+| 6 | Skill Builder | mint | `/skills` |
+| 7 | AI Assistant | butter | `/assistant` |
+| 8 | Recruiter Scanner | sky | `/recruiters` |
+| 9 | Networking Hub | lavender | `/networking` (new) |
+| 10 | Salary Insights | mint | `/salary` (new) |
 
-- `signup({ fullName, email, password })` — hashes password with Web Crypto SHA-256, stores `{ id, fullName, email, passwordHash }` in `localStorage` under `imperium.users`. Rejects if email exists.
-- `signIn({ email, password })` — looks up user, compares hash, sets `imperium.session = { userId, email, fullName }`.
-- `signOut()`, `getSession()`.
-- `useSession()` hook for components.
+Grid: 5 cols ≥1280px, 4 on tablet, horizontal snap-scroll on mobile. Each tile = soft pastel rounded-square icon + name + `Lv. N`. Hover: lift 2px + soft glow in the tile's accent color + tooltip with description.
 
-After successful sign in / sign up → `navigate({ to: "/" })` (or `/dashboard` once that page has UI — for now landing).
+---
 
-## Files to create / edit
+## 4. Data layer
 
-**New**
-- `src/frontend/auth/SignInPage.tsx`
-- `src/frontend/auth/SignUpPage.tsx`
-- `src/frontend/auth/components/AuthShell.tsx` — shared layout (icon + intro, toggle, heading slot, form slot, video frame)
-- `src/frontend/auth/components/PillInput.tsx` — reusable pill input with red crosshair icon + optional right icon (return / eye)
-- `src/frontend/auth/components/AuthToggle.tsx` — Sign In / Sign Up pill toggle
-- `src/frontend/auth/components/VideoFrame.tsx` — bottom device frame placeholder
-- `src/frontend/auth/mockAuth.ts` — local user store + session
-- `src/frontend/auth/validation.ts` — zod schemas
-- `src/frontend/auth/auth.css` — all `.auth-*` scoped styles (no Tailwind class collisions)
-- `src/routes/signup.tsx` — thin route → `SignUpPage`
+`src/frontend/dashboard/dashboard.data.ts` — typed `DashboardData` + `useDashboardData()` hook returning hard-coded **Dinesh** profile, overlaying `name`/`email` from `mockAuth` session when available. Easy swap to a server function later. All numbers, levels, activity rows, and inventory state flow through this hook — zero hardcoded JSX values.
 
-**Edit**
-- `src/routes/auth.tsx` — point to `SignInPage` instead of placeholder
-- Replace old `src/frontend/auth/AuthPage.tsx` (placeholder) — keep file as a barrel re-export of `SignInPage` to avoid breaking imports, or delete.
+---
 
-## What this plan does NOT do
+## 5. Component tree
 
-- No Lovable Cloud / real Supabase auth (mock only, as requested).
-- No video file — just the framed placeholder.
-- No password reset wiring (the existing `/reset-password` route stays as the placeholder for now).
-- No styling changes to landing or other pages.
+`src/frontend/dashboard/`
+- `DashboardPage.tsx` — grid shell
+- `dashboard.css` — `.dash-*` scoped tokens & styles
+- `dashboard.data.ts`, `dashboard.logic.ts`
+- `components/TopBar.tsx`
+- `components/LeftPanel.tsx` (Identity card, AttributesCard, PowersCard, QuoteCard)
+- `components/CenterPanel.tsx` (HeroPortrait, CareerOverview, RecentActivity, ContinueCTA)
+- `components/RightPanel.tsx` (ProfileCard, EquippedCoreCard, InventoryGrid, CrestCard)
+- `components/AttributeBar.tsx`, `PowerEmblem.tsx`, `StatTile.tsx`, `ActivityRow.tsx`, `InventoryTile.tsx`, `HeroPortrait.tsx` (modes: `image | spline | three`)
 
-## After approval
+Hero portrait: AI-generated professional male in cream blazer with coral tie, soft peach circular halo — matches reference. Saved to `src/assets/dashboard/hero-portrait.png`.
 
-1. Build the files above.
-2. Open `/auth` and `/signup` in the preview, test the full flow: sign up → land on home → log out → sign in.
-3. Show you a screenshot of the live result.
+---
+
+## 6. Floating navbar for module pages
+
+`src/frontend/shell/ImperiumNavbar.tsx` + `imperium-navbar.css`
+- Fixed top-center capsule, white/95% + `backdrop-filter: blur(18px)`, soft shadow, thin coral hairline.
+- `framer-motion` animated pill (`layoutId="nav-pill"`) for active item.
+- Items: Dashboard, Job Agent, Resume, ATS, Applications, Interviews, Skills, Assistant, Recruiters, Networking, Salary.
+- Collapses to icon-only ≤640px with horizontal scroll.
+- Route transitions: `<AnimatePresence mode="wait">` wrapping `<Outlet/>` with fade + scale (0.98→1, 180ms).
+
+`AppShell` (used by `_authenticated` layout) renders `ImperiumNavbar` + animated `Outlet` **except** when `useLocation().pathname === "/dashboard"` — dashboard is the only naked page. Delete `Sidebar.tsx` and `Topbar.tsx`.
+
+Install: `framer-motion`.
+
+---
+
+## 7. New route stubs
+
+So navbar links don't 404, create placeholder pages with the clean enterprise style (white cards, coral accents, "Coming soon" hero):
+- `/_authenticated/ats.tsx` → `AtsPage`
+- `/_authenticated/assistant.tsx` → `AssistantPage`
+- `/_authenticated/recruiters.tsx` → `RecruitersPage`
+- `/_authenticated/networking.tsx` → `NetworkingPage`
+- `/_authenticated/salary.tsx` → `SalaryPage`
+
+Each ships a 3-file frontend folder (`Page.tsx`, `.css`, `.logic.ts`).
+
+---
+
+## 8. Settings menu (top-right gear)
+
+Small popover with Profile, Account, Theme, Logout. Logout → `mockAuth.signOut()` → navigate `/auth`.
+
+---
+
+## 9. Responsiveness
+
+- `clamp()` for fluid typography and gaps everywhere.
+- Tabular numbers + `min-width` on stat values to prevent jump (1 vs 5 digits).
+- Long usernames: truncate + tooltip.
+- Empty states for every list (no activity, no modules unlocked).
+- Verified at 1920, 1440, 1366, 1024, 768, 390 via browser tool screenshots after build.
+
+---
+
+## 10. Files summary
+
+**Create**: 10 dashboard components + data/logic, hero portrait asset, ImperiumNavbar + css, 5 new module pages (3 files each), 5 new route files.
+**Edit**: `DashboardPage.tsx`, `dashboard.css`, `dashboard.logic.ts`, `AppShell.tsx`, `_authenticated/route.tsx`.
+**Delete**: `Sidebar.tsx`, `Topbar.tsx`.
+**Install**: `framer-motion`.
+
+---
+
+## 11. Out of scope
+
+Real backend wiring, true 3D avatar (only abstraction layer in place), full module page implementations beyond placeholder shells, theme switcher logic.
+
+---
+
+Approve to build. After build I'll screenshot `/dashboard` at desktop + mobile and one module page to confirm the navbar + transitions.
