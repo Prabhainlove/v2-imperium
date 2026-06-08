@@ -29,7 +29,26 @@
   color: var(--p-text);
   font-family: "Inter", system-ui, sans-serif;
   font-feature-settings: "tnum" 1, "cv02" 1;
+  position: relative;
 }
+
+.profile-bg-3d {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.28;
+  filter: blur(1px) saturate(1.1);
+}
+.profile-bg-3d > div,
+.profile-bg-3d > canvas {
+  width: 100% !important;
+  height: 100% !important;
+  display: block;
+}
+.profile-root > *:not(.profile-bg-3d) {
+  position: relative;
+  z-index: 1;
 
 .profile-root * { box-sizing: border-box; }
 
