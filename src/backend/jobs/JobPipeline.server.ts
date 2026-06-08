@@ -6,10 +6,10 @@
  *              -> stage as **Pending Review** (no auto submission).
  * Writes an activity_log row at every stage so the UI animates live.
  */
-import { SOURCES, type RawJob } from "./sources.server";
-import { buildAgentContext, type AgentContext } from "./profile/agent-context";
-import { buildResumeFromProfile, buildCoverFromProfile } from "./profile/generators";
-import type { ImperiumProfile } from "./profile/types";
+import { SOURCES, type RawJob } from "@backend/jobs/JobSources.server";
+import { buildAgentContext, type AgentContext } from "@backend/profile/AgentContextBuilder";
+import { buildResumeFromProfile, buildCoverFromProfile } from "@backend/profile/ProfileTextGenerators";
+import type { ImperiumProfile } from "@backend/profile/ProfileTypes";
 
 type ImperiumDb = { from: (table: string) => any };
 

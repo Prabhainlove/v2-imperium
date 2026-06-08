@@ -10,9 +10,9 @@
  *  - Skill rows are reordered per JD; projects re-ranked per JD relevance.
  *  - Banned generic openers are rewritten or stripped.
  */
-import type { AgentContext } from "./agent-context";
-import { analyzeJobDescription, normalizeSkillToken, skillMatches, type JDAnalysis } from "./jd-analysis";
-import { cleanDisplayUrl, isValidLink, validateProfileLinks } from "./link-validator";
+import type { AgentContext } from "@backend/profile/AgentContextBuilder";
+import { analyzeJobDescription, normalizeSkillToken, skillMatches, type JDAnalysis } from "@backend/profile/JobDescriptionLocalAnalysis";
+import { cleanDisplayUrl, isValidLink, validateProfileLinks } from "@backend/profile/LinkValidator";
 
 export interface JobBrief {
   title: string;

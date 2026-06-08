@@ -7,9 +7,9 @@
  */
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
-import { buildAgentContext } from "./profile/agent-context";
-import { buildResumeFromProfile } from "./profile/generators";
-import { SAMPLE_PROFILE } from "./profile/types";
+import { buildAgentContext } from "@backend/profile/AgentContextBuilder";
+import { buildResumeFromProfile } from "@backend/profile/ProfileTextGenerators";
+import { SAMPLE_PROFILE } from "@backend/profile/ProfileTypes";
 
 export type ResumeTemplate = "jake-ats" | "classic" | "modern" | "compact";
 

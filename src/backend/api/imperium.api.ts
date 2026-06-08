@@ -104,8 +104,8 @@ export const getAgentContext = createServerFn({ method: "GET" })
       .eq("id", userId)
       .maybeSingle();
     const profile = rowToProfile(userId, data as Record<string, unknown> | null);
-    const { buildAgentContext } = await import("./profile/agent-context");
-    const { computeCompleteness } = await import("./profile/completeness");
+    const { buildAgentContext } = await import("@backend/profile/AgentContextBuilder");
+    const { computeCompleteness } = await import("@backend/profile/ProfileCompleteness");
     const ctx = buildAgentContext(profile as never);
     const completeness = computeCompleteness(profile as never);
     return {
@@ -192,7 +192,7 @@ export const refreshGithubIntel = createServerFn({ method: "POST" })
       url = (p?.github_url as string) ?? "";
     }
     if (!url) throw new Error("No GitHub URL on profile. Add one first.");
-    const { analyzeGithubUrl } = await import("./brain/github-intel.server");
+    const { analyzeGithubUrl } = await import("@backend/profile/GithubIntel.server");
     const intel = await analyzeGithubUrl(url);
     await supabase.from("profiles").update({ github_url: url, github_intel: intel as never }).eq("id", userId);
     return intel;
@@ -205,7 +205,7 @@ export const importProfileFromText = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: unknown) => ImportTextInput.parse(i))
   .handler(async ({ data }) => {
-    const { extractProfileFromText } = await import("./brain/profile-import.server");
+    const { extractProfileFromText } = await import("@backend/profile/ProfileImporter.server");
     return extractProfileFromText(data.text);
   });
 
@@ -215,7 +215,7 @@ export const importProfileFromLinkedin = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: unknown) => ImportLinkedinInput.parse(i))
   .handler(async ({ data }) => {
-    const { extractProfileFromLinkedinUrl } = await import("./brain/profile-import.server");
+    const { extractProfileFromLinkedinUrl } = await import("@backend/profile/ProfileImporter.server");
     return extractProfileFromLinkedinUrl(data.url);
   });
 
@@ -225,7 +225,7 @@ export const importProfileFromPdf = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: unknown) => ImportPdfInput.parse(i))
   .handler(async ({ data }) => {
-    const { extractProfileFromPdfBase64 } = await import("./brain/profile-import.server");
+    const { extractProfileFromPdfBase64 } = await import("@backend/profile/ProfileImporter.server");
     return extractProfileFromPdfBase64(data.base64);
   });
 
@@ -355,8 +355,8 @@ export const getApplication = createServerFn({ method: "GET" })
       supabase.from("profiles").select(PROFILE_V2_COLUMNS).eq("id", userId).maybeSingle(),
     ]);
     const profile = rowToProfile(userId, profileRow as Record<string, unknown> | null);
-    const { buildAgentContext } = await import("./profile/agent-context");
-    const { buildResumeFromProfile, buildCoverFromProfile } = await import("./profile/generators");
+    const { buildAgentContext } = await import("@backend/profile/AgentContextBuilder");
+    const { buildResumeFromProfile, buildCoverFromProfile } = await import("@backend/profile/ProfileTextGenerators");
     const ctx = buildAgentContext(profile as never);
     const job = {
       title: (listing?.title as string) || (row.job_title as string) || "Target Role",
@@ -376,7 +376,7 @@ export const approveApplication = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => IdInput.parse(input))
   .handler(async ({ data, context }) => {
-    const { simulateSubmission } = await import("./pipeline.server");
+    const { simulateSubmission } = await import("@backend/jobs/JobPipeline.server");
     return simulateSubmission(data.id, context.userId, context.supabase);
   });
 
@@ -384,7 +384,7 @@ export const skipApplicationFn = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => IdInput.parse(input))
   .handler(async ({ data, context }) => {
-    const { skipApplication } = await import("./pipeline.server");
+    const { skipApplication } = await import("@backend/jobs/JobPipeline.server");
     return skipApplication(data.id, context.userId, context.supabase);
   });
 
@@ -457,7 +457,7 @@ export const getProfileIntelligence = createServerFn({ method: "GET" })
       .eq("id", userId)
       .maybeSingle();
     if (!profile) return null;
-    const { analyzeProfile } = await import("./brain/brain.server");
+    const { analyzeProfile } = await import("@backend/ai/index.server");
     return analyzeProfile({
       name: (profile.name as string) || "Candidate",
       headline: (profile.headline as string) || undefined,
@@ -537,8 +537,8 @@ export const getArtifact = createServerFn({ method: "GET" })
       supabase.from("job_listings").select("*").eq("id", row.listing_id as string).maybeSingle(),
       supabase.from("profiles").select(PROFILE_V2_COLUMNS).eq("id", userId).maybeSingle(),
     ]);
-    const { buildAgentContext } = await import("./profile/agent-context");
-    const { buildResumeFromProfile, buildCoverFromProfile } = await import("./profile/generators");
+    const { buildAgentContext } = await import("@backend/profile/AgentContextBuilder");
+    const { buildResumeFromProfile, buildCoverFromProfile } = await import("@backend/profile/ProfileTextGenerators");
     const ctx = buildAgentContext(rowToProfile(userId, profileRow as Record<string, unknown> | null) as never);
     const job = {
       title: (listing?.title as string) || (row.job_title as string) || "Target Role",
@@ -561,9 +561,9 @@ export const renderApplicationResume = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => RenderResumeInput.parse(input))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    const { renderResumeHtml, analyzeAts } = await import("./rendercv.server");
-    const { buildAgentContext } = await import("./profile/agent-context");
-    const { buildResumeFromProfile } = await import("./profile/generators");
+    const { renderResumeHtml, analyzeAts } = await import("@backend/resume/ResumeRenderer.server");
+    const { buildAgentContext } = await import("@backend/profile/AgentContextBuilder");
+    const { buildResumeFromProfile } = await import("@backend/profile/ProfileTextGenerators");
     const [{ data: app }, { data: profile }] = await Promise.all([
       supabase.from("applications").select("*").eq("id", data.application_id).maybeSingle(),
       supabase.from("profiles").select(PROFILE_V2_COLUMNS).eq("id", userId).maybeSingle(),
@@ -618,10 +618,10 @@ export const optimizeMasterResume = createServerFn({ method: "POST" })
       .eq("id", userId)
       .maybeSingle();
     const profile = rowToProfile(userId, profileRow as Record<string, unknown> | null);
-    const { extractKeywords } = await import("./resume-render");
-    const { buildAgentContext } = await import("./profile/agent-context");
-    const { buildResumeFromProfile } = await import("./profile/generators");
-    const { validateAgainstProfile, stripHallucinations } = await import("./profile/agent-context");
+    const { extractKeywords } = await import("@backend/resume/ResumeGenerator");
+    const { buildAgentContext } = await import("@backend/profile/AgentContextBuilder");
+    const { buildResumeFromProfile } = await import("@backend/profile/ProfileTextGenerators");
+    const { validateAgainstProfile, stripHallucinations } = await import("@backend/profile/AgentContextBuilder");
 
     const jobKeywords = extractKeywords(data.job_description, 20);
     const ctx = buildAgentContext(profile as never);
@@ -721,9 +721,9 @@ export const evaluateApplication = createServerFn({ method: "POST" })
       .select(PROFILE_V2_COLUMNS)
       .eq("id", userId)
       .maybeSingle();
-    const { analyzeAts } = await import("./rendercv.server");
-    const { buildAgentContext } = await import("./profile/agent-context");
-    const { buildResumeFromProfile } = await import("./profile/generators");
+    const { analyzeAts } = await import("@backend/resume/ResumeRenderer.server");
+    const { buildAgentContext } = await import("@backend/profile/AgentContextBuilder");
+    const { buildResumeFromProfile } = await import("@backend/profile/ProfileTextGenerators");
     const profileRecord = profile as Record<string, unknown> | null;
 
     const skills = ((profileRecord?.skills as string[] | null) ?? []) as string[];
@@ -827,7 +827,7 @@ export const runJobSearch = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => RunSearchInput.parse(input))
   .handler(async ({ data, context }) => {
-    const { runPipeline } = await import("./pipeline.server");
+    const { runPipeline } = await import("@backend/jobs/JobPipeline.server");
     const { supabase, userId, claims } = context;
     const task_id = `t_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 
@@ -846,7 +846,7 @@ export const runJobSearch = createServerFn({ method: "POST" })
     const resumePatch = meaningfulResumeText(data.resume_text)
       ? (await (async () => {
           try {
-            const { extractProfileFromText } = await import("./brain/profile-import.server");
+            const { extractProfileFromText } = await import("@backend/profile/ProfileImporter.server");
             return (await extractProfileFromText(data.resume_text)).patch as Record<string, unknown>;
           } catch (error) {
             await supabase.from("activity_log").insert({

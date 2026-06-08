@@ -2,9 +2,9 @@
  * ATS Scoring + Gap Analysis.
  * Profile-aware: separates "missing from resume" from "missing from profile".
  */
-import type { JDAnalysis } from "./jd-analysis";
-import { skillMatches } from "./jd-analysis";
-import type { AgentContext } from "./agent-context";
+import type { JDAnalysis } from "@backend/profile/JobDescriptionLocalAnalysis";
+import { skillMatches } from "@backend/profile/JobDescriptionLocalAnalysis";
+import type { AgentContext } from "@backend/profile/AgentContextBuilder";
 
 export interface AtsReport {
   atsScore: number;
