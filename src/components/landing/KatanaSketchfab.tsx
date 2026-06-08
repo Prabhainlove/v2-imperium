@@ -65,6 +65,8 @@ export default function KatanaSketchfab({ progressRef }: Props) {
     setCycleMode?: (mode: "one" | "loop" | "none", cb?: (err: unknown) => void) => void;
   } | null>(null);
   const animRef = useRef<{ uid: string; duration: number } | null>(null);
+  const strikePlayingRef = useRef(false);
+  const strikeDoneRef = useRef(false);
   const rafRef = useRef(0);
   const lastP = useRef(-1);
   const [ready, setReady] = useState(false);
@@ -134,12 +136,12 @@ export default function KatanaSketchfab({ progressRef }: Props) {
     // Beat frames — STRIKE pulled back so the FULL sword stays in frame and
     // arcs diagonally across the viewport instead of going close-up.
     const beats = [
-      { p: 0.00, eye: [1.8, 1.0, 1.8], target: [0.0, 0.05, 0.0] },   // REVEAL wide
-      { p: 0.15, eye: [1.6, 0.5, 1.4], target: [0.0, 0.05, 0.0] },   // ease-in
-      { p: 0.45, eye: [0.2, 0.25, 1.3], target: [-0.15, 0.0, 0.0] }, // ORBIT end
-      { p: 0.65, eye: [-1.4, 0.6, 1.7], target: [0.1, 0.1, 0.0] },   // TENSION wind-up (camera lifts, full sword in view)
-      { p: 0.80, eye: [1.6, -0.6, 1.6], target: [-0.2, 0.05, 0.0] }, // STRIKE apex — diagonal swipe across, full blade visible
-      { p: 1.00, eye: [1.2, 0.2, 1.6], target: [0.0, 0.0, 0.0] },    // REST — settle, full sword centered
+      { p: 0.00, eye: [2.4, 1.2, 2.4], target: [0.0, 0.05, 0.0] },
+      { p: 0.15, eye: [2.0, 0.6, 1.8], target: [0.0, 0.05, 0.0] },
+      { p: 0.45, eye: [0.4, 0.3, 1.8], target: [-0.1, 0.0, 0.0] },
+      { p: 0.60, eye: [-2.2, 1.0, 2.4], target: [0.1, 0.1, 0.0] },
+      { p: 0.85, eye: [-2.2, 1.0, 2.4], target: [0.1, 0.1, 0.0] },
+      { p: 1.00, eye: [1.8, 0.5, 2.2], target: [0.0, 0.0, 0.0] },
     ] as const;
 
     const sampleBeats = (t: number) => {
@@ -155,8 +157,7 @@ export default function KatanaSketchfab({ progressRef }: Props) {
       const b = beats[i + 1] ?? beats[beats.length - 1];
       const span = b.p - a.p || 1;
       const local = (x - a.p) / span;
-      // STRIKE beat (0.65 → 0.80) uses exponential snap for crisp impact.
-      const f = a.p === 0.65 ? easeOutExpo(local) : easeInOut(local);
+      const f = easeInOut(local);
       return {
         eye: [
           lerp(a.eye[0], b.eye[0], f),
@@ -180,16 +181,37 @@ export default function KatanaSketchfab({ progressRef }: Props) {
         const { eye, target } = sampleBeats(p);
         // Scroll-locked timing. Strike beat (0.65→0.80) uses very short
         // duration so the camera SNAPS across — that's the visible strike.
-        const inStrike = p >= 0.65 && p <= 0.82;
-        const duration = inStrike ? 0.12 : 0.35;
+        const duration = 0.5;
         apiRef.current.setCameraLookAt(eye, target, duration);
       }
 
-      // Scrub the model's built-in STRIKE animation by scroll progress.
-      // Map 0→1 of heroProgress to 0→duration of the animation timeline.
+      // Trigger the model's built-in STRIKE animation ONCE when scroll
+      // enters the strike window. The camera holds steady so the full
+      // animation plays out and stays fully visible.
       if (apiRef.current && animRef.current) {
-        const t = clamp(p) * animRef.current.duration;
-        apiRef.current.seekTo?.(t);
+        const anim = animRef.current;
+        if (p >= 0.62 && p < 0.85) {
+          if (!strikePlayingRef.current && !strikeDoneRef.current) {
+            strikePlayingRef.current = true;
+            apiRef.current.seekTo?.(0, () => {
+              apiRef.current?.play?.(() => {
+                strikeDoneRef.current = true;
+              });
+            });
+          }
+        } else if (p < 0.55) {
+          // Reset so the user can re-trigger by scrolling back up
+          if (strikeDoneRef.current || strikePlayingRef.current) {
+            strikePlayingRef.current = false;
+            strikeDoneRef.current = false;
+            apiRef.current.pause?.();
+            apiRef.current.seekTo?.(0);
+          }
+        } else if (p >= 0.85) {
+          // Hold at end of animation
+          apiRef.current.seekTo?.(anim.duration - 0.01);
+          apiRef.current.pause?.();
+        }
       }
 
 
