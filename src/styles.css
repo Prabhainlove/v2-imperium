@@ -647,3 +647,124 @@
 }
 
 
+
+/* =====================================================================
+ * Imperium — Japanese culture layer (auth + app pages)
+ * ===================================================================== */
+
+.page-font-auth      { --imp-head: "Shippori Mincho", "Noto Serif JP", serif; }
+.page-font-dashboard { --imp-head: "Noto Serif JP", "Shippori Mincho", serif; }
+.page-font-jobs      { --imp-head: "Zen Old Mincho", "Noto Serif JP", serif; }
+.page-font-resume    { --imp-head: "Klee One", "Noto Serif JP", serif; }
+.page-font-autopilot { --imp-head: "Yuji Syuku", "Noto Serif JP", serif; }
+.page-font-settings  { --imp-head: "Sawarabi Mincho", "Noto Serif JP", serif; }
+
+.imp-h {
+  font-family: var(--imp-head, "Noto Serif JP", serif);
+  font-weight: 700;
+  letter-spacing: -0.005em;
+}
+
+.imp-panel {
+  position: relative;
+  background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.015));
+  border: 1px solid rgba(216, 227, 242, 0.10);
+  border-radius: 4px;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 1px 0 rgba(255,255,255,0.04) inset, 0 12px 28px -16px rgba(0,0,0,0.55);
+}
+.imp-panel:hover { border-color: rgba(201, 168, 76, 0.30); }
+
+.page-font-auth [data-slot="card"],
+.page-font-dashboard [data-slot="card"],
+.page-font-jobs [data-slot="card"],
+.page-font-resume [data-slot="card"],
+.page-font-autopilot [data-slot="card"],
+.page-font-settings [data-slot="card"] {
+  background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(11,23,41,0.55)) !important;
+  border-color: rgba(216, 227, 242, 0.10) !important;
+  border-radius: 4px !important;
+  box-shadow: 0 12px 28px -16px rgba(0,0,0,0.6);
+}
+
+.imp-hairline {
+  background: linear-gradient(90deg, transparent, rgba(201,168,76,0.65), transparent);
+  height: 1px;
+}
+
+.imp-kanji {
+  position: absolute;
+  font-family: "Noto Serif JP", "Shippori Mincho", serif;
+  font-weight: 800;
+  color: rgba(255, 107, 61, 0.10);
+  text-shadow: 0 0 30px rgba(255,107,61,0.15);
+  pointer-events: none;
+  user-select: none;
+  line-height: 0.85;
+}
+.imp-kanji-xl { font-size: clamp(8rem, 22vw, 18rem); }
+.imp-kanji-lg { font-size: clamp(5rem, 12vw, 9rem); }
+.imp-kanji-md { font-size: clamp(3rem, 7vw, 5rem); }
+
+.imp-seal {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 56px; height: 56px;
+  border: 2px solid #c03020;
+  background: rgba(192, 48, 32, 0.12);
+  color: #ff5d4a;
+  font-family: "Yuji Syuku", "Noto Serif JP", serif;
+  font-weight: 800;
+  font-size: 22px;
+  transform: rotate(-6deg);
+  box-shadow: 0 0 0 1px rgba(192, 48, 32, 0.25) inset;
+}
+
+.imp-brush-divider {
+  height: 14px;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 14' preserveAspectRatio='none'><path d='M2 7 C 60 1, 140 13, 220 6 S 360 12, 440 5 S 560 11, 598 7' stroke='rgba(216,227,242,0.35)' stroke-width='1.2' fill='none' stroke-linecap='round'/><path d='M40 9 C 120 4, 200 12, 300 7 S 480 10, 580 6' stroke='rgba(255,107,61,0.55)' stroke-width='0.8' fill='none' stroke-linecap='round'/></svg>");
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  opacity: 0.85;
+}
+
+.imp-seigaiha {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='80' height='40' viewBox='0 0 80 40'><g fill='none' stroke='rgba(216,227,242,0.18)' stroke-width='1'><circle cx='40' cy='40' r='32'/><circle cx='40' cy='40' r='22'/><circle cx='40' cy='40' r='12'/><circle cx='0' cy='40' r='32'/><circle cx='80' cy='40' r='32'/></g></svg>");
+  background-size: 80px 40px;
+}
+
+.imp-enso {
+  width: 100%; aspect-ratio: 1;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><path d='M50 8 a42 42 0 1 1 -29 12' stroke='rgba(216,227,242,0.55)' stroke-width='3' fill='none' stroke-linecap='round'/></svg>");
+  background-repeat: no-repeat; background-position: center; background-size: contain;
+}
+
+.imp-jp-label {
+  font-family: "Noto Serif JP", "Shippori Mincho", serif;
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  color: rgba(216,227,242,0.45);
+  display: block;
+  margin-top: 1px;
+}
+
+.dark [data-sidebar="menu-button"][data-active="true"] {
+  position: relative;
+  background: linear-gradient(90deg, rgba(255,107,61,0.18), rgba(255,107,61,0.04)) !important;
+  color: #fff !important;
+}
+.dark [data-sidebar="menu-button"][data-active="true"]::before {
+  content: ""; position: absolute; left: 0; top: 6px; bottom: 6px;
+  width: 2px; background: #ff5d3d;
+  box-shadow: 0 0 12px rgba(255,107,61,0.6);
+}
+
+.page-font-auth .bg-gradient-primary,
+.page-font-dashboard .bg-gradient-primary,
+.page-font-jobs .bg-gradient-primary,
+.page-font-resume .bg-gradient-primary,
+.page-font-autopilot .bg-gradient-primary,
+.page-font-settings .bg-gradient-primary {
+  background-image: linear-gradient(135deg, #ff6b3d 0%, #c03020 100%) !important;
+  color: #fff !important;
+  box-shadow: 0 8px 24px -8px rgba(255,107,61,0.45) !important;
+}
