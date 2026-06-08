@@ -1,9 +1,12 @@
 /**
- * Imperium Brain — shared types. Client-safe (no secrets, no server imports).
- * The Brain is the centralized intelligence layer. Users never interact with
- * it directly; every workflow (job search, resume studio, applications,
- * career intelligence) routes through Brain on the server.
+ * AI shared types (Brain layer). Client-safe (no secrets, no server imports).
+ *
+ * For convenience, this module also re-exports the Profile and Application
+ * domain types so legacy `from "@backend/ai/AiTypes"` imports keep working.
  */
+export * from "@backend/profile/ProfileTypes";
+export * from "@backend/applications/ApplicationTypes";
+
 
 export type BrainTaskKind =
   | "profile_analysis"
