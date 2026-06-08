@@ -60,24 +60,24 @@ export default function HeroSection({ heroProgressRef }: Props) {
           className="font-sans font-medium leading-[0.92] tracking-[-0.025em] text-[#f1ece6]"
           style={{ fontSize: "clamp(40px,6.5vw,104px)" }}
         >
-          Master<br />Your<br />Skills
+          Land<br />Your<br />Dream Role
         </h1>
         <div className="hidden pb-2 font-sans text-[12px] leading-tight text-[#f1ece6]/75 md:block">
-          Built by<br />Fiddle.Digital
+          Powered by<br />IMPERIUM
         </div>
       </div>
 
       {/* version tag, top center */}
       <span className="absolute left-1/2 top-28 z-10 hidden -translate-x-1/2 font-mono text-[12px] tracking-[0.3em] text-[#f1ece6]/55 md:inline">
-        V_ 1.2.0
+        IMPERIUM_ 1.2.0
       </span>
 
-      {/* Skill Hub card */}
+      {/* User Profile card */}
       <div className="hero-card absolute bottom-14 left-10 z-10 hidden md:block md:left-14">
-        <p className="mb-3 font-sans text-[14px] text-[#f1ece6]/85">Skill Hub</p>
+        <p className="mb-3 font-sans text-[14px] text-[#f1ece6]/85">User Profile</p>
         <div className="h-[170px] w-[260px] rounded-2xl bg-white/[0.04] p-3 ring-1 ring-white/15 backdrop-blur-sm">
           <div className="grid h-full w-full place-items-center rounded-xl bg-white/[0.03]">
-            <span className="font-sans text-[22px] font-medium text-white/95">Balance</span>
+            <span className="font-sans text-[22px] font-medium text-white/95">Imperium</span>
           </div>
         </div>
       </div>
