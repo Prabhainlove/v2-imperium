@@ -1,20 +1,41 @@
-import { VerticalProgress } from "./VerticalProgress";
-import type { ProfilePageData } from "../profile.data";
+import { ClientOnly } from "@tanstack/react-router";
+import { lazy, Suspense } from "react";
+import trackBg from "@/assets/profile/racing-track.jpg";
 
-export function ProfileHeader({ data }: { data: ProfilePageData }) {
+const McLarenScene = lazy(() => import("./McLarenScene"));
+
+export function ProfileHeader() {
   return (
-    <div className="profile-header">
-      <div className="profile-vbars">
-        <VerticalProgress label="Profile Strength" value={data.scores.strength} color="#8b6cf6" />
-        <VerticalProgress label="ATS Readiness" value={data.scores.atsReadiness} color="#2ecc8b" />
-        <VerticalProgress label="Resume Quality" value={data.scores.resumeQuality} color="#f5b544" />
+    <div className="profile-hero-stage">
+      <img
+        src={trackBg}
+        alt=""
+        className="profile-hero-bg"
+        width={1920}
+        height={1024}
+        aria-hidden
+      />
+      <div className="profile-hero-overlay" aria-hidden />
+
+      <div className="profile-hero-3d">
+        <ClientOnly fallback={null}>
+          <Suspense fallback={null}>
+            <McLarenScene />
+          </Suspense>
+        </ClientOnly>
       </div>
-      <div className="profile-title-block">
-        <h1 className="profile-h1">
-          IMPERIUM<br />
-          <span className="thin">Profile</span>
+
+      <div className="profile-hero-copy">
+        <p className="profile-hero-eyebrow">
+          <span className="flag" aria-hidden>🏁</span> Imperium · Career Grand Prix
+        </p>
+        <h1 className="profile-hero-tagline">
+          Life is a race. Your career is the <em>championship</em>.
         </h1>
-        <p className="profile-sub">Career Identity System</p>
+        <p className="profile-hero-sub">
+          Navigate like a champion, accelerate through opportunities, and chase glory. <span aria-hidden>🏆✨</span>
+        </p>
+        <p className="profile-hero-hint">Hover the car to start the engine</p>
       </div>
     </div>
   );

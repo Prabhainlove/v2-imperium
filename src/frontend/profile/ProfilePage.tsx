@@ -25,7 +25,7 @@ export function ProfilePage() {
       </div>
 
       <div className="profile-hero">
-        <ProfileHeader data={data} />
+        <ProfileHeader />
         <ProfileCard data={data} />
         <RightRail data={data} />
       </div>
