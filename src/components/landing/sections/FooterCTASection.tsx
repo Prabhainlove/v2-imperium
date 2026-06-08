@@ -12,7 +12,7 @@ export default function FooterCTASection({ cta, ctaLabel }: Props) {
       <div className="mx-auto flex max-w-5xl flex-col items-center justify-center text-center">
         <img src={logo} alt="" className="h-16 w-16 rounded-2xl" />
         <h2 className="mt-10 font-sans text-[clamp(48px,8vw,120px)] font-medium leading-[0.95] tracking-[-0.03em] text-[#f1ece6]">
-          Step through<br />the gate.
+          Step into<br />the Imperium.
         </h2>
         <p className="mt-6 max-w-md text-[15px] leading-snug text-[#f1ece6]/60">
           IMPERIUM is the AI job agent that orchestrates resumes, applications, and interviews — end to end.

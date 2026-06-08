@@ -42,7 +42,7 @@ export default function AndListenSection() {
           className="font-sans text-[clamp(72px,14vw,220px)] font-medium leading-[0.92] tracking-[-0.04em] text-black"
         />
         <p className="mt-10 max-w-md font-mono text-[12px] uppercase leading-relaxed tracking-[0.18em] text-black/60">
-          Pause. The blade rests.<br />The path speaks for itself.
+          Pause. IMPERIUM listens.<br />Every role finds its candidate.
         </p>
       </div>
     </section>

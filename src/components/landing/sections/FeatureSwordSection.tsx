@@ -5,10 +5,10 @@ import katana from "@/assets/landing/katana_horizontal.png";
 import clouds from "@/assets/landing/cloud_band_wide.jpg";
 
 const features = [
-  { tag: "→", title: "Wide Range\nof Modules", body: "From calm passive search to sharp aggressive outreach.", icon: "◐◑" },
-  { tag: "→", title: "Effortless\nInitialization", body: "Import your profile, set the tune — done.", icon: "⊕" },
-  { tag: "→", title: "Performance\nOriented", body: "Engineered for speed. 60FPS pipeline end-to-end.", icon: "▦" },
-  { tag: "→", title: "Built for\nDevelopers", body: "Compose, override, extend your agent like code.", icon: "◇" },
+  { tag: "→", title: "Full Range\nof Modes", body: "From calm passive search to sharp aggressive outreach.", icon: "◐◑" },
+  { tag: "→", title: "Effortless\nOnboarding", body: "Import your profile, set your targets — IMPERIUM takes it from there.", icon: "⊕" },
+  { tag: "→", title: "Outcome\nOriented", body: "Engineered for interviews. Every output tuned to the role.", icon: "▦" },
+  { tag: "→", title: "Built for\nApplicants", body: "Compose, tailor, and dispatch every application from one cockpit.", icon: "◇" },
 ];
 
 export default function FeatureSwordSection() {

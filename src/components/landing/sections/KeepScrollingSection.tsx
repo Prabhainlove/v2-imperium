@@ -27,12 +27,12 @@ export default function KeepScrollingSection() {
         {/* text reveals timed to the unsheathe beats */}
         <div className="relative z-10 flex h-full flex-col items-center justify-center gap-4">
           <SlashText
-            text="StringTune"
+            text="IMPERIUM"
             className="font-sans text-[clamp(72px,14vw,220px)] font-medium tracking-[-0.04em] text-white/85"
             ghosts={4}
           />
           <SlashText
-            text="Keep Scrolling"
+            text="Unsheathe your career"
             className="font-sans text-[clamp(28px,4vw,56px)] font-medium tracking-[-0.02em] text-white/50"
             start="top -10%"
             end="top -60%"

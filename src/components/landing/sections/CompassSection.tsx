@@ -20,9 +20,9 @@ export default function CompassSection() {
   return (
     <section ref={ref} className="relative min-h-screen w-full bg-[#e8e4dd] py-32">
       <h2 className="px-8 text-center font-sans text-[clamp(36px,7vw,96px)] font-medium leading-[0.95] tracking-[-0.03em] text-black">
-        To master the craft is to
+        To master the search is to
         <br />
-        master <span className="cp-grey">the self…</span>
+        master <span className="cp-grey">your story…</span>
       </h2>
 
       <div className="relative mx-auto mt-20 flex h-[480px] w-full max-w-3xl items-center justify-center">
@@ -47,7 +47,7 @@ export default function CompassSection() {
 
         {/* FLOW CONTROL label */}
         <div className="absolute right-8 top-12 font-mono text-[10px] uppercase tracking-[0.2em] text-black/60">
-          Flow<br />Control
+          Career<br />Compass
         </div>
       </div>
     </section>
