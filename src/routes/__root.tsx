@@ -1,4 +1,4 @@
-import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   Outlet,
   Link,
@@ -8,28 +8,24 @@ import {
   Scripts,
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
-import { Toaster } from "@/components/ui/sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { Toaster } from "@shared/ui/sonner";
 
 import appCss from "../styles.css?url";
-import { reportLovableError } from "../lib/lovable-error-reporting";
+import { reportLovableError } from "@shared/utils/errorReporting";
 
 function NotFoundComponent() {
   return (
-    <div className="imp-surface flex items-center justify-center px-4">
-      <span className="imp-tick imp-tick-tl" aria-hidden />
-      <span className="imp-tick imp-tick-tr" aria-hidden />
-      <span className="imp-tick imp-tick-bl" aria-hidden />
-      <span className="imp-tick imp-tick-br" aria-hidden />
-      <div className="relative z-10 max-w-md text-center">
-        <div className="imp-eyebrow mb-3">Off-grid</div>
-        <h1 className="imp-display text-7xl text-[#d8e3f2]" style={{ WebkitTextStroke: "1px rgba(216,227,242,0.35)", color: "transparent" }}>404</h1>
-        <h2 className="mt-4 imp-display text-xl text-[#d8e3f2]">Page not found</h2>
-        <p className="mt-2 text-sm text-[rgba(216,227,242,0.6)]">
-          That route isn't on the Imperium map.
+    <div className="min-h-screen flex items-center justify-center px-4 bg-background text-foreground">
+      <div className="max-w-md text-center">
+        <h1 className="text-6xl font-bold">404</h1>
+        <h2 className="mt-4 text-xl">Page not found</h2>
+        <p className="mt-2 text-sm text-muted-foreground">
+          That route doesn't exist.
         </p>
         <div className="mt-8">
-          <Link to="/" className="imp-ember-btn">Return home</Link>
+          <Link to="/" className="inline-block px-4 py-2 border rounded-md">
+            Return home
+          </Link>
         </div>
       </div>
     </div>
@@ -44,25 +40,18 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   }, [error]);
 
   return (
-    <div className="imp-surface flex items-center justify-center px-4">
-      <span className="imp-tick imp-tick-tl" aria-hidden />
-      <span className="imp-tick imp-tick-tr" aria-hidden />
-      <span className="imp-tick imp-tick-bl" aria-hidden />
-      <span className="imp-tick imp-tick-br" aria-hidden />
-      <div className="relative z-10 max-w-md text-center">
-        <div className="imp-eyebrow mb-3">System alert</div>
-        <h1 className="imp-display text-xl text-[#d8e3f2]">Imperium hit an error</h1>
-        <p className="mt-2 text-sm text-[rgba(216,227,242,0.65)]">{error.message}</p>
+    <div className="min-h-screen flex items-center justify-center px-4 bg-background text-foreground">
+      <div className="max-w-md text-center">
+        <h1 className="text-xl font-semibold">Something went wrong</h1>
+        <p className="mt-2 text-sm text-muted-foreground">{error.message}</p>
         <div className="mt-8 flex flex-wrap justify-center gap-3">
           <button
             onClick={() => { router.invalidate(); reset(); }}
-            className="imp-ember-btn"
+            className="px-4 py-2 border rounded-md"
           >
             Try again
           </button>
-          <a href="/" className="imp-ember-btn" style={{ borderColor: "rgba(216,227,242,0.4)" }}>
-            Home
-          </a>
+          <a href="/" className="px-4 py-2 border rounded-md">Home</a>
         </div>
       </div>
     </div>
@@ -78,7 +67,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       {
         name: "description",
         content:
-          "Imperium is a transparent AI-powered job agent platform. Watch every step: discovery, matching, resume optimization, application preparation and tracking.",
+          "Imperium is a transparent AI-powered job agent platform.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -96,14 +85,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   errorComponent: ErrorComponent,
 });
 
-const themeBootstrap = `try{var t=localStorage.getItem('imperium-theme');if(t==='dark'){document.documentElement.classList.add('dark');}else{document.documentElement.classList.remove('dark');}}catch(e){}`;
-
 function RootShell({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <head>
         <HeadContent />
-        <script dangerouslySetInnerHTML={{ __html: themeBootstrap }} />
       </head>
       <body>
         {children}
@@ -113,25 +99,10 @@ function RootShell({ children }: { children: ReactNode }) {
   );
 }
 
-function AuthSync() {
-  const router = useRouter();
-  const qc = useQueryClient();
-  useEffect(() => {
-    const { data: sub } = supabase.auth.onAuthStateChange(() => {
-      router.invalidate();
-      qc.invalidateQueries();
-    });
-    return () => sub.subscription.unsubscribe();
-  }, [router, qc]);
-  return null;
-}
-
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
-
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthSync />
       <Outlet />
       <Toaster richColors closeButton />
     </QueryClientProvider>
