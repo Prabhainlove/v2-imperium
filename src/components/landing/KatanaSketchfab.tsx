@@ -88,30 +88,49 @@ export default function KatanaSketchfab({ progressRef }: Props) {
       });
     });
 
+    // Cinematic camera keyframes — eye + target in Sketchfab world units (Y-up).
+    // 0 reveal → 0.25 wide orbit → 0.5 dolly along blade → 0.75 tsuba hero → 1 kissaki strike.
+    const keys: Array<{ eye: [number, number, number]; target: [number, number, number] }> = [
+      { eye: [1.4, 0.9, 1.5], target: [0.0, 0.05, 0.0] },
+      { eye: [1.6, 0.3, 0.9], target: [0.1, 0.0, 0.0] },
+      { eye: [0.2, 0.15, 1.1], target: [-0.2, 0.0, 0.0] },
+      { eye: [-0.9, 0.2, 0.7], target: [-0.3, 0.0, 0.05] },
+      { eye: [-1.2, -0.1, 0.5], target: [-0.5, -0.05, 0.1] },
+    ];
+
+    const sampleKeys = (t: number) => {
+      const n = keys.length - 1;
+      const x = clamp(t) * n;
+      const i = Math.min(n - 1, Math.floor(x));
+      const f = easeInOut(x - i);
+      const a = keys[i];
+      const b = keys[i + 1];
+      return {
+        eye: [
+          lerp(a.eye[0], b.eye[0], f),
+          lerp(a.eye[1], b.eye[1], f),
+          lerp(a.eye[2], b.eye[2], f),
+        ] as [number, number, number],
+        target: [
+          lerp(a.target[0], b.target[0], f),
+          lerp(a.target[1], b.target[1], f),
+          lerp(a.target[2], b.target[2], f),
+        ] as [number, number, number],
+      };
+    };
+
     const tick = () => {
       const p = clamp(progressRef.current ?? 0);
-      if (apiRef.current && Math.abs(p - lastP.current) > 0.01) {
+      if (apiRef.current && Math.abs(p - lastP.current) > 0.005) {
         lastP.current = p;
-        const u = easeInOut(p);
-
-        // Camera rig — pulled in close so the katana reads large on screen.
-        const eye: [number, number, number] = [
-          lerp(1.2, -1.0, u), // sweep right → left
-          lerp(0.7, 0.2, u),  // descend
-          lerp(1.3, 0.7, u),  // dolly in
-        ];
-        const target: [number, number, number] = [
-          lerp(0.0, -0.3, u),
-          lerp(0.05, 0.0, u),
-          lerp(0.0, 0.05, u),
-        ];
-
-        apiRef.current.setCameraLookAt(eye, target, 0.9);
-
+        const { eye, target } = sampleKeys(p);
+        const duration = p > 0.55 ? 0.4 : 0.8; // snappier near the strike
+        apiRef.current.setCameraLookAt(eye, target, duration);
       }
       rafRef.current = requestAnimationFrame(tick);
     };
     rafRef.current = requestAnimationFrame(tick);
+
 
     return () => {
       cancelled = true;
