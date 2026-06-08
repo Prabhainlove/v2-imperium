@@ -125,9 +125,8 @@ export default function KatanaSketchfab({ progressRef }: Props) {
       const b = beats[i + 1] ?? beats[beats.length - 1];
       const span = b.p - a.p || 1;
       const local = (x - a.p) / span;
-      // STRIKE beat (0.70 → 0.85) uses exponential snap; others smooth.
-      const f =
-        a.p === 0.7 ? easeOutExpo(local) : easeInOut(local);
+      // STRIKE beat (0.65 → 0.80) uses exponential snap for crisp impact.
+      const f = a.p === 0.65 ? easeOutExpo(local) : easeInOut(local);
       return {
         eye: [
           lerp(a.eye[0], b.eye[0], f),
