@@ -49,17 +49,18 @@ function ResetPasswordPage() {
   };
 
   return (
-    <div className="imp-surface flex min-h-screen items-center justify-center px-4 py-12">
+    <div className="page-font-auth imp-surface flex min-h-screen items-center justify-center px-4 py-12">
+      <span aria-hidden className="imp-kanji imp-kanji-xl right-[-4vw] top-[8vh] !text-[rgba(255,107,61,0.07)]">鍵</span>
       <div className="relative z-10 w-full max-w-md">
         <Link to="/" className="mb-10 flex items-center justify-center gap-3">
           <span className="imp-mark-sm" aria-hidden />
           <div className="text-center">
             <div className="imp-display text-base text-[#d8e3f2]">IMPERIUM</div>
-            <div className="imp-eyebrow">Reset password</div>
+            <div className="imp-eyebrow">Saiki · 再起 · Reset</div>
           </div>
         </Link>
-        <Card className="p-6">
-          <h1 className="imp-display text-lg text-foreground">Set a new password</h1>
+        <Card className="imp-panel p-6">
+          <h1 className="imp-h text-2xl text-foreground">Forge a new key.</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             {ready
               ? "Choose a strong password (min. 8 characters)."
