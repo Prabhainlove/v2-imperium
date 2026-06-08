@@ -39,9 +39,12 @@ function AuthenticatedLayout() {
             <SidebarTrigger />
             <span className="imp-mark-sm" aria-hidden />
             <div className="hidden md:flex flex-col leading-none">
-              <span className="imp-eyebrow">Imperium</span>
-              <span className="imp-display text-[11px] text-foreground/90">AI Job Agent Console</span>
+              <span className="imp-eyebrow">Imperium · 帝国</span>
+              <span className="imp-h text-[12px] text-foreground/90">AI Job Agent Console</span>
             </div>
+            <span aria-hidden className="ml-3 hidden font-[Noto_Serif_JP] text-[11px] tracking-[0.4em] text-[rgba(216,227,242,0.35)] md:inline">
+              一期一会
+            </span>
             <div className="ml-auto flex items-center gap-2">
               <HealthBadge />
               <ThemeToggle />
