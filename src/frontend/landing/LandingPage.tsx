@@ -21,7 +21,7 @@ interface Props {
   ctaLabel: string;
 }
 
-export default function LandingShell({ cta, ctaLabel }: Props) {
+export default function LandingPage({ cta, ctaLabel }: Props) {
   const { progressRef, scrollYRef, fpsRef, heroProgressRef } = useLenisScroll();
 
   return (

@@ -1,7 +1,7 @@
 import { useRef } from "react";
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
-import SlashText from "../SlashText";
+import SlashText from "./SlashText";
 
 export default function KeepScrollingSection() {
   const ref = useRef<HTMLElement>(null);

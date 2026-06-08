@@ -3,7 +3,7 @@ import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
 import katana from "@frontend/landing/assets/katana_horizontal.png";
 import master from "@frontend/landing/assets/master_portrait.png";
-import SlashText from "../SlashText";
+import SlashText from "./SlashText";
 
 /**
  * Short transitional interstitial between unsheathing and cloud narrative.

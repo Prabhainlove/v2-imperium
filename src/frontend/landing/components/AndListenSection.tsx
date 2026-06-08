@@ -1,7 +1,7 @@
 import { useRef } from "react";
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
-import SlashText from "../SlashText";
+import SlashText from "./SlashText";
 import bonsai from "@frontend/landing/assets/bonsai_tree.png";
 
 export default function AndListenSection() {
