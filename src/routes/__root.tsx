@@ -9,7 +9,6 @@ import {
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
 import { Toaster } from "@/components/ui/sonner";
-import { ThemeProvider } from "@/components/imperium/theme-provider";
 import { supabase } from "@/integrations/supabase/client";
 
 import appCss from "../styles.css?url";
@@ -132,11 +131,9 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider>
-        <AuthSync />
-        <Outlet />
-        <Toaster richColors closeButton />
-      </ThemeProvider>
+      <AuthSync />
+      <Outlet />
+      <Toaster richColors closeButton />
     </QueryClientProvider>
   );
 }
