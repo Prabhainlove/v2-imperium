@@ -2,22 +2,17 @@ import "./imperium-navbar.css";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import {
-  IconBriefcase, IconDoc, IconCheck, IconChat, IconBubble,
-  IconHat, IconSparkle, IconScan, IconNetwork, IconChart, IconCore,
+  IconBriefcase, IconDoc, IconChat, IconSparkle, IconBubble, IconScan, IconCore,
 } from "@frontend/dashboard/components/icons";
 
 const NAV = [
   { to: "/dashboard",    label: "Dashboard",   icon: IconCore },
   { to: "/jobs",         label: "Jobs",        icon: IconBriefcase },
   { to: "/resume",       label: "Resume",      icon: IconDoc },
-  { to: "/ats",          label: "ATS",         icon: IconCheck },
   { to: "/applications", label: "Tracker",     icon: IconChat },
+  { to: "/autopilot",    label: "Autopilot",   icon: IconSparkle },
   { to: "/interviews",   label: "Interviews",  icon: IconBubble },
-  { to: "/skills",       label: "Skills",      icon: IconHat },
-  { to: "/assistant",    label: "Assistant",   icon: IconSparkle },
   { to: "/recruiters",   label: "Recruiters",  icon: IconScan },
-  { to: "/networking",   label: "Network",     icon: IconNetwork },
-  { to: "/salary",       label: "Salary",      icon: IconChart },
 ] as const;
 
 export function ImperiumNavbar() {
