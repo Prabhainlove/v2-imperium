@@ -183,9 +183,11 @@ function AutopilotPage() {
   );
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="page-font-autopilot space-y-6 p-6">
       <PageHeader
         title="Autopilot"
+        kanji="自"
+        kanjiLabel="Jidō · 自動 · Auto"
         description="Queue a job URL; the local Selenium agent on your machine opens a real Chrome window, fills the form, streams every action live, and pauses for your approval before submitting. Fully offline — no cloud required."
       />
 

@@ -104,9 +104,11 @@ function InterviewsPage() {
   }, [list.data]);
 
   return (
-    <div className="mx-auto w-full max-w-7xl space-y-6 p-4 md:p-6">
+    <div className="page-font-autopilot mx-auto w-full max-w-7xl space-y-6 p-4 md:p-6">
       <PageHeader
         title="Interview Tracker"
+        kanji="面"
+        kanjiLabel="Mensetsu · 面接 · Encounter"
         description="Every interview round in one pipeline — schedule, notes, feedback, outcomes."
         actions={
           <Button onClick={() => setEditing(emptyForm())} className="bg-gradient-primary text-primary-foreground hover:opacity-95">

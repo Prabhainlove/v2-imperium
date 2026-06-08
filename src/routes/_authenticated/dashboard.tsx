@@ -123,9 +123,11 @@ function DashboardPage() {
     dashboard.isError && jobs.isError && apps.isError;
 
   return (
-    <div className="mx-auto w-full max-w-7xl space-y-6 p-4 md:p-6">
+    <div className="page-font-dashboard mx-auto w-full max-w-7xl space-y-6 p-4 md:p-6">
       <PageHeader
         title="Mission Control"
+        kanji="司"
+        kanjiLabel="Shirei · 司令 · Command"
         description="Live view of the Imperium AI Job Agent. Every action is logged and visible."
         actions={
           <>

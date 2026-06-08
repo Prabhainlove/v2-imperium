@@ -52,9 +52,11 @@ function ActivityPage() {
   }, [entries]);
 
   return (
-    <div className="mx-auto w-full max-w-5xl space-y-5 p-4 md:p-6">
+    <div className="page-font-dashboard mx-auto w-full max-w-5xl space-y-5 p-4 md:p-6">
       <PageHeader
         title="Activity Center"
+        kanji="活"
+        kanjiLabel="Katsudō · 活動 · Action"
         description="Live polling of agent_activity_log. Every backend step is recorded and visible here."
         actions={
           <>

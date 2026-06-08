@@ -34,9 +34,11 @@ function SkillsPage() {
   });
 
   return (
-    <div className="mx-auto w-full max-w-7xl space-y-6 p-4 md:p-6">
+    <div className="page-font-autopilot mx-auto w-full max-w-7xl space-y-6 p-4 md:p-6">
       <PageHeader
         title="Skill Gap Analysis"
+        kanji="鍛"
+        kanjiLabel="Tanren · 鍛錬 · Forge"
         description="Imperium compares your skills against your target role and the live market signal locally."
         actions={
           <Button onClick={() => q.refetch()} variant="outline" disabled={q.isFetching}>

@@ -281,9 +281,11 @@ function SearchPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-7xl space-y-6 p-4 md:p-6">
+    <div className="page-font-jobs mx-auto w-full max-w-7xl space-y-6 p-4 md:p-6">
       <PageHeader
         title="Job Agent Control Center"
+        kanji="探"
+        kanjiLabel="Tansaku · 探索 · Hunt"
         description="Configure the run, then watch Imperium scan, score, and prepare application packages live."
       />
 
