@@ -1,9 +1,7 @@
 import { ClientOnly } from "@tanstack/react-router";
-import { lazy, Suspense, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { HeroIntroVideo } from "./HeroIntroVideo";
-import { preloadMclarenModel } from "./McLarenScene";
-
-const McLarenScene = lazy(() => import("./McLarenScene"));
+import { McLarenScene, preloadMclarenModel } from "./McLarenScene";
 
 export function ProfileHeader() {
   const [phase, setPhase] = useState<"video" | "model">("video");
@@ -15,15 +13,24 @@ export function ProfileHeader() {
   return (
     <div className="profile-hero-block">
       <div className="profile-hero-model">
-        {phase === "video" ? (
+        {phase === "video" && (
           <HeroIntroVideo onFinish={() => setPhase("model")} />
-        ) : (
-          <ClientOnly fallback={null}>
-            <Suspense fallback={null}>
-              <McLarenScene />
-            </Suspense>
-          </ClientOnly>
         )}
+        {/* Mount the 3D scene during video phase as well so the GLB loads in
+            parallel and is fully visible the instant the video ends. */}
+        <ClientOnly fallback={null}>
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              opacity: phase === "model" ? 1 : 0,
+              pointerEvents: phase === "model" ? "auto" : "none",
+              transition: "opacity 200ms ease",
+            }}
+          >
+            <McLarenScene />
+          </div>
+        </ClientOnly>
       </div>
       <div className="profile-hero-text">
         <p className="profile-hero-eyebrow">
