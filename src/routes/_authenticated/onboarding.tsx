@@ -105,31 +105,16 @@ function OnboardingPage() {
   const cur = STEPS[step];
 
   return (
-    <div className="app-surface-crm min-h-screen relative mx-auto w-full max-w-4xl space-y-6 p-4 md:p-8">
-      {/* Fuji ink hero */}
-      <div className="relative overflow-hidden rounded-sm border border-[rgba(216,227,242,0.10)]">
-        <img
-          src={fujiAsset.url}
-          alt=""
-          aria-hidden
-          className="h-44 w-full object-cover opacity-80 md:h-56"
-          loading="eager"
-          width={1920}
-          height={1080}
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#060d18] via-[#060d18]/30 to-transparent" />
-        <span aria-hidden className="imp-kanji imp-kanji-lg right-6 top-2 !text-[rgba(255,107,61,0.18)]">道</span>
-        <div className="absolute inset-x-0 bottom-0 p-5 md:p-7">
-          <div className="flex items-center gap-3">
-            <span className="imp-mark-sm" aria-hidden />
-            <span className="imp-eyebrow">Nyūmon · 入門 · Onboarding</span>
-          </div>
-          <h1 className="imp-h mt-2 text-3xl text-foreground md:text-4xl">Begin your way.</h1>
-          <p className="mt-1.5 max-w-2xl text-sm text-muted-foreground">
-            千里の道も一歩から — Every thousand-mile road begins with one step. The richer your profile, the sharper every workflow becomes.
-          </p>
-        </div>
+    <div className="app-surface-crm min-h-screen">
+    <div className="relative mx-auto w-full max-w-4xl space-y-6 p-4 md:p-8">
+      <div className="app-card overflow-hidden p-6 md:p-8">
+        <div className="text-[11px] font-medium uppercase tracking-[0.22em] text-muted-foreground">01 · Onboarding</div>
+        <h1 className="imp-h mt-3 text-3xl text-foreground md:text-4xl">Welcome to Imperium.</h1>
+        <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+          Set up your candidate profile. Every workflow — discovery, tailoring, applying — is powered by these facts.
+        </p>
       </div>
+
 
       <div className="flex justify-end">
         <Button
