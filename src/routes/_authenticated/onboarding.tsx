@@ -13,6 +13,7 @@ import {
 import { EMPTY_PROFILE, SAMPLE_PROFILE, type ImperiumProfile } from "@/lib/imperium/profile/types";
 import { computeCompleteness } from "@/lib/imperium/profile/completeness";
 import { getProfile, saveProfile } from "@/lib/imperium/client";
+import fujiAsset from "@/assets/imperium/fuji_ink.jpg.asset.json";
 
 export const Route = createFileRoute("/_authenticated/onboarding")({
   head: () => ({
@@ -104,16 +105,33 @@ function OnboardingPage() {
   const cur = STEPS[step];
 
   return (
-    <div className="mx-auto w-full max-w-3xl space-y-6 p-4 md:p-8">
-      <div className="space-y-3 text-center">
-        <div className="mx-auto flex items-center justify-center gap-3">
-          <span className="imp-mark-sm" aria-hidden />
-          <span className="imp-eyebrow">Onboarding</span>
+    <div className="page-font-auth relative mx-auto w-full max-w-4xl space-y-6 p-4 md:p-8">
+      {/* Fuji ink hero */}
+      <div className="relative overflow-hidden rounded-sm border border-[rgba(216,227,242,0.10)]">
+        <img
+          src={fujiAsset.url}
+          alt=""
+          aria-hidden
+          className="h-44 w-full object-cover opacity-80 md:h-56"
+          loading="eager"
+          width={1920}
+          height={1080}
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#060d18] via-[#060d18]/30 to-transparent" />
+        <span aria-hidden className="imp-kanji imp-kanji-lg right-6 top-2 !text-[rgba(255,107,61,0.18)]">道</span>
+        <div className="absolute inset-x-0 bottom-0 p-5 md:p-7">
+          <div className="flex items-center gap-3">
+            <span className="imp-mark-sm" aria-hidden />
+            <span className="imp-eyebrow">Nyūmon · 入門 · Onboarding</span>
+          </div>
+          <h1 className="imp-h mt-2 text-3xl text-foreground md:text-4xl">Begin your way.</h1>
+          <p className="mt-1.5 max-w-2xl text-sm text-muted-foreground">
+            千里の道も一歩から — Every thousand-mile road begins with one step. The richer your profile, the sharper every workflow becomes.
+          </p>
         </div>
-        <h1 className="imp-display text-2xl text-foreground">Build your Imperium profile</h1>
-        <p className="text-sm text-muted-foreground">
-          The deeper your profile, the smarter every workflow becomes. You can refine everything later in Settings.
-        </p>
+      </div>
+
+      <div className="flex justify-end">
         <Button
           type="button"
           variant="outline"
@@ -134,7 +152,7 @@ function OnboardingPage() {
               key={s.key}
               type="button"
               onClick={() => setStep(i)}
-              className={`whitespace-nowrap ${i === step ? "font-semibold text-foreground" : ""}`}
+              className={`whitespace-nowrap ${i === step ? "imp-h font-semibold text-foreground" : ""}`}
             >
               {i + 1}. {s.label}
             </button>
@@ -144,7 +162,7 @@ function OnboardingPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">{cur.label}</CardTitle>
+          <CardTitle className="imp-h text-base">{cur.label}</CardTitle>
         </CardHeader>
         <CardContent>
           {cur.key === "personal" && <PersonalSection p={draft} set={set} />}
@@ -157,9 +175,9 @@ function OnboardingPage() {
         </CardContent>
       </Card>
 
-      <div className="rounded-md border border-border/60 bg-card/40 p-3 text-xs text-muted-foreground">
-        Profile completeness: <span className="font-semibold text-foreground">{Math.round(completeness.completion * 100)}%</span>
-        {" · "}Readiness: <span className="font-semibold text-foreground">{completeness.readiness}</span>
+      <div className="rounded-sm border border-border/60 bg-card/40 p-3 text-xs text-muted-foreground">
+        Profile completeness: <span className="imp-h font-semibold text-foreground">{Math.round(completeness.completion * 100)}%</span>
+        {" · "}Readiness: <span className="imp-h font-semibold text-foreground">{completeness.readiness}</span>
       </div>
 
       <div className="flex items-center justify-between gap-2">
@@ -168,12 +186,12 @@ function OnboardingPage() {
         </Button>
         {step < STEPS.length - 1 ? (
           <Button disabled={!canNext} onClick={() => setStep((s) => s + 1)}>
-            Continue <ArrowRight className="ml-2 h-4 w-4" />
+            Continue · 次 <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
         ) : (
           <Button onClick={finish} disabled={saving} className="bg-gradient-primary text-primary-foreground shadow-glow hover:opacity-95">
             {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
-            Enter Imperium
+            Enter Imperium · 抜刀
           </Button>
         )}
       </div>
