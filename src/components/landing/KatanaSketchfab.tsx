@@ -124,11 +124,17 @@ export default function KatanaSketchfab({ progressRef }: Props) {
       <iframe
         ref={iframeRef}
         title="REAL Katana"
-        src={`https://sketchfab.com/models/${MODEL_UID}/embed?autostart=1&transparent=1&ui_infos=0&ui_controls=0&ui_stop=0&ui_watermark=0&ui_inspector=0&ui_settings=0&ui_vr=0&ui_fullscreen=0&ui_annotations=0&ui_help=0&ui_hint=0`}
+        src={`https://sketchfab.com/models/${MODEL_UID}/embed?autostart=1&transparent=1&ui_infos=0&ui_controls=0&ui_stop=0&ui_watermark=0&ui_inspector=0&ui_settings=0&ui_vr=0&ui_fullscreen=0&ui_annotations=0&ui_help=0&ui_hint=0&dnt=1`}
         allow="autoplay; fullscreen; xr-spatial-tracking"
         allowFullScreen
-        className="absolute inset-0 h-full w-full border-0"
-        style={{ background: "transparent" }}
+        className="absolute border-0"
+        style={{
+          background: "transparent",
+          left: "-15%",
+          top: "-10%",
+          width: "130%",
+          height: "120%",
+        }}
       />
     </div>
   );
