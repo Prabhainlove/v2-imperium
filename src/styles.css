@@ -649,122 +649,245 @@
 
 
 /* =====================================================================
- * Imperium — Japanese culture layer (auth + app pages)
+ * Imperium — App design system (Digcy / Energy / Discover / F1 / Invoice / DevStudios)
+ * Replaces the previous Japanese-culture layer.
  * ===================================================================== */
 
-.page-font-auth      { --imp-head: "Shippori Mincho", "Noto Serif JP", serif; }
-.page-font-dashboard { --imp-head: "Noto Serif JP", "Shippori Mincho", serif; }
-.page-font-jobs      { --imp-head: "Zen Old Mincho", "Noto Serif JP", serif; }
-.page-font-resume    { --imp-head: "Klee One", "Noto Serif JP", serif; }
-.page-font-autopilot { --imp-head: "Yuji Syuku", "Noto Serif JP", serif; }
-.page-font-settings  { --imp-head: "Sawarabi Mincho", "Noto Serif JP", serif; }
+/* Legacy class no-ops — keep selectors so existing JSX renders cleanly */
+.page-font-auth,
+.page-font-dashboard,
+.page-font-jobs,
+.page-font-resume,
+.page-font-autopilot,
+.page-font-settings { font-family: "Inter", ui-sans-serif, system-ui, sans-serif; }
 
 .imp-h {
-  font-family: var(--imp-head, "Noto Serif JP", serif);
+  font-family: "Inter Tight", "Inter", ui-sans-serif, system-ui, sans-serif;
   font-weight: 700;
-  letter-spacing: -0.005em;
+  letter-spacing: -0.02em;
 }
 
-.imp-panel {
-  position: relative;
-  background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.015));
-  border: 1px solid rgba(216, 227, 242, 0.10);
-  border-radius: 4px;
-  backdrop-filter: blur(8px);
-  box-shadow: 0 1px 0 rgba(255,255,255,0.04) inset, 0 12px 28px -16px rgba(0,0,0,0.55);
-}
-.imp-panel:hover { border-color: rgba(201, 168, 76, 0.30); }
+.imp-kanji,
+.imp-kanji-xl,
+.imp-kanji-lg,
+.imp-kanji-md,
+.imp-brush-divider,
+.imp-seal,
+.imp-jp-label,
+.imp-seigaiha,
+.imp-enso { display: none !important; }
 
-.page-font-auth [data-slot="card"],
-.page-font-dashboard [data-slot="card"],
-.page-font-jobs [data-slot="card"],
-.page-font-resume [data-slot="card"],
-.page-font-autopilot [data-slot="card"],
-.page-font-settings [data-slot="card"] {
-  background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(11,23,41,0.55)) !important;
-  border-color: rgba(216, 227, 242, 0.10) !important;
-  border-radius: 4px !important;
-  box-shadow: 0 12px 28px -16px rgba(0,0,0,0.6);
-}
-
-.imp-hairline {
-  background: linear-gradient(90deg, transparent, rgba(201,168,76,0.65), transparent);
-  height: 1px;
-}
-
-.imp-kanji {
-  position: absolute;
-  font-family: "Noto Serif JP", "Shippori Mincho", serif;
-  font-weight: 800;
-  color: rgba(255, 107, 61, 0.10);
-  text-shadow: 0 0 30px rgba(255,107,61,0.15);
-  pointer-events: none;
-  user-select: none;
-  line-height: 0.85;
-}
-.imp-kanji-xl { font-size: clamp(8rem, 22vw, 18rem); }
-.imp-kanji-lg { font-size: clamp(5rem, 12vw, 9rem); }
-.imp-kanji-md { font-size: clamp(3rem, 7vw, 5rem); }
-
-.imp-seal {
-  display: inline-flex; align-items: center; justify-content: center;
-  width: 56px; height: 56px;
-  border: 2px solid #c03020;
-  background: rgba(192, 48, 32, 0.12);
-  color: #ff5d4a;
-  font-family: "Yuji Syuku", "Noto Serif JP", serif;
-  font-weight: 800;
-  font-size: 22px;
-  transform: rotate(-6deg);
-  box-shadow: 0 0 0 1px rgba(192, 48, 32, 0.25) inset;
-}
-
-.imp-brush-divider {
-  height: 14px;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 14' preserveAspectRatio='none'><path d='M2 7 C 60 1, 140 13, 220 6 S 360 12, 440 5 S 560 11, 598 7' stroke='rgba(216,227,242,0.35)' stroke-width='1.2' fill='none' stroke-linecap='round'/><path d='M40 9 C 120 4, 200 12, 300 7 S 480 10, 580 6' stroke='rgba(255,107,61,0.55)' stroke-width='0.8' fill='none' stroke-linecap='round'/></svg>");
-  background-repeat: no-repeat;
-  background-size: 100% 100%;
-  opacity: 0.85;
-}
-
-.imp-seigaiha {
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='80' height='40' viewBox='0 0 80 40'><g fill='none' stroke='rgba(216,227,242,0.18)' stroke-width='1'><circle cx='40' cy='40' r='32'/><circle cx='40' cy='40' r='22'/><circle cx='40' cy='40' r='12'/><circle cx='0' cy='40' r='32'/><circle cx='80' cy='40' r='32'/></g></svg>");
-  background-size: 80px 40px;
-}
-
-.imp-enso {
-  width: 100%; aspect-ratio: 1;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><path d='M50 8 a42 42 0 1 1 -29 12' stroke='rgba(216,227,242,0.55)' stroke-width='3' fill='none' stroke-linecap='round'/></svg>");
-  background-repeat: no-repeat; background-position: center; background-size: contain;
-}
-
-.imp-jp-label {
-  font-family: "Noto Serif JP", "Shippori Mincho", serif;
-  font-size: 9px;
-  letter-spacing: 0.2em;
-  color: rgba(216,227,242,0.45);
-  display: block;
-  margin-top: 1px;
-}
-
+/* Override the legacy dark red sidebar rail */
 .dark [data-sidebar="menu-button"][data-active="true"] {
-  position: relative;
-  background: linear-gradient(90deg, rgba(255,107,61,0.18), rgba(255,107,61,0.04)) !important;
-  color: #fff !important;
+  background: color-mix(in oklab, var(--primary) 14%, transparent) !important;
+  color: var(--foreground) !important;
 }
 .dark [data-sidebar="menu-button"][data-active="true"]::before {
   content: ""; position: absolute; left: 0; top: 6px; bottom: 6px;
-  width: 2px; background: #ff5d3d;
-  box-shadow: 0 0 12px rgba(255,107,61,0.6);
+  width: 2px; background: var(--primary);
+  box-shadow: 0 0 12px color-mix(in oklab, var(--primary) 60%, transparent);
 }
 
-.page-font-auth .bg-gradient-primary,
-.page-font-dashboard .bg-gradient-primary,
-.page-font-jobs .bg-gradient-primary,
-.page-font-resume .bg-gradient-primary,
-.page-font-autopilot .bg-gradient-primary,
-.page-font-settings .bg-gradient-primary {
-  background-image: linear-gradient(135deg, #ff6b3d 0%, #c03020 100%) !important;
-  color: #fff !important;
-  box-shadow: 0 8px 24px -8px rgba(255,107,61,0.45) !important;
+/* Reset legacy panel — make it just a clean card */
+.imp-panel {
+  position: relative;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.04);
 }
+
+/* ---------- Shared primitives ---------- */
+.app-shell-light {
+  --app-bg: #f4f3ef;
+  --app-panel: #ffffff;
+  --app-ink: #15171b;
+  --app-muted: #6b7280;
+  --app-line: #ececea;
+  --app-accent: #3D5AFE;
+  background: var(--app-bg);
+  color: var(--app-ink);
+  min-height: 100%;
+}
+
+.app-card {
+  background: #fff;
+  border: 1px solid #ececea;
+  border-radius: 18px;
+  box-shadow: 0 1px 2px rgba(15,17,23,0.04), 0 8px 30px -20px rgba(15,17,23,0.10);
+}
+.app-card--soft { background: #f9f8f5; border-color: #ecebe6; }
+.app-kpi { background: #fff; border: 1px solid #ececea; border-radius: 14px; padding: 18px; }
+.app-kpi__label { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: #8a8f99; }
+.app-kpi__value { font-family: "Inter Tight", Inter, sans-serif; font-weight: 700; font-size: 28px; letter-spacing: -.02em; }
+
+.pill-nav {
+  display: inline-flex; gap: 6px; padding: 4px;
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: 999px;
+  background: rgba(255,255,255,0.03);
+}
+.pill-nav > * {
+  padding: 8px 16px; border-radius: 999px;
+  font-size: 13px; color: rgba(255,255,255,0.7);
+  border: 1px solid transparent;
+}
+.pill-nav > .active { color:#fff; border-color: rgba(255,255,255,0.25); background: rgba(255,255,255,0.04); }
+
+.meta-ticks { font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 11px; letter-spacing: .2em; color: rgba(255,255,255,0.45); text-transform: uppercase; }
+
+/* ---------- Accent surfaces (per page family) ---------- */
+
+/* DEV STUDIOS — auth/onboarding: near-black + coral */
+.app-surface-studio {
+  --acc: #FF5A3A;
+  background: #0A0A0A;
+  color: #ECECEC;
+  min-height: 100vh;
+  position: relative;
+}
+.app-surface-studio .hairline { border-color: rgba(255,255,255,0.08) !important; }
+.studio-pill {
+  display:inline-flex; align-items:center; gap:8px;
+  padding: 10px 22px; border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.15);
+  color: #fff; font-size: 14px; letter-spacing:.01em;
+  background: rgba(255,255,255,0.02);
+}
+.studio-pill.is-active { border-color: rgba(255,255,255,0.6); background: rgba(255,255,255,0.04); }
+.studio-display { font-family: "Inter Tight", Inter, sans-serif; font-weight: 600; letter-spacing: -0.04em; line-height: 0.95; }
+
+/* CRM — dashboard/settings/onboarding/search (light Digcy) */
+.app-surface-crm {
+  background:
+    radial-gradient(ellipse at 100% 0%, rgba(61,90,254,0.06), transparent 50%),
+    #F5F4F1;
+  color: #15171b;
+  min-height: 100%;
+}
+.app-surface-crm [data-slot="card"] {
+  background: #fff !important;
+  border: 1px solid #ececea !important;
+  border-radius: 18px !important;
+  box-shadow: 0 1px 2px rgba(15,17,23,0.04), 0 8px 28px -22px rgba(15,17,23,0.10) !important;
+  color: #15171b !important;
+}
+.app-surface-crm .text-muted-foreground { color: #6b7280 !important; }
+.app-surface-crm .bg-gradient-primary {
+  background-image: linear-gradient(135deg, #3D5AFE 0%, #5B7BFF 100%) !important;
+  color: #fff !important;
+  box-shadow: 0 8px 22px -10px rgba(61,90,254,0.45) !important;
+}
+
+/* ENERGY GLASS — jobs/autopilot/activity (dark glass + orange→amber) */
+.app-surface-energy {
+  --acc1: #FF6A2B; --acc2: #E8C547; --acc3: #34D399;
+  background:
+    radial-gradient(ellipse at 0% 0%, rgba(255,106,43,0.08), transparent 45%),
+    radial-gradient(ellipse at 100% 100%, rgba(232,197,71,0.06), transparent 45%),
+    #0B0B0E;
+  color: #EDEEF1; min-height: 100%;
+}
+.app-surface-energy [data-slot="card"] {
+  background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.015)) !important;
+  border: 1px solid rgba(255,255,255,0.07) !important;
+  border-radius: 16px !important;
+  color: #EDEEF1 !important;
+  backdrop-filter: blur(8px);
+}
+.app-surface-energy .text-muted-foreground { color: rgba(237,238,241,0.55) !important; }
+.app-surface-energy .bg-gradient-primary {
+  background-image: linear-gradient(135deg, #FF6A2B 0%, #E8C547 100%) !important;
+  color: #0B0B0E !important;
+}
+
+/* DISCOVER — applications/search (navy + yellow) */
+.app-surface-discover {
+  --acc: #F4C328;
+  background:
+    radial-gradient(ellipse at 100% 0%, rgba(244,195,40,0.10), transparent 50%),
+    #1E2230;
+  color: #EAEBF0; min-height: 100%;
+}
+.app-surface-discover [data-slot="card"] {
+  background: #262B3B !important;
+  border: 1px solid rgba(255,255,255,0.06) !important;
+  border-radius: 22px !important;
+  color: #EAEBF0 !important;
+}
+.app-surface-discover .text-muted-foreground { color: rgba(234,235,240,0.55) !important; }
+.app-surface-discover .bg-gradient-primary {
+  background-image: linear-gradient(135deg, #F4C328 0%, #FFD55A 100%) !important;
+  color: #1E2230 !important;
+  box-shadow: 0 10px 30px -10px rgba(244,195,40,0.5) !important;
+}
+
+/* FORMULA 1 — profile/interviews/skills (dark + red) */
+.app-surface-f1 {
+  --acc: #E10600;
+  background:
+    radial-gradient(ellipse at 0% 0%, rgba(225,6,0,0.10), transparent 45%),
+    #0E0E10;
+  color: #F2F3F5; min-height: 100%;
+}
+.app-surface-f1 [data-slot="card"] {
+  background: #16171A !important;
+  border: 1px solid rgba(255,255,255,0.06) !important;
+  border-radius: 18px !important;
+  color: #F2F3F5 !important;
+}
+.app-surface-f1 .text-muted-foreground { color: rgba(242,243,245,0.55) !important; }
+.app-surface-f1 .bg-gradient-primary {
+  background-image: linear-gradient(135deg, #E10600 0%, #FF3A1F 100%) !important;
+  color: #fff !important;
+}
+.driver-hero {
+  position: relative; overflow: hidden;
+  background: linear-gradient(135deg, #E10600 0%, #8B0300 100%);
+  border-radius: 22px; padding: 28px; color: #fff;
+}
+.driver-hero__num {
+  position:absolute; right: -10px; top: -20px;
+  font-family: "Inter Tight", Inter, sans-serif; font-weight: 800;
+  font-size: clamp(140px, 22vw, 240px); line-height: .8;
+  color: rgba(255,255,255,0.12); letter-spacing: -.05em;
+}
+.f1-strip {
+  display:flex; align-items:center; gap:10px;
+  background: #E10600; color:#fff; padding: 12px 18px;
+  border-radius: 14px; font-weight: 600;
+}
+
+/* INVOICE — resume/review/cover-letters (black + lime) */
+.app-surface-invoice {
+  --acc: #D8F26B;
+  background: radial-gradient(ellipse at 50% 0%, rgba(216,242,107,0.06), transparent 50%), #0A0A0A;
+  color: #ECECEC; min-height: 100%;
+}
+.app-surface-invoice [data-slot="card"] {
+  background: #121212 !important;
+  border: 1px solid rgba(255,255,255,0.06) !important;
+  border-radius: 22px !important;
+  color: #ECECEC !important;
+}
+.app-surface-invoice .text-muted-foreground { color: rgba(236,236,236,0.55) !important; }
+.app-surface-invoice .bg-gradient-primary {
+  background-image: linear-gradient(135deg, #D8F26B 0%, #B7E03C 100%) !important;
+  color: #0A0A0A !important;
+}
+.invoice-frame {
+  background: #0E0E0E;
+  border: 1px solid rgba(216,242,107,0.20);
+  border-radius: 28px;
+  padding: 28px;
+  box-shadow: 0 30px 80px -30px rgba(216,242,107,0.18), inset 0 1px 0 rgba(255,255,255,0.04);
+  color: #ECECEC;
+}
+.invoice-rule { height: 1px; background: linear-gradient(90deg, transparent, rgba(216,242,107,0.45), transparent); }
+
+/* Tiny gauge / bar primitives (inline svg friendly) */
+.gauge-track { stroke: rgba(255,255,255,0.08); }
+.gauge-fill  { stroke: var(--acc, #FF6A2B); stroke-linecap: round; }
+
+/* Apply Inter as default UI font */
+html, body { font-family: "Inter", ui-sans-serif, system-ui, sans-serif; }

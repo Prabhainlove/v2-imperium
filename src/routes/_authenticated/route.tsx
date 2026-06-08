@@ -3,8 +3,8 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/imperium/app-sidebar";
 import { HealthBadge } from "@/components/imperium/health-badge";
 import { ThemeToggle } from "@/components/imperium/theme-toggle";
-import { Spotlight } from "@/components/ui/spotlight";
-import { SpotlightCursor } from "@/components/ui/spotlight-cursor";
+import { Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/_authenticated")({
@@ -32,30 +32,25 @@ export const Route = createFileRoute("/_authenticated")({
 function AuthenticatedLayout() {
   return (
     <SidebarProvider>
-      <div className="flex min-h-screen w-full">
+      <div className="flex min-h-screen w-full bg-background text-foreground">
         <AppSidebar />
         <div className="flex min-w-0 flex-1 flex-col">
-          <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-[rgba(216,227,242,0.08)] bg-[rgba(11,23,41,0.75)] px-4 backdrop-blur-md">
+          <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-border bg-background/80 px-4 backdrop-blur-md">
             <SidebarTrigger />
-            <span className="imp-mark-sm" aria-hidden />
-            <div className="hidden md:flex flex-col leading-none">
-              <span className="imp-eyebrow">Imperium · 帝国</span>
-              <span className="imp-h text-[12px] text-foreground/90">AI Job Agent Console</span>
+            <div className="relative ml-2 hidden w-72 md:block">
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Search jobs, applications, candidates…"
+                className="h-9 rounded-full bg-muted/40 pl-8 text-sm"
+              />
             </div>
-            <span aria-hidden className="ml-3 hidden font-[Noto_Serif_JP] text-[11px] tracking-[0.4em] text-[rgba(216,227,242,0.35)] md:inline">
-              一期一会
-            </span>
             <div className="ml-auto flex items-center gap-2">
               <HealthBadge />
               <ThemeToggle />
             </div>
           </header>
-          <main className="imp-shell-main relative flex-1 overflow-hidden">
-            <Spotlight className="-top-40 left-0 md:-top-20 md:left-60" fill="#ff6b3d" />
-            <SpotlightCursor className="z-0" size={300} />
-            <div className="relative z-10">
-              <Outlet />
-            </div>
+          <main className="relative flex-1">
+            <Outlet />
           </main>
         </div>
       </div>
