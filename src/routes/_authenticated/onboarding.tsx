@@ -105,7 +105,7 @@ function OnboardingPage() {
   const cur = STEPS[step];
 
   return (
-    <div className="page-font-auth relative mx-auto w-full max-w-4xl space-y-6 p-4 md:p-8">
+    <div className="app-surface-crm min-h-screen relative mx-auto w-full max-w-4xl space-y-6 p-4 md:p-8">
       {/* Fuji ink hero */}
       <div className="relative overflow-hidden rounded-sm border border-[rgba(216,227,242,0.10)]">
         <img

@@ -123,7 +123,7 @@ function DashboardPage() {
     dashboard.isError && jobs.isError && apps.isError;
 
   return (
-    <div className="page-font-dashboard mx-auto w-full max-w-7xl space-y-6 p-4 md:p-6">
+    <div className="app-surface-crm min-h-screen mx-auto w-full max-w-7xl space-y-6 p-4 md:p-6">
       <PageHeader
         title="Mission Control"
         kanji="司"

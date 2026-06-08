@@ -75,7 +75,7 @@ function SettingsPage() {
   const gh = draft.github_intel as { username?: string; summary?: string; top_languages?: { name: string }[]; error?: string };
 
   return (
-    <div className="page-font-settings mx-auto w-full max-w-6xl space-y-6 p-4 md:p-6">
+    <div className="app-surface-crm min-h-screen mx-auto w-full max-w-6xl space-y-6 p-4 md:p-6">
       <PageHeader
         title="Profile & Settings"
         kanji="設"
