@@ -18,6 +18,8 @@ import {
   aiAnalyzeJd,
 } from "@frontend/resume/ai/resume-ai.functions";
 import "@frontend/resume/export/print.css";
+import { useApplicationsStore } from "@frontend/applications/state/useApplicationsStore";
+import { useNavigate } from "@tanstack/react-router";
 
 export function InsightsPane() {
   const resume = useResumeStore((s) => s.resume);
@@ -149,6 +151,12 @@ export function InsightsPane() {
             })
           }
         >Save version</button>
+        <ApplyButton
+          atsScore={ats.atsScore}
+          matchScore={jdMatch.score}
+          activeTemplateId={resume.meta.templateId}
+          activeTemplateLabel={activeTemplate?.label ?? resume.meta.templateId}
+        />
         {warnings.length > 0 && (
           <ul className="resume-insights-list resume-warnings">
             {warnings.map((w, i) => <li key={i}>⚠ {w}</li>)}
