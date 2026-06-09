@@ -97,54 +97,18 @@ export const discoverJobs = createServerFn({ method: "POST" })
 const JobIdInput = z.object({ jobId: z.string().min(1) });
 
 export const getDiscoveredJob = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
   .inputValidator((i: unknown) => JobIdInput.parse(i))
-  .handler(async ({ data, context }): Promise<NormalizedJob | null> => {
-    const { supabase, userId } = context;
-    const row = await readCachedJob(supabase, userId, data.jobId);
-    if (!row) return null;
-
-    const profile = await loadProfile(supabase, userId);
-    const candidate = buildCandidateContext(profile, {});
-
-    const raw = {
-      source: row.source as string,
-      external_id: row.external_id as string,
-      url: (row.url as string) ?? "",
-      title: (row.title as string) ?? "",
-      company: (row.company as string) ?? "",
-      location: (row.location as string) ?? "",
-      remote: Boolean(row.remote),
-      description: (row.description as string) ?? "",
-      tech_stack: (row.tech_stack as string[] | null) ?? [],
-      salary_min: row.salary_min as number | null,
-      salary_max: row.salary_max as number | null,
-      salary_currency: (row.salary_currency as string) ?? "USD",
-      posted_at: row.posted_at as string | null,
-    };
-    const job = normalizeJob(raw, candidate);
-    // CONSISTENCY: the score shown to the user was computed once during
-    // discovery with their full search context. Re-ranking here would use
-    // an empty filter context (no skills/experience) and produce a different
-    // number — the source of the "card 65% vs panel 11%" bug. Overlay the
-    // stored value so every surface displays the same percentage.
-    const cachedScore = typeof row.match_score === "number" ? Number(row.match_score) : null;
-    const matchScore = cachedScore != null ? cachedScore : job.matchScore;
-    return { ...job, id: row.id as string, matchScore };
+  .handler(async (): Promise<NormalizedJob | null> => {
+    // Mock-auth build: no server-side cache. The UI falls back to the
+    // in-memory job from the discovery results, so returning null is safe.
+    return null;
   });
 
 
 export const selectJobForResume = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
   .inputValidator((i: unknown) => JobIdInput.parse(i))
-  .handler(async ({ data, context }) => {
-    const { supabase, userId } = context;
-    let selectionId: string | undefined;
-    try {
-      const sel = await selectJob(supabase, userId, data.jobId);
-      selectionId = sel?.id;
-    } catch { /* selected_jobs table may not exist yet — still proceed to Resume Studio */ }
-    return { ok: true, selectionId, jobId: data.jobId, redirect: `/resume?jobId=${data.jobId}` };
+  .handler(async ({ data }) => {
+    return { ok: true, selectionId: undefined, jobId: data.jobId, redirect: `/resume?jobId=${data.jobId}` };
   });
 
 export const getProfileMetrics = createServerFn({ method: "GET" })
