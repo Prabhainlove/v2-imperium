@@ -9,12 +9,8 @@
  */
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { requireSupabaseAuth } from "@backend/database/AuthMiddleware";
 import { retrieveJobs } from "@backend/jobs/JobRetrievalService.server";
-import { normalizeMany, normalizeJob, selectTop5, type NormalizedJob } from "@backend/jobs/JobNormalizationService.server";
-import { cacheDiscovered, clearDiscoveredCache, readCachedJob, sweepStaleCache } from "@backend/jobs/JobCacheService.server";
-import { selectJob } from "@backend/jobs/JobSelectionService.server";
-import { logSearch } from "@backend/jobs/SearchHistoryService.server";
+import { normalizeMany, selectTop5, type NormalizedJob } from "@backend/jobs/JobNormalizationService.server";
 import type { CandidateContext, ExperienceBucket } from "@backend/jobs/JobRankingService.server";
 
 const ExperienceBucketEnum = z.enum(["fresher", "0-2", "3-5", "5+"]);
