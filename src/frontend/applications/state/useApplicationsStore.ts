@@ -189,7 +189,7 @@ export const useApplicationsStore = create<ApplicationsState>()((set, get) => ({
     // entirely in Phase 6 when this store is replaced by Supabase reads.
     if (get().applications.length > 0) return;
     const samples: CreateFromResumeStudioPayload[] = [
-      { job: { title: "Frontend Developer", company: "Imperium Labs", location: "Hyderabad", salary: "₹12-18L", source: "linkedin", sourceUrl: "https://linkedin.com", description: "React TypeScript Node.js" }, resume: { resumeId: "r1", resumeVersion: "V4", templateUsed: "professional" }, atsScore: 92, matperformScore: 88 } as unknown as CreateFromResumeStudioPayload,
+      { job: { title: "Frontend Developer", company: "Imperium Labs", location: "Hyderabad", salary: "₹12-18L", source: "linkedin", sourceUrl: "https://linkedin.com", description: "React TypeScript Node.js" }, resume: { resumeId: "r1", resumeVersion: "V4", templateUsed: "professional" }, atsScore: 92, matchScore: 88 },
       { job: { title: "Software Engineer", company: "Imperium Cloud", location: "Remote", salary: "₹15-22L", source: "wellfound", description: "React TypeScript design systems" }, resume: { resumeId: "r1", resumeVersion: "V4", templateUsed: "modern" }, atsScore: 88, matchScore: 81 },
       { job: { title: "Product Engineer", company: "Imperium Studio", location: "Bangalore", source: "naukri", description: "Node.js React PostgreSQL" }, resume: { resumeId: "r1", resumeVersion: "V3", templateUsed: "professional" }, atsScore: 78, matchScore: 72 },
       { job: { title: "Backend Engineer", company: "Imperium Systems", location: "Bangalore", source: "foundit", description: "Java Spring Microservices" }, resume: { resumeId: "r1", resumeVersion: "V2", templateUsed: "classic-ats" }, atsScore: 71, matchScore: 60 },
