@@ -2,6 +2,13 @@
  * JobNormalizationService — converts a RawJob from any source into a single
  * NormalizedJob DTO the UI can render. Adds company branding (logo) and
  * ranking output. No persistence here.
+ *
+ * Top-5 rules (Job Discovery Recovery):
+ *   - !titleMismatch
+ *   - matchScore ≥ 0.5
+ *   - freshnessDays ≤ 30
+ *   - locationTier ∈ {same_city, same_state, remote, same_country}
+ *   - never pad: if only N qualify, return N (up to 5).
  */
 import type { RawJob } from "@backend/jobs/JobSources.server";
 import { rankJob, type CandidateContext, type IntelligenceLabel, type MatchBreakdown, type ExperienceBucket, type LocationTier } from "@backend/jobs/JobRankingService.server";
@@ -33,7 +40,7 @@ export interface NormalizedJob {
   breakdown: MatchBreakdown;
   matchedSkills: string[];
   missingSkills: string[];
-  experienceBucket: ExperienceBucket;
+  experienceBucket: ExperienceBucket | null;
   locationTier: LocationTier;
   freshnessDays: number;
   isNewToday: boolean;
@@ -88,8 +95,15 @@ export function normalizeMany(raws: RawJob[], ctx: CandidateContext): Normalized
   });
 }
 
-/** Filter that selects best Top-5 candidates: no title mismatches, min score gate. */
+/** Top-5 selector (strict): see file header for rules. */
 export function selectTop5(jobs: NormalizedJob[]): NormalizedJob[] {
-  return jobs.filter((j) => !j.titleMismatch && j.matchScore >= 0.45).slice(0, 5);
+  const allowedTiers: LocationTier[] = ["same_city", "same_state", "remote", "same_country"];
+  return jobs
+    .filter((j) =>
+      !j.titleMismatch &&
+      j.matchScore >= 0.5 &&
+      j.freshnessDays <= 30 &&
+      allowedTiers.includes(j.locationTier),
+    )
+    .slice(0, 5);
 }
-

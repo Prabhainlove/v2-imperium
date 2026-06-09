@@ -9,7 +9,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { SOURCES } from "@backend/jobs/JobSources.server";
 import { normalizeMany, selectTop5 } from "@backend/jobs/JobNormalizationService.server";
-import { classifyExperience, type CandidateContext, type ExperienceBucket } from "@backend/jobs/JobRankingService.server";
+import { classifyExperience, familyOf, type CandidateContext, type ExperienceBucket } from "@backend/jobs/JobRankingService.server";
 
 export const Route = createFileRoute("/api/public/debug/jobs-trace")({
   server: {
@@ -36,25 +36,21 @@ export const Route = createFileRoute("/api/public/debug/jobs-trace")({
           desiredSalaryMin: body.salaryMin ?? null,
         };
 
-        // 1. Per-source fetch (kept = after each adapter's internal matchesQuery).
+        // 1. Per-source fetch with timing + error capture
         const perSource = await Promise.all(
           SOURCES.map(async (src) => {
-            if (!src.isAvailable()) return { id: src.id, label: src.label, status: "skipped", kept: 0 };
+            if (!src.isAvailable()) return { id: src.id, label: src.label, status: "skipped", kept: 0, ms: 0 };
+            const t0 = Date.now();
             try {
               const jobs = await src.fetch(role, location);
-              return { id: src.id, label: src.label, status: "ok", kept: jobs.length, jobs };
+              return { id: src.id, label: src.label, status: "ok", kept: jobs.length, ms: Date.now() - t0, jobs };
             } catch (err) {
-              return { id: src.id, label: src.label, status: "failed", kept: 0, error: (err as Error).message };
+              return { id: src.id, label: src.label, status: "failed", kept: 0, ms: Date.now() - t0, error: (err as Error).message };
             }
           }),
         );
 
-        // Known-missing sources (not implemented):
-        const missing = ["foundit", "wellfound", "yc"].map((id) => ({
-          id, label: id, status: "not_implemented", kept: 0,
-        }));
-
-        // 2. Dedup & normalize
+        // 2. Dedup
         const allRaws = perSource.flatMap((s: any) => s.jobs ?? []);
         const seen = new Set<string>();
         const unique = allRaws.filter((j: any) => {
@@ -64,64 +60,89 @@ export const Route = createFileRoute("/api/public/debug/jobs-trace")({
           return true;
         });
 
+        const queryFamily = familyOf(role);
+
         const sampleRaw = unique.slice(0, 20).map((j: any) => ({
           source: j.source,
           title: j.title,
           location: j.location,
-          experienceBucket: classifyExperience(j.title, j.description),
+          remote: j.remote,
+          experienceBucket: classifyExperience(j.title, j.description, j.experience_text ?? null),
+          experienceText: j.experience_text ?? null,
+          jobFamily: familyOf(j.title),
         }));
 
         let normalized = normalizeMany(unique as any, candidate);
         const afterNormalize = normalized.length;
 
-        // 3. Experience filter
-        const beforeExp = normalized.length;
+        // Track removal reasons
+        const removals: Record<string, number> = {
+          experience_mismatch: 0,
+          salary: 0,
+          mode: 0,
+        };
+
+        // Experience filter — keep unknown (null) buckets
         if (candidate.experienceBucket) {
-          normalized = normalized.filter((j) => j.experienceBucket === candidate.experienceBucket);
+          const before = normalized.length;
+          normalized = normalized.filter(
+            (j) => j.experienceBucket == null || j.experienceBucket === candidate.experienceBucket,
+          );
+          removals.experience_mismatch = before - normalized.length;
         }
         const afterExperienceFilter = normalized.length;
 
-        // 4. Salary filter
+        // Salary
         if (candidate.desiredSalaryMin && candidate.desiredSalaryMin > 0) {
+          const before = normalized.length;
           normalized = normalized.filter((j) => {
             const cap = j.salaryMax ?? j.salaryMin;
             return cap == null || cap >= candidate.desiredSalaryMin!;
           });
+          removals.salary = before - normalized.length;
         }
         const afterSalaryFilter = normalized.length;
 
-        // 5. Work mode
+        // Mode
         const mode = (body.workMode || "").toLowerCase();
-        if (mode === "remote") normalized = normalized.filter((j) => j.remote);
-        else if (mode === "onsite") normalized = normalized.filter((j) => !j.remote);
+        if (mode === "remote") {
+          const before = normalized.length;
+          normalized = normalized.filter((j) => j.remote);
+          removals.mode = before - normalized.length;
+        } else if (mode === "onsite") {
+          const before = normalized.length;
+          normalized = normalized.filter((j) => !j.remote);
+          removals.mode = before - normalized.length;
+        }
         const afterModeFilter = normalized.length;
 
-        // 6. Title family gate / score
         const afterTitleFamilyGate = normalized.filter((j) => !j.titleMismatch).length;
-        const afterScoreThreshold = normalized.filter((j) => j.matchScore >= 0.45 && !j.titleMismatch).length;
+        const afterScoreThreshold = normalized.filter((j) => j.matchScore >= 0.5 && !j.titleMismatch).length;
+        const top5 = selectTop5(normalized);
 
         const sampleFiltered = normalized.slice(0, 20).map((j) => ({
           title: j.title,
+          company: j.company,
           location: j.location,
           source: j.source,
           score: Number(j.matchScore.toFixed(3)),
           experienceBucket: j.experienceBucket,
           locationTier: j.locationTier,
+          freshnessDays: j.freshnessDays,
           titleMismatch: j.titleMismatch,
           breakdown: j.breakdown,
-          survived: j.matchScore >= 0.45 && !j.titleMismatch,
-          why: `title=${j.breakdown.title} skills=${j.breakdown.skills} exp=${j.breakdown.experience} loc=${j.breakdown.location}(${j.locationTier}) fresh=${j.breakdown.freshness} sal=${j.breakdown.salary}`,
+          survivesTop5: top5.some((t) => t.id === j.id),
+          why: `title=${j.breakdown.title} skills=${j.breakdown.skills} exp=${j.breakdown.experience} loc=${j.breakdown.location}(${j.locationTier}) fresh=${j.breakdown.freshness}(${j.freshnessDays}d) sal=${j.breakdown.salary}${j.titleMismatch ? " [TITLE_MISMATCH]" : ""}`,
         }));
 
-        const top5 = selectTop5(normalized);
-
         return Response.json({
-          query: { role, location, bucket, skills },
-          perSource: [...perSource.map((s: any) => ({ id: s.id, label: s.label, status: s.status, kept: s.kept, error: s.error })), ...missing],
+          query: { role, location, bucket, skills, queryFamily },
+          perSource: perSource.map((s: any) => ({
+            id: s.id, label: s.label, status: s.status, kept: s.kept, ms: s.ms, error: s.error,
+          })),
           funnel: {
             afterRetrieval: unique.length,
             afterNormalize,
-            beforeExperienceFilter: beforeExp,
             afterExperienceFilter,
             afterSalaryFilter,
             afterModeFilter,
@@ -129,8 +150,10 @@ export const Route = createFileRoute("/api/public/debug/jobs-trace")({
             afterScoreThreshold,
             top5: top5.length,
           },
+          removalReasons: removals,
           sampleRaw,
           sampleFiltered,
+          top5: top5.map((t) => ({ title: t.title, company: t.company, location: t.location, score: t.matchScore, source: t.source })),
         });
       },
     },
