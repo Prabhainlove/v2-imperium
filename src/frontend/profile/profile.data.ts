@@ -53,11 +53,14 @@ function score(profile: ImperiumProfile) {
 export function useProfilePageData(): ProfilePageData {
   const session = useSession();
   return useMemo<ProfilePageData>(() => {
-    const profile: ImperiumProfile = {
-      ...PROFILE,
-      name: session?.fullName || PROFILE.name,
-      email: session?.email || PROFILE.email,
-    };
+    const isDemo = session?.email === "fresher.demo@imperium.app";
+    const profile: ImperiumProfile = isDemo
+      ? PROFILE
+      : {
+          ...PROFILE,
+          name: session?.fullName || PROFILE.name,
+          email: session?.email || PROFILE.email,
+        };
     const scores = score(profile);
     const extraction: ExtractionFlag[] = [
       { label: "Resume Uploaded", ok: true },
