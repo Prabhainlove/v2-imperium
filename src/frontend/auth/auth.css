@@ -200,3 +200,48 @@
   .auth-guides::after { display:none; }
   .auth-cross { display:none; }
 }
+
+.auth-hint {
+  margin-top: 8px;
+  padding: 10px 14px;
+  border: 1px dashed rgba(241,236,230,0.25);
+  border-radius: 999px;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  color: rgba(241,236,230,0.75);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.auth-hint strong { color: rgba(241,236,230,0.95); font-weight: 600; }
+.auth-hint-fill {
+  background: transparent;
+  border: 1px solid rgba(241,236,230,0.35);
+  color: rgba(241,236,230,0.9);
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.auth-hint-fill:hover { background: rgba(241,236,230,0.08); }
+
+.auth-rules {
+  margin: -4px 4px 0;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: rgba(241,236,230,0.6);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+}
+.auth-rules li { list-style: none; display: flex; align-items: center; gap: 6px; }
+.auth-rules li::before {
+  content: "○";
+  font-size: 10px;
+  color: rgba(241,236,230,0.4);
+}
+.auth-rules li.ok { color: rgba(150,220,170,0.95); }
+.auth-rules li.ok::before { content: "●"; color: rgba(150,220,170,0.95); }
