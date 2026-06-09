@@ -9,17 +9,39 @@ type Tab = "overview" | "timeline" | "notes" | "files";
 function fmtDate(iso?: string): string {
   if (!iso) return "—";
   try {
+    return new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(new Date(iso));
+  } catch {
+    return "—";
+  }
+}
+function fmtDateTime(iso?: string): string {
+  if (!iso) return "—";
+  try {
     return new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(iso));
   } catch {
     return "—";
   }
 }
 
+/* Icon set for field labels */
+const I = {
+  cal: () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>,
+  link: () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>,
+  pin: () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>,
+  globe: () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>,
+  file: () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>,
+  layout: () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>,
+  check: () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>,
+  target: () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>,
+  cash: () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>,
+  note: () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>,
+};
+
 function IntelligenceCard({ app }: { app: Application }) {
   const intel = computeIntelligence(app);
   return (
     <div className="intel-card">
-      <div style={{ fontWeight: 600, marginBottom: 6 }}>Application Intelligence</div>
+      <div style={{ fontWeight: 600, marginBottom: 6, fontSize: "0.85rem" }}>Application Intelligence</div>
       <div className="intel-row"><span>Age</span><span>{intel.ageDays} days</span></div>
       <div className="intel-row"><span>Status</span><span>{intel.stale ? "⚠ Stale" : "Healthy"}</span></div>
       <div className="intel-row"><span>Response probability</span><span>{Math.round(intel.responseProbability * 100)}%</span></div>
@@ -29,49 +51,82 @@ function IntelligenceCard({ app }: { app: Application }) {
   );
 }
 
-function OverviewTab({ app }: { app: Application }) {
-  const updateStatus = useApplicationsStore((s) => s.updateStatus);
+function Field({ icon, label, children }: { icon: React.ReactNode; label: string; children: React.ReactNode }) {
   return (
-    <div>
-      <IntelligenceCard app={app} />
-      <Field label="Status">
-        <select
-          value={app.status}
-          onChange={(e) => updateStatus(app.id, e.target.value as ApplicationStatus)}
-          className="tracker-search"
-          style={{ maxWidth: 220 }}
-        >
-          {PIPELINE_COLUMNS.concat(["withdrawn"]).map((s) => (
-            <option key={s} value={s}>{STATUS_LABEL[s]}</option>
-          ))}
-        </select>
-      </Field>
-      <Field label="Company">{app.company}</Field>
-      <Field label="Role">{app.role}</Field>
-      <Field label="Location">{app.location || "—"}</Field>
-      <Field label="Source">{SOURCE_LABEL[app.source]}</Field>
-      <Field label="Origin">{app.applicationSource === "resume_studio" ? "Resume Studio" : "Local Agent"}</Field>
-      <Field label="Applied">{fmtDate(app.appliedAt)}</Field>
-      <Field label="ATS Score">{app.atsScore ?? "Not Available"}</Field>
-      <Field label="Match Score">{app.matchScore ?? "Not Available"}</Field>
-      <Field label="Resume Version">{app.resumeVersion} · {app.templateUsed}</Field>
-      <Field label="Salary">{app.jobSnapshot.salary ?? "—"}</Field>
-      <Field label="Posting">
-        {app.sourceUrl ? (
-          <a href={app.sourceUrl} target="_blank" rel="noreferrer">Open original posting ↗</a>
-        ) : (
-          <button className="files-btn" disabled>No URL</button>
-        )}
-      </Field>
+    <div className="drawer-field">
+      <span className="drawer-field-label">{icon} {label}</span>
+      <span className="drawer-field-value">{children}</span>
     </div>
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function OverviewTab({ app }: { app: Application }) {
+  const updateStatus = useApplicationsStore((s) => s.updateStatus);
+  const [editing, setEditing] = useState(false);
   return (
-    <div className="drawer-field">
-      <div className="drawer-field-label">{label}</div>
-      <div className="drawer-field-value">{children}</div>
+    <div>
+      <IntelligenceCard app={app} />
+      <Field icon={<I.cal />} label="Applied On">{fmtDate(app.appliedAt)}</Field>
+      <Field icon={<I.link />} label="Job URL">
+        {app.sourceUrl
+          ? <a href={app.sourceUrl} target="_blank" rel="noreferrer">View Job ↗</a>
+          : <span className="cell-muted">—</span>}
+      </Field>
+      <Field icon={<I.pin />} label="Location">{app.location || "—"}</Field>
+      <Field icon={<I.globe />} label="Source">{SOURCE_LABEL[app.source]}</Field>
+      <Field icon={<I.file />} label="Resume Version">{app.resumeVersion}</Field>
+      <Field icon={<I.layout />} label="Template Used">{app.templateUsed}</Field>
+      <Field icon={<I.check />} label="ATS Score">
+        {app.atsScore != null ? <span className="score-pill">{app.atsScore}/100</span> : <span className="score-pill na">N/A</span>}
+      </Field>
+      <Field icon={<I.target />} label="Match Score">
+        {app.matchScore != null ? <span className="score-pill">{app.matchScore}%</span> : <span className="score-pill na">N/A</span>}
+      </Field>
+      <Field icon={<I.cash />} label="Expected Salary">{app.jobSnapshot.salary ?? "—"}</Field>
+      <Field icon={<I.note />} label="Notes">
+        <span className="cell-muted" style={{ fontSize: "0.78rem" }}>{app.notes ? app.notes.slice(0, 40) + (app.notes.length > 40 ? "…" : "") : "—"}</span>
+      </Field>
+
+      {editing ? (
+        <div style={{ marginTop: "1rem", padding: "0.7rem", border: "1px solid #e2e8f0", borderRadius: "0.55rem" }}>
+          <div style={{ fontSize: "0.75rem", color: "#64748b", marginBottom: "0.4rem" }}>Update Status</div>
+          <select
+            value={app.status}
+            onChange={(e) => updateStatus(app.id, e.target.value as ApplicationStatus)}
+            className="filter-select"
+            style={{ width: "100%" }}
+          >
+            {PIPELINE_COLUMNS.concat(["withdrawn"]).map((s) => (
+              <option key={s} value={s}>{STATUS_LABEL[s]}</option>
+            ))}
+          </select>
+          <button className="drawer-edit-btn" style={{ marginTop: "0.6rem" }} onClick={() => setEditing(false)}>Done</button>
+        </div>
+      ) : (
+        <button className="drawer-edit-btn" onClick={() => setEditing(true)}>Edit Details</button>
+      )}
+
+      <NextStepCard app={app} />
+    </div>
+  );
+}
+
+function NextStepCard({ app }: { app: Application }) {
+  if (app.status !== "interview" && app.status !== "assessment" && app.status !== "offer") return null;
+  const intel = computeIntelligence(app);
+  return (
+    <div className="next-step-card">
+      <div className="next-step-title">Next Step</div>
+      <div className="next-step-row">
+        <span className="next-step-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+        </span>
+        <div className="next-step-text">
+          <div className="next-step-name">{app.status === "offer" ? "Offer Negotiation" : "Interview Scheduled"}</div>
+          <div className="next-step-date">{intel.nextRecommendedAction}</div>
+        </div>
+      </div>
+      <button className="next-step-all" onClick={(e) => e.preventDefault()}>View All Interviews</button>
     </div>
   );
 }
@@ -88,8 +143,8 @@ function TimelineTab({ appId }: { appId: string }) {
       {list.map((e) => (
         <div key={e.id} className="timeline-item">
           <div>{e.title}</div>
-          {e.description && <div style={{ fontSize: 12, color: "hsl(var(--muted-foreground))" }}>{e.description}</div>}
-          <div className="timeline-time">{fmtDate(e.timestamp)}</div>
+          {e.description && <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>{e.description}</div>}
+          <div className="timeline-time">{fmtDateTime(e.timestamp)}</div>
         </div>
       ))}
     </div>
@@ -147,11 +202,15 @@ export function DetailsDrawer() {
     <div className="drawer-overlay" onClick={() => select(null)}>
       <div className="drawer" onClick={(e) => e.stopPropagation()}>
         <div className="drawer-header">
-          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-            <CompanyAvatar company={app.company} size={36} />
+          <div className="drawer-header-info">
+            <CompanyAvatar company={app.company} size={44} />
             <div>
-              <div style={{ fontWeight: 600 }}>{app.company}</div>
-              <div style={{ fontSize: 13, color: "hsl(var(--muted-foreground))" }}>{app.role}</div>
+              <h3>{app.company}</h3>
+              <div style={{ fontSize: "0.85rem", color: "#475569" }}>{app.role}</div>
+              <div className="subrow">
+                <span className="status-dot" />
+                <span>{STATUS_LABEL[app.status]}</span>
+              </div>
             </div>
           </div>
           <button className="drawer-close" onClick={() => select(null)} aria-label="Close">×</button>
