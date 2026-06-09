@@ -1,6 +1,14 @@
 /**
  * JobRankingService — title relevance, experience bucket, freshness,
  * location tier, salary penalty. Pure function — no I/O.
+ *
+ * Rules (Job Discovery Recovery):
+ *  - classifyExperience returns ExperienceBucket | null (NEVER defaults to "3-5")
+ *  - unknown experience → keep job, small penalty, do not hard-filter
+ *  - strict title families: cross-family is a mismatch (heavy penalty + Top-5 ban)
+ *  - location tiers: same_city > same_state > remote > same_country > other
+ *  - foreign on-site jobs get a severe penalty when user is in India
+ *  - freshness curve favors ≤7d, strongly penalizes >30d
  */
 import type { RawJob } from "@backend/jobs/JobSources.server";
 
@@ -23,42 +31,43 @@ export interface RankingResult {
   breakdown: MatchBreakdown;
   matchedSkills: string[];
   missingSkills: string[];
-  experienceBucket: ExperienceBucket;
+  experienceBucket: ExperienceBucket | null;
   locationTier: LocationTier;
   freshnessDays: number;
   isNewToday: boolean;
   titleMismatch: boolean;
   belowSalary: boolean;
+  removalReason?: string;
 }
 
 export interface CandidateContext {
   role: string;
   skills: string[];
-  experience: string;            // raw text from form, kept for back-compat
+  experience: string;
   experienceBucket?: ExperienceBucket | null;
   location: string;
   desiredSalaryMin?: number | null;
 }
 
-/* -------------------- role families / title relevance -------------------- */
+/* -------------------- role families -------------------- */
 
 const ROLE_FAMILIES: Record<string, string[]> = {
-  frontend:  ["frontend","front end","front-end","react","reactjs","angular","vue","svelte","ui engineer","ui developer","web developer","javascript engineer","js engineer"],
-  backend:   ["backend","back end","back-end","api engineer","node","nodejs","golang","go engineer","java engineer","python engineer","ruby","rails","django","spring"],
-  fullstack: ["full stack","fullstack","full-stack","mern","mean"],
+  frontend:  ["frontend","front end","front-end","react","reactjs","react.js","angular","vue","vuejs","svelte","next.js","nextjs","ui engineer","ui developer","ui/ux engineer","web developer","javascript engineer","js engineer","html","css"],
+  backend:   ["backend","back end","back-end","api engineer","node","nodejs","node.js","golang","go engineer","java engineer","python engineer","ruby","rails","django","flask","fastapi","spring","spring boot",".net","c# engineer"],
+  fullstack: ["full stack","fullstack","full-stack","mern","mean","mevn"],
   mobile:    ["mobile","ios","android","react native","flutter","swift","kotlin"],
-  data:      ["data engineer","data scientist","analytics engineer","etl","data analyst"],
-  ml:        ["ml engineer","machine learning","ai engineer","mlops","deep learning","nlp engineer"],
-  devops:    ["devops","sre","platform engineer","infrastructure","cloud engineer","kubernetes engineer"],
-  design:    ["designer","ux","ui designer","product designer","visual designer"],
-  pm:        ["product manager","program manager","tpm"],
-  marketing: ["marketing","seo","content","copywriter","social media"],
-  sales:     ["sales","account executive","bdr","sdr"],
-  qa:        ["qa","sdet","test engineer","automation tester"],
+  data:      ["data engineer","data scientist","analytics engineer","etl","data analyst","bi engineer","analytics"],
+  ml:        ["ml engineer","machine learning","ai engineer","mlops","deep learning","nlp engineer","computer vision","llm engineer","applied scientist","research scientist"],
+  devops:    ["devops","sre","platform engineer","infrastructure","cloud engineer","kubernetes engineer","site reliability"],
+  design:    ["designer","ux","ui designer","product designer","visual designer","graphic designer"],
+  pm:        ["product manager","program manager","tpm","technical program manager","project manager"],
+  marketing: ["marketing","seo","content","copywriter","social media","brand"],
+  sales:     ["sales","account executive","bdr","sdr","account manager"],
+  qa:        ["qa","sdet","test engineer","automation tester","quality engineer"],
 };
 
-function familyOf(text: string): string | null {
-  const t = text.toLowerCase();
+export function familyOf(text: string): string | null {
+  const t = " " + text.toLowerCase() + " ";
   for (const [fam, terms] of Object.entries(ROLE_FAMILIES)) {
     if (terms.some((kw) => t.includes(kw))) return fam;
   }
@@ -73,26 +82,26 @@ function titleRelevance(jobTitle: string, queryTitle: string): { score: number; 
   const jobFam = familyOf(jobTitle);
   const titleLc = jobTitle.toLowerCase();
 
-  // Direct phrase / family-keyword hit
   if (queryFam && jobFam && queryFam === jobFam) return { score: 1, mismatch: false };
-
-  // exact substring of the query in title
   if (titleLc.includes(q)) return { score: 1, mismatch: false };
 
-  // token overlap (ignore very short tokens)
   const qTokens = q.split(/[^a-z0-9]+/).filter((t) => t.length > 2);
   const hits = qTokens.filter((t) => titleLc.includes(t)).length;
   const partial = qTokens.length ? hits / qTokens.length : 0;
 
-  // Different identified family → mismatch
+  // Different families = mismatch (heavy penalty, banned from Top 5).
   if (queryFam && jobFam && queryFam !== jobFam) {
+    return { score: partial * 0.2, mismatch: true };
+  }
+  // Query has a family but job title couldn't be classified — require token overlap.
+  if (queryFam && !jobFam) {
+    if (partial >= 0.5) return { score: 0.6, mismatch: false };
     return { score: partial * 0.3, mismatch: true };
   }
 
   if (partial >= 0.5) return { score: 0.7, mismatch: false };
   if (partial > 0)    return { score: 0.4, mismatch: false };
-  // No family on query → neutral, no mismatch flag
-  return { score: queryFam ? 0.15 : 0.4, mismatch: Boolean(queryFam) };
+  return { score: 0.3, mismatch: false };
 }
 
 /* -------------------- skills -------------------- */
@@ -120,52 +129,80 @@ function skillHits(skill: string, hay: string): boolean {
 
 /* -------------------- experience bucket -------------------- */
 
-export function classifyExperience(title: string, description: string): ExperienceBucket {
+/**
+ * Returns ExperienceBucket if confidently classifiable, else null.
+ * NEVER defaults to "3-5". Unknown is genuinely unknown so the API filter
+ * can keep the job rather than dropping it.
+ */
+export function classifyExperience(title: string, description: string, experienceText?: string | null): ExperienceBucket | null {
   const t = title.toLowerCase();
+
+  // Title-based strong signals
   if (/\b(senior|sr\.?|lead|principal|staff|architect|head of|director|vp|manager)\b/.test(t)) return "5+";
   if (/\b(intern|graduate|fresher|trainee|entry[- ]level|junior|jr\.?)\b/.test(t)) return "fresher";
-  if (/\b(mid|mid[- ]level|ii\b|iii\b)\b/.test(t)) return "3-5";
   if (/\bassociate\b/.test(t)) return "0-2";
+  if (/\b(mid[- ]level|mid\b)\b/.test(t)) return "3-5";
 
-  const d = description.toLowerCase();
-  const m = d.match(/(\d{1,2})\+?\s*(?:to\s*\d{1,2}\s*)?(?:years|yrs)/);
-  if (m) {
-    const yrs = Number(m[1]);
-    if (yrs <= 0) return "fresher";
-    if (yrs <= 2) return "0-2";
-    if (yrs <= 5) return "3-5";
-    return "5+";
+  // Explicit experience_text from source (Naukri / LinkedIn / Foundit)
+  const sources: string[] = [];
+  if (experienceText) sources.push(experienceText.toLowerCase());
+  sources.push(description.toLowerCase());
+
+  for (const s of sources) {
+    if (/\bfresher\b|\b0\s*(?:-|to)?\s*1\s*(?:year|yr)/i.test(s)) return "fresher";
+    // Range form "2-4 years", "3 to 5 yrs"
+    const range = s.match(/(\d{1,2})\s*(?:-|to)\s*(\d{1,2})\s*(?:years|yrs)/);
+    if (range) {
+      const lo = Number(range[1]);
+      const hi = Number(range[2]);
+      const mid = (lo + hi) / 2;
+      if (hi <= 2) return "0-2";
+      if (mid <= 2) return "0-2";
+      if (mid <= 5) return "3-5";
+      return "5+";
+    }
+    // Single-number "5+ years" or "3 years experience"
+    const single = s.match(/(\d{1,2})\+?\s*(?:years|yrs)\s*(?:of\s*)?(?:exp|experience)?/);
+    if (single) {
+      const yrs = Number(single[1]);
+      if (yrs <= 0) return "fresher";
+      if (yrs <= 2) return "0-2";
+      if (yrs <= 5) return "3-5";
+      return "5+";
+    }
   }
-  return "3-5";
+
+  return null; // Unknown — caller decides what to do.
 }
 
 function bucketRank(b: ExperienceBucket): number {
   return { "fresher": 0, "0-2": 1, "3-5": 2, "5+": 3 }[b];
 }
 
-function experienceFit(jobBucket: ExperienceBucket, wanted?: ExperienceBucket | null): number {
-  if (!wanted) return 0.7;
-  if (jobBucket === wanted) return 1;
+function experienceFit(jobBucket: ExperienceBucket | null, wanted?: ExperienceBucket | null): { score: number; mismatch: boolean } {
+  if (!wanted) return { score: 0.7, mismatch: false };
+  if (!jobBucket) return { score: 0.5, mismatch: false }; // unknown: small penalty, NOT a mismatch
+  if (jobBucket === wanted) return { score: 1, mismatch: false };
   const diff = Math.abs(bucketRank(jobBucket) - bucketRank(wanted));
-  return diff === 1 ? 0.6 : 0.3;
+  return { score: diff === 1 ? 0.45 : 0.15, mismatch: true };
 }
 
 /* -------------------- freshness -------------------- */
 
 export function freshnessFromDays(days: number): number {
-  if (days <= 0) return 1;
-  if (days === 1) return 0.95;
-  if (days <= 3) return 0.85;
-  if (days <= 7) return 0.7;
-  if (days <= 14) return 0.5;
+  if (days <= 1) return 1.0;
+  if (days <= 3) return 0.9;
+  if (days <= 7) return 0.75;
+  if (days <= 14) return 0.55;
   if (days <= 30) return 0.3;
-  return 0.1;
+  return 0.08;
 }
 
 /* -------------------- location -------------------- */
 
 const IN_CITIES: Record<string, { state: string; country: string }> = {
   hyderabad: { state: "telangana", country: "india" },
+  secunderabad: { state: "telangana", country: "india" },
   bangalore: { state: "karnataka", country: "india" },
   bengaluru: { state: "karnataka", country: "india" },
   mumbai: { state: "maharashtra", country: "india" },
@@ -178,6 +215,11 @@ const IN_CITIES: Record<string, { state: string; country: string }> = {
   chennai: { state: "tamil nadu", country: "india" },
   kolkata: { state: "west bengal", country: "india" },
   ahmedabad: { state: "gujarat", country: "india" },
+  kochi: { state: "kerala", country: "india" },
+  trivandrum: { state: "kerala", country: "india" },
+  jaipur: { state: "rajasthan", country: "india" },
+  indore: { state: "madhya pradesh", country: "india" },
+  coimbatore: { state: "tamil nadu", country: "india" },
 };
 
 function parseUserLoc(loc: string): { city: string; state: string; country: string } {
@@ -185,7 +227,24 @@ function parseUserLoc(loc: string): { city: string; state: string; country: stri
   if (!l) return { city: "", state: "", country: "" };
   const hit = IN_CITIES[l];
   if (hit) return { city: l, state: hit.state, country: hit.country };
+  // Try matching against any known city substring
+  for (const [city, info] of Object.entries(IN_CITIES)) {
+    if (l.includes(city)) return { city, state: info.state, country: info.country };
+  }
+  if (/india/.test(l)) return { city: "", state: "", country: "india" };
   return { city: l, state: "", country: "" };
+}
+
+function jobCountry(jobLoc: string): string | null {
+  const l = jobLoc.toLowerCase();
+  if (/\bindia\b/.test(l)) return "india";
+  for (const city of Object.keys(IN_CITIES)) if (l.includes(city)) return "india";
+  if (/\busa?\b|united states|new york|san francisco|seattle|austin|chicago|boston/.test(l)) return "usa";
+  if (/germany|berlin|munich|hamburg|deutschland/.test(l)) return "germany";
+  if (/united kingdom|\buk\b|london|manchester/.test(l)) return "uk";
+  if (/canada|toronto|vancouver|montreal/.test(l)) return "canada";
+  if (/australia|sydney|melbourne/.test(l)) return "australia";
+  return null;
 }
 
 function locationTier(job: RawJob, ctx: CandidateContext): { tier: LocationTier; score: number } {
@@ -194,14 +253,16 @@ function locationTier(job: RawJob, ctx: CandidateContext): { tier: LocationTier;
 
   if (!userLoc || userLoc === "remote" || userLoc === "anywhere") {
     if (job.remote) return { tier: "remote", score: 1 };
-    return { tier: "other", score: 0.6 };
+    return { tier: "other", score: 0.5 };
   }
   const parsed = parseUserLoc(userLoc);
   if (parsed.city && jobLoc.includes(parsed.city)) return { tier: "same_city", score: 1 };
   if (parsed.state && jobLoc.includes(parsed.state)) return { tier: "same_state", score: 0.85 };
   if (job.remote) return { tier: "remote", score: 0.75 };
-  if (parsed.country && jobLoc.includes(parsed.country)) return { tier: "same_country", score: 0.55 };
-  return { tier: "other", score: 0.2 };
+  if (parsed.country && (jobLoc.includes(parsed.country) || jobCountry(jobLoc) === parsed.country)) {
+    return { tier: "same_country", score: 0.5 };
+  }
+  return { tier: "other", score: 0.1 };
 }
 
 /* -------------------- salary -------------------- */
@@ -236,10 +297,13 @@ export function rankJob(job: RawJob, ctx: CandidateContext): RankingResult {
   for (const s of wanted) (skillHits(s, hay) ? matched : missing).push(s);
   const skills = wanted.length ? matched.length / wanted.length : 0.5;
 
-  // experience
-  const jobBucket = classifyExperience(job.title, job.description);
-  const expFit = experienceFit(jobBucket, ctx.experienceBucket ?? null);
-  const expMismatch = ctx.experienceBucket ? jobBucket !== ctx.experienceBucket : false;
+  // experience — can be null
+  const jobBucket = classifyExperience(
+    job.title,
+    job.description,
+    (job as RawJob & { experience_text?: string | null }).experience_text ?? null,
+  );
+  const exp = experienceFit(jobBucket, ctx.experienceBucket ?? null);
 
   // location
   const loc = locationTier(job, ctx);
@@ -247,22 +311,32 @@ export function rankJob(job: RawJob, ctx: CandidateContext): RankingResult {
   // freshness
   const days = job.posted_at
     ? Math.max(0, Math.floor((Date.now() - new Date(job.posted_at).getTime()) / 86_400_000))
-    : 7;
+    : 14; // unknown posted date → assume two weeks old (not fresh, not ancient)
   const fresh = freshnessFromDays(days);
 
   // salary
   const sal = salaryScore(job, ctx.desiredSalaryMin ?? null);
 
+  // Composite — location weight raised; freshness slightly down to compensate.
   const base =
-    0.30 * title.score +
-    0.25 * skills +
-    0.15 * expFit +
-    0.12 * loc.score +
-    0.10 * fresh +
+    0.28 * title.score +
+    0.22 * skills +
+    0.15 * exp.score +
+    0.18 * loc.score +
+    0.09 * fresh +
     0.08 * sal.score;
 
-  const penalty = (title.mismatch ? 0.4 : 1) * (expMismatch ? 0.5 : 1);
-  const matchScore = Math.max(0, Math.min(1, base * penalty));
+  let multiplier = 1;
+  if (title.mismatch) multiplier *= 0.35;
+  if (exp.mismatch)   multiplier *= 0.55;
+
+  // Severe penalty: user is in India and job is foreign on-site.
+  const parsed = parseUserLoc((ctx.location || "").toLowerCase());
+  if (parsed.country === "india" && loc.tier === "other" && !job.remote) {
+    multiplier *= 0.25;
+  }
+
+  const matchScore = Math.max(0, Math.min(1, base * multiplier));
 
   return {
     matchScore,
@@ -270,7 +344,7 @@ export function rankJob(job: RawJob, ctx: CandidateContext): RankingResult {
     breakdown: {
       title:      Number(title.score.toFixed(2)),
       skills:     Number(skills.toFixed(2)),
-      experience: Number(expFit.toFixed(2)),
+      experience: Number(exp.score.toFixed(2)),
       location:   Number(loc.score.toFixed(2)),
       freshness:  Number(fresh.toFixed(2)),
       salary:     Number(sal.score.toFixed(2)),
