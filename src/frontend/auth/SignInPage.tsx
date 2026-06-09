@@ -78,6 +78,18 @@ export function SignInPage() {
           {submitting ? "Entering…" : "Enter Imperium →"}
         </button>
         {formError ? <div className="auth-form-error">{formError}</div> : null}
+        <div className="auth-hint">
+          Demo account · <strong>fresher.demo@imperium.app</strong> / <strong>Demo@12345</strong>
+          <button
+            type="button"
+            className="auth-hint-fill"
+            onClick={() =>
+              setValues({ email: "fresher.demo@imperium.app", password: "Demo@12345" })
+            }
+          >
+            Fill
+          </button>
+        </div>
       </form>
     </AuthShell>
   );
