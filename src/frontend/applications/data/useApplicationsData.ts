@@ -151,6 +151,7 @@ function useLegacyLocalMigration(userId: string | null): { running: boolean } {
  * Application Tracker view (ApplicationsPage / ActivityPage).
  */
 export function useApplicationsSync(): { loading: boolean } {
+  const qc = useQueryClient();
   const userId = useUserId();
   useLegacyLocalMigration(userId);
   const appsQ = useApplicationsQuery();
@@ -166,6 +167,17 @@ export function useApplicationsSync(): { loading: boolean } {
       useApplicationsStore.setState({ events: evtsQ.data });
     }
   }, [evtsQ.data]);
+
+  // After any mutation, the store dispatches a window event — refetch.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handler = () => {
+      qc.invalidateQueries({ queryKey: APPLICATIONS_QK });
+      qc.invalidateQueries({ queryKey: TIMELINE_QK });
+    };
+    window.addEventListener(APPLICATIONS_DATA_EVENT, handler);
+    return () => window.removeEventListener(APPLICATIONS_DATA_EVENT, handler);
+  }, [qc]);
 
   return { loading: appsQ.isLoading || evtsQ.isLoading };
 }
