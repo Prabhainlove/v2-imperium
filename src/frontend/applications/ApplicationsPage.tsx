@@ -21,12 +21,9 @@ function MoonIcon() {
 export function ApplicationsPage() {
   const search = useApplicationsStore((s) => s.search);
   const setSearch = useApplicationsStore((s) => s.setSearch);
-  const seed = useApplicationsStore((s) => s._seedDemo);
-  const total = useApplicationsStore((s) => s.applications.length);
+  // Hydrates the store from Supabase + runs one-time localStorage migration.
+  useApplicationsSync();
 
-  useEffect(() => {
-    if (total === 0) seed();
-  }, [total, seed]);
 
   return (
     <div className="tracker-root">
