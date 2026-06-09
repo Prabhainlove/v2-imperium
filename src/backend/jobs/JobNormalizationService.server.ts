@@ -33,6 +33,12 @@ export interface NormalizedJob {
   breakdown: MatchBreakdown;
   matchedSkills: string[];
   missingSkills: string[];
+  experienceBucket: ExperienceBucket;
+  locationTier: LocationTier;
+  freshnessDays: number;
+  isNewToday: boolean;
+  titleMismatch: boolean;
+  belowSalary: boolean;
 }
 
 function formatSalary(min: number | null, max: number | null, currency: string): string {
