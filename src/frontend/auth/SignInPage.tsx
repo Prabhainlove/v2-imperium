@@ -34,7 +34,7 @@ export function SignInPage() {
     setSubmitting(true);
     try {
       await signIn(parsed.data);
-      navigate({ to: "/" });
+      navigate({ to: "/dashboard" });
     } catch (err) {
       setFormError(err instanceof Error ? err.message : "Sign in failed");
     } finally {

@@ -38,7 +38,7 @@ export function SignUpPage() {
         email: parsed.data.email,
         password: parsed.data.password,
       });
-      navigate({ to: "/" });
+      navigate({ to: "/dashboard" });
     } catch (err) {
       setFormError(err instanceof Error ? err.message : "Sign up failed");
     } finally {
