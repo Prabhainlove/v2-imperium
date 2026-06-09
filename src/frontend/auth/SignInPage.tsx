@@ -1,5 +1,6 @@
-import { useState, type FormEvent } from "react";
+import { useState, useEffect, type FormEvent } from "react";
 import { useNavigate } from "@tanstack/react-router";
+import { ensureDemoUser } from "./mockAuth";
 import { AuthShell } from "./components/AuthShell";
 import { PillInput } from "./components/PillInput";
 import { signInSchema } from "./validation";
@@ -11,6 +12,10 @@ export function SignInPage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    void ensureDemoUser();
+  }, []);
 
   const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setValues((v) => ({ ...v, [k]: e.target.value }));
@@ -73,6 +78,18 @@ export function SignInPage() {
           {submitting ? "Entering…" : "Enter Imperium →"}
         </button>
         {formError ? <div className="auth-form-error">{formError}</div> : null}
+        <div className="auth-hint">
+          Demo account · <strong>fresher.demo@imperium.app</strong> / <strong>Demo@12345</strong>
+          <button
+            type="button"
+            className="auth-hint-fill"
+            onClick={() =>
+              setValues({ email: "fresher.demo@imperium.app", password: "Demo@12345" })
+            }
+          >
+            Fill
+          </button>
+        </div>
       </form>
     </AuthShell>
   );
