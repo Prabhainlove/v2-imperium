@@ -1,6 +1,6 @@
-import { useEffect } from "react";
 import "./applications.css";
 import { useApplicationsStore } from "./state/useApplicationsStore";
+import { useApplicationsSync } from "./data/useApplicationsData";
 import { KpiRow } from "./components/KpiRow";
 import { PipelineBoard } from "./components/PipelineBoard";
 import { ApplicationsTable } from "./components/ApplicationsTable";
