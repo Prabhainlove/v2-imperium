@@ -10,7 +10,16 @@ import {
 } from "@dnd-kit/core";
 import { useApplicationsStore, selectPipelineBuckets } from "../state/useApplicationsStore";
 import { PIPELINE_COLUMNS, STATUS_LABEL, type Application, type ApplicationStatus } from "../schema";
-import { CompanyAvatar } from "./CompanyAvatar";
+
+const VISIBLE_PER_COLUMN = 2;
+
+function fmtDate(iso: string): string {
+  try {
+    return new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", year: "numeric" }).format(new Date(iso));
+  } catch {
+    return "—";
+  }
+}
 
 function Card({ app }: { app: Application }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: app.id });
@@ -27,30 +36,27 @@ function Card({ app }: { app: Application }) {
       {...listeners}
       onClick={() => select(app.id)}
     >
-      <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-        <CompanyAvatar company={app.company} size={22} />
-        <div style={{ minWidth: 0 }}>
-          <div className="company" style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-            {app.company}
-          </div>
-          <div className="role" style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-            {app.role}
-          </div>
-        </div>
-      </div>
+      <div className="company">{app.company}</div>
+      <div className="role">{app.role}</div>
+      <div className="date">{fmtDate(app.appliedAt)}</div>
     </div>
   );
 }
 
 function Column({ status, apps }: { status: ApplicationStatus; apps: Application[] }) {
   const { setNodeRef, isOver } = useDroppable({ id: status });
+  const visible = apps.slice(0, VISIBLE_PER_COLUMN);
+  const rest = apps.length - visible.length;
   return (
-    <div ref={setNodeRef} className={`pipeline-col ${isOver ? "drag-over" : ""}`}>
+    <div ref={setNodeRef} className={`pipeline-col ${isOver ? "drag-over" : ""}`} data-status={status}>
       <div className="pipeline-col-header">
         <span>{STATUS_LABEL[status]}</span>
         <span className="pipeline-col-count">{apps.length}</span>
       </div>
-      {apps.map((a) => <Card key={a.id} app={a} />)}
+      <div className="pipeline-col-body">
+        {visible.map((a) => <Card key={a.id} app={a} />)}
+        {rest > 0 && <div className="pipeline-more">+ {rest} more</div>}
+      </div>
     </div>
   );
 }
