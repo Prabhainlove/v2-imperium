@@ -2,7 +2,7 @@ import "./imperium-navbar.css";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import {
-  IconBriefcase, IconDoc, IconChat, IconSparkle, IconBubble, IconUser, IconCore,
+  IconBriefcase, IconDoc, IconChat, IconSparkle, IconUser, IconCore,
 } from "@frontend/dashboard/components/icons";
 
 const NAV = [
@@ -11,7 +11,6 @@ const NAV = [
   { to: "/resume",       label: "Resume",      icon: IconDoc },
   { to: "/applications", label: "Tracker",     icon: IconChat },
   { to: "/autopilot",    label: "Local Agent", icon: IconSparkle },
-  { to: "/interviews",   label: "Interviews",  icon: IconBubble },
   { to: "/profile",      label: "Profile",     icon: IconUser },
 ] as const;
 

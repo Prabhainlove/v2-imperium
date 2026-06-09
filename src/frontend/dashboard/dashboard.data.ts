@@ -176,8 +176,6 @@ const BASE: DashboardData = {
     { id: "resume-studio", name: "Resume Studio", level: 4, color: "mint", rarity: "epic", route: "/resume", iconKey: "resume", description: "Tailored, ATS-optimized resumes per role." },
     { id: "application-tracker", name: "Application Tracker", level: 4, color: "lavender", rarity: "epic", route: "/applications", iconKey: "tracker", description: "Pipeline view across every applied role." },
     { id: "autopilot", name: "Autopilot", level: 3, color: "butter", rarity: "rare", route: "/autopilot", iconKey: "assistant", description: "Local agent: browser automation, form fill, submit." },
-    { id: "interview-agent", name: "Interview Agent", level: 2, color: "coral", rarity: "common", route: "/interviews", iconKey: "interview", description: "Reserved module — mock interviews & feedback.", locked: true },
-    { id: "recruiter-agent", name: "Recruiter Agent", level: 2, color: "sky", rarity: "common", route: "/recruiters", iconKey: "recruiter", description: "Reserved module — recruiter outreach.", locked: true },
   ],
   quote: "Automate applications. Optimize opportunities. Elevate your career.",
 };

@@ -184,14 +184,17 @@ export const useApplicationsStore = create<ApplicationsState>()((set, get) => ({
   clearFilter: () => set({ filter: {} }),
 
   _seedDemo: () => {
+    // Demo seeding disabled (Phase 2 cleanup). Application Tracker now reads
+    // exclusively from real persisted applications. Demo data will be removed
+    // entirely in Phase 6 when this store is replaced by Supabase reads.
     if (get().applications.length > 0) return;
     const samples: CreateFromResumeStudioPayload[] = [
-      { job: { title: "Senior Software Engineer", company: "Google", location: "Bangalore", salary: "₹45-65L", source: "linkedin", sourceUrl: "https://linkedin.com", description: "React TypeScript Node.js distributed systems Kubernetes" }, resume: { resumeId: "r1", resumeVersion: "V4", templateUsed: "professional" }, atsScore: 92, matchScore: 88 },
-      { job: { title: "Frontend Engineer", company: "Stripe", location: "Remote", salary: "$180k", source: "wellfound", description: "React TypeScript design systems" }, resume: { resumeId: "r1", resumeVersion: "V4", templateUsed: "modern" }, atsScore: 88, matchScore: 81 },
-      { job: { title: "Full Stack Developer", company: "Razorpay", location: "Bangalore", source: "naukri", description: "Node.js React PostgreSQL" }, resume: { resumeId: "r1", resumeVersion: "V3", templateUsed: "professional" }, atsScore: 78, matchScore: 72 },
-      { job: { title: "Backend Engineer", company: "Swiggy", location: "Bangalore", source: "foundit", description: "Java Spring Microservices" }, resume: { resumeId: "r1", resumeVersion: "V2", templateUsed: "classic-ats" }, atsScore: 71, matchScore: 60 },
-      { job: { title: "Platform Engineer", company: "Zerodha", location: "Bangalore", source: "instahyre", description: "Go Kubernetes AWS Terraform" }, resume: { resumeId: "r1", resumeVersion: "V4", templateUsed: "developer" }, atsScore: 90, matchScore: 84 },
-      { job: { title: "SDE II", company: "Flipkart", location: "Bangalore", source: "linkedin", description: "Java Distributed systems" }, resume: { resumeId: "r1", resumeVersion: "V3", templateUsed: "professional" }, atsScore: 82, matchScore: 75 },
+      { job: { title: "Frontend Developer", company: "Imperium Labs", location: "Hyderabad", salary: "₹12-18L", source: "linkedin", sourceUrl: "https://linkedin.com", description: "React TypeScript Node.js" }, resume: { resumeId: "r1", resumeVersion: "V4", templateUsed: "professional" }, atsScore: 92, matperformScore: 88 } as unknown as CreateFromResumeStudioPayload,
+      { job: { title: "Software Engineer", company: "Imperium Cloud", location: "Remote", salary: "₹15-22L", source: "wellfound", description: "React TypeScript design systems" }, resume: { resumeId: "r1", resumeVersion: "V4", templateUsed: "modern" }, atsScore: 88, matchScore: 81 },
+      { job: { title: "Product Engineer", company: "Imperium Studio", location: "Bangalore", source: "naukri", description: "Node.js React PostgreSQL" }, resume: { resumeId: "r1", resumeVersion: "V3", templateUsed: "professional" }, atsScore: 78, matchScore: 72 },
+      { job: { title: "Backend Engineer", company: "Imperium Systems", location: "Bangalore", source: "foundit", description: "Java Spring Microservices" }, resume: { resumeId: "r1", resumeVersion: "V2", templateUsed: "classic-ats" }, atsScore: 71, matchScore: 60 },
+      { job: { title: "Platform Engineer", company: "Imperium Core", location: "Bangalore", source: "instahyre", description: "Go Kubernetes AWS Terraform" }, resume: { resumeId: "r1", resumeVersion: "V4", templateUsed: "developer" }, atsScore: 90, matchScore: 84 },
+      { job: { title: "Full Stack Engineer", company: "Imperium AI", location: "Bangalore", source: "linkedin", description: "Java Distributed systems" }, resume: { resumeId: "r1", resumeVersion: "V3", templateUsed: "professional" }, atsScore: 82, matchScore: 75 },
     ];
     const created = samples.map((s) => get().createFromResumeStudio(s));
     // Mutate ages and statuses for richer demo
