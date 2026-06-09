@@ -14,21 +14,13 @@ import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as AuthenticatedSkillsRouteImport } from './routes/_authenticated/skills'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
-import { Route as AuthenticatedSearchRouteImport } from './routes/_authenticated/search'
-import { Route as AuthenticatedSalaryRouteImport } from './routes/_authenticated/salary'
 import { Route as AuthenticatedResumeRouteImport } from './routes/_authenticated/resume'
-import { Route as AuthenticatedRecruitersRouteImport } from './routes/_authenticated/recruiters'
 import { Route as AuthenticatedProfileRouteImport } from './routes/_authenticated/profile'
 import { Route as AuthenticatedOnboardingRouteImport } from './routes/_authenticated/onboarding'
-import { Route as AuthenticatedNetworkingRouteImport } from './routes/_authenticated/networking'
 import { Route as AuthenticatedJobsRouteImport } from './routes/_authenticated/jobs'
-import { Route as AuthenticatedInterviewsRouteImport } from './routes/_authenticated/interviews'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedAutopilotRouteImport } from './routes/_authenticated/autopilot'
-import { Route as AuthenticatedAtsRouteImport } from './routes/_authenticated/ats'
-import { Route as AuthenticatedAssistantRouteImport } from './routes/_authenticated/assistant'
 import { Route as AuthenticatedApplicationsRouteImport } from './routes/_authenticated/applications'
 import { Route as AuthenticatedActivityRouteImport } from './routes/_authenticated/activity'
 import { Route as ApiPublicDebugJobsTraceRouteImport } from './routes/api/public/debug.jobs-trace'
@@ -57,34 +49,14 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedSkillsRoute = AuthenticatedSkillsRouteImport.update({
-  id: '/skills',
-  path: '/skills',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
 const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedSearchRoute = AuthenticatedSearchRouteImport.update({
-  id: '/search',
-  path: '/search',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedSalaryRoute = AuthenticatedSalaryRouteImport.update({
-  id: '/salary',
-  path: '/salary',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
 const AuthenticatedResumeRoute = AuthenticatedResumeRouteImport.update({
   id: '/resume',
   path: '/resume',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedRecruitersRoute = AuthenticatedRecruitersRouteImport.update({
-  id: '/recruiters',
-  path: '/recruiters',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedProfileRoute = AuthenticatedProfileRouteImport.update({
@@ -97,19 +69,9 @@ const AuthenticatedOnboardingRoute = AuthenticatedOnboardingRouteImport.update({
   path: '/onboarding',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedNetworkingRoute = AuthenticatedNetworkingRouteImport.update({
-  id: '/networking',
-  path: '/networking',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
 const AuthenticatedJobsRoute = AuthenticatedJobsRouteImport.update({
   id: '/jobs',
   path: '/jobs',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedInterviewsRoute = AuthenticatedInterviewsRouteImport.update({
-  id: '/interviews',
-  path: '/interviews',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
@@ -120,16 +82,6 @@ const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
 const AuthenticatedAutopilotRoute = AuthenticatedAutopilotRouteImport.update({
   id: '/autopilot',
   path: '/autopilot',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedAtsRoute = AuthenticatedAtsRouteImport.update({
-  id: '/ats',
-  path: '/ats',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedAssistantRoute = AuthenticatedAssistantRouteImport.update({
-  id: '/assistant',
-  path: '/assistant',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedApplicationsRoute =
@@ -156,21 +108,13 @@ export interface FileRoutesByFullPath {
   '/signup': typeof SignupRoute
   '/activity': typeof AuthenticatedActivityRoute
   '/applications': typeof AuthenticatedApplicationsRoute
-  '/assistant': typeof AuthenticatedAssistantRoute
-  '/ats': typeof AuthenticatedAtsRoute
   '/autopilot': typeof AuthenticatedAutopilotRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
-  '/interviews': typeof AuthenticatedInterviewsRoute
   '/jobs': typeof AuthenticatedJobsRoute
-  '/networking': typeof AuthenticatedNetworkingRoute
   '/onboarding': typeof AuthenticatedOnboardingRoute
   '/profile': typeof AuthenticatedProfileRoute
-  '/recruiters': typeof AuthenticatedRecruitersRoute
   '/resume': typeof AuthenticatedResumeRoute
-  '/salary': typeof AuthenticatedSalaryRoute
-  '/search': typeof AuthenticatedSearchRoute
   '/settings': typeof AuthenticatedSettingsRoute
-  '/skills': typeof AuthenticatedSkillsRoute
   '/api/public/debug/jobs-trace': typeof ApiPublicDebugJobsTraceRoute
 }
 export interface FileRoutesByTo {
@@ -180,21 +124,13 @@ export interface FileRoutesByTo {
   '/signup': typeof SignupRoute
   '/activity': typeof AuthenticatedActivityRoute
   '/applications': typeof AuthenticatedApplicationsRoute
-  '/assistant': typeof AuthenticatedAssistantRoute
-  '/ats': typeof AuthenticatedAtsRoute
   '/autopilot': typeof AuthenticatedAutopilotRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
-  '/interviews': typeof AuthenticatedInterviewsRoute
   '/jobs': typeof AuthenticatedJobsRoute
-  '/networking': typeof AuthenticatedNetworkingRoute
   '/onboarding': typeof AuthenticatedOnboardingRoute
   '/profile': typeof AuthenticatedProfileRoute
-  '/recruiters': typeof AuthenticatedRecruitersRoute
   '/resume': typeof AuthenticatedResumeRoute
-  '/salary': typeof AuthenticatedSalaryRoute
-  '/search': typeof AuthenticatedSearchRoute
   '/settings': typeof AuthenticatedSettingsRoute
-  '/skills': typeof AuthenticatedSkillsRoute
   '/api/public/debug/jobs-trace': typeof ApiPublicDebugJobsTraceRoute
 }
 export interface FileRoutesById {
@@ -206,21 +142,13 @@ export interface FileRoutesById {
   '/signup': typeof SignupRoute
   '/_authenticated/activity': typeof AuthenticatedActivityRoute
   '/_authenticated/applications': typeof AuthenticatedApplicationsRoute
-  '/_authenticated/assistant': typeof AuthenticatedAssistantRoute
-  '/_authenticated/ats': typeof AuthenticatedAtsRoute
   '/_authenticated/autopilot': typeof AuthenticatedAutopilotRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
-  '/_authenticated/interviews': typeof AuthenticatedInterviewsRoute
   '/_authenticated/jobs': typeof AuthenticatedJobsRoute
-  '/_authenticated/networking': typeof AuthenticatedNetworkingRoute
   '/_authenticated/onboarding': typeof AuthenticatedOnboardingRoute
   '/_authenticated/profile': typeof AuthenticatedProfileRoute
-  '/_authenticated/recruiters': typeof AuthenticatedRecruitersRoute
   '/_authenticated/resume': typeof AuthenticatedResumeRoute
-  '/_authenticated/salary': typeof AuthenticatedSalaryRoute
-  '/_authenticated/search': typeof AuthenticatedSearchRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
-  '/_authenticated/skills': typeof AuthenticatedSkillsRoute
   '/api/public/debug/jobs-trace': typeof ApiPublicDebugJobsTraceRoute
 }
 export interface FileRouteTypes {
@@ -232,21 +160,13 @@ export interface FileRouteTypes {
     | '/signup'
     | '/activity'
     | '/applications'
-    | '/assistant'
-    | '/ats'
     | '/autopilot'
     | '/dashboard'
-    | '/interviews'
     | '/jobs'
-    | '/networking'
     | '/onboarding'
     | '/profile'
-    | '/recruiters'
     | '/resume'
-    | '/salary'
-    | '/search'
     | '/settings'
-    | '/skills'
     | '/api/public/debug/jobs-trace'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -256,21 +176,13 @@ export interface FileRouteTypes {
     | '/signup'
     | '/activity'
     | '/applications'
-    | '/assistant'
-    | '/ats'
     | '/autopilot'
     | '/dashboard'
-    | '/interviews'
     | '/jobs'
-    | '/networking'
     | '/onboarding'
     | '/profile'
-    | '/recruiters'
     | '/resume'
-    | '/salary'
-    | '/search'
     | '/settings'
-    | '/skills'
     | '/api/public/debug/jobs-trace'
   id:
     | '__root__'
@@ -281,21 +193,13 @@ export interface FileRouteTypes {
     | '/signup'
     | '/_authenticated/activity'
     | '/_authenticated/applications'
-    | '/_authenticated/assistant'
-    | '/_authenticated/ats'
     | '/_authenticated/autopilot'
     | '/_authenticated/dashboard'
-    | '/_authenticated/interviews'
     | '/_authenticated/jobs'
-    | '/_authenticated/networking'
     | '/_authenticated/onboarding'
     | '/_authenticated/profile'
-    | '/_authenticated/recruiters'
     | '/_authenticated/resume'
-    | '/_authenticated/salary'
-    | '/_authenticated/search'
     | '/_authenticated/settings'
-    | '/_authenticated/skills'
     | '/api/public/debug/jobs-trace'
   fileRoutesById: FileRoutesById
 }
@@ -345,13 +249,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/skills': {
-      id: '/_authenticated/skills'
-      path: '/skills'
-      fullPath: '/skills'
-      preLoaderRoute: typeof AuthenticatedSkillsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
     '/_authenticated/settings': {
       id: '/_authenticated/settings'
       path: '/settings'
@@ -359,32 +256,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSettingsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/search': {
-      id: '/_authenticated/search'
-      path: '/search'
-      fullPath: '/search'
-      preLoaderRoute: typeof AuthenticatedSearchRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/salary': {
-      id: '/_authenticated/salary'
-      path: '/salary'
-      fullPath: '/salary'
-      preLoaderRoute: typeof AuthenticatedSalaryRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
     '/_authenticated/resume': {
       id: '/_authenticated/resume'
       path: '/resume'
       fullPath: '/resume'
       preLoaderRoute: typeof AuthenticatedResumeRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/recruiters': {
-      id: '/_authenticated/recruiters'
-      path: '/recruiters'
-      fullPath: '/recruiters'
-      preLoaderRoute: typeof AuthenticatedRecruitersRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/profile': {
@@ -401,25 +277,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedOnboardingRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/networking': {
-      id: '/_authenticated/networking'
-      path: '/networking'
-      fullPath: '/networking'
-      preLoaderRoute: typeof AuthenticatedNetworkingRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
     '/_authenticated/jobs': {
       id: '/_authenticated/jobs'
       path: '/jobs'
       fullPath: '/jobs'
       preLoaderRoute: typeof AuthenticatedJobsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/interviews': {
-      id: '/_authenticated/interviews'
-      path: '/interviews'
-      fullPath: '/interviews'
-      preLoaderRoute: typeof AuthenticatedInterviewsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/dashboard': {
@@ -434,20 +296,6 @@ declare module '@tanstack/react-router' {
       path: '/autopilot'
       fullPath: '/autopilot'
       preLoaderRoute: typeof AuthenticatedAutopilotRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/ats': {
-      id: '/_authenticated/ats'
-      path: '/ats'
-      fullPath: '/ats'
-      preLoaderRoute: typeof AuthenticatedAtsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/assistant': {
-      id: '/_authenticated/assistant'
-      path: '/assistant'
-      fullPath: '/assistant'
-      preLoaderRoute: typeof AuthenticatedAssistantRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/applications': {
@@ -477,41 +325,25 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedActivityRoute: typeof AuthenticatedActivityRoute
   AuthenticatedApplicationsRoute: typeof AuthenticatedApplicationsRoute
-  AuthenticatedAssistantRoute: typeof AuthenticatedAssistantRoute
-  AuthenticatedAtsRoute: typeof AuthenticatedAtsRoute
   AuthenticatedAutopilotRoute: typeof AuthenticatedAutopilotRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
-  AuthenticatedInterviewsRoute: typeof AuthenticatedInterviewsRoute
   AuthenticatedJobsRoute: typeof AuthenticatedJobsRoute
-  AuthenticatedNetworkingRoute: typeof AuthenticatedNetworkingRoute
   AuthenticatedOnboardingRoute: typeof AuthenticatedOnboardingRoute
   AuthenticatedProfileRoute: typeof AuthenticatedProfileRoute
-  AuthenticatedRecruitersRoute: typeof AuthenticatedRecruitersRoute
   AuthenticatedResumeRoute: typeof AuthenticatedResumeRoute
-  AuthenticatedSalaryRoute: typeof AuthenticatedSalaryRoute
-  AuthenticatedSearchRoute: typeof AuthenticatedSearchRoute
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
-  AuthenticatedSkillsRoute: typeof AuthenticatedSkillsRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedActivityRoute: AuthenticatedActivityRoute,
   AuthenticatedApplicationsRoute: AuthenticatedApplicationsRoute,
-  AuthenticatedAssistantRoute: AuthenticatedAssistantRoute,
-  AuthenticatedAtsRoute: AuthenticatedAtsRoute,
   AuthenticatedAutopilotRoute: AuthenticatedAutopilotRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
-  AuthenticatedInterviewsRoute: AuthenticatedInterviewsRoute,
   AuthenticatedJobsRoute: AuthenticatedJobsRoute,
-  AuthenticatedNetworkingRoute: AuthenticatedNetworkingRoute,
   AuthenticatedOnboardingRoute: AuthenticatedOnboardingRoute,
   AuthenticatedProfileRoute: AuthenticatedProfileRoute,
-  AuthenticatedRecruitersRoute: AuthenticatedRecruitersRoute,
   AuthenticatedResumeRoute: AuthenticatedResumeRoute,
-  AuthenticatedSalaryRoute: AuthenticatedSalaryRoute,
-  AuthenticatedSearchRoute: AuthenticatedSearchRoute,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
-  AuthenticatedSkillsRoute: AuthenticatedSkillsRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
@@ -528,3 +360,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
