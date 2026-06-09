@@ -1098,11 +1098,12 @@ export const getApplicationTimeline = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => IdInput.parse(input))
   .handler(async ({ data, context }) => {
-    const { supabase } = context;
+    const { supabase, userId } = context;
     const { data: rows, error } = await supabase
       .from("application_timeline")
       .select("*")
       .eq("application_id", data.id)
+      .eq("user_id", userId)
       .order("created_at", { ascending: true });
     if (error) throw new Error(error.message);
     return (rows ?? []).map((r) => ({
