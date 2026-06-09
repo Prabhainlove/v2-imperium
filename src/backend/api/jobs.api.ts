@@ -11,17 +11,19 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@backend/database/AuthMiddleware";
 import { retrieveJobs } from "@backend/jobs/JobRetrievalService.server";
-import { normalizeMany, normalizeJob, type NormalizedJob } from "@backend/jobs/JobNormalizationService.server";
+import { normalizeMany, normalizeJob, selectTop5, type NormalizedJob } from "@backend/jobs/JobNormalizationService.server";
 import { cacheDiscovered, clearDiscoveredCache, readCachedJob, sweepStaleCache } from "@backend/jobs/JobCacheService.server";
 import { selectJob } from "@backend/jobs/JobSelectionService.server";
 import { logSearch } from "@backend/jobs/SearchHistoryService.server";
-import type { CandidateContext } from "@backend/jobs/JobRankingService.server";
+import type { CandidateContext, ExperienceBucket } from "@backend/jobs/JobRankingService.server";
+
+const ExperienceBucketEnum = z.enum(["fresher", "0-2", "3-5", "5+"]);
 
 const DiscoverInput = z.object({
   title: z.string().max(200).default(""),
   skills: z.string().max(500).default(""),
   location: z.string().max(200).default(""),
-  experience: z.string().max(50).default(""),
+  experience: z.union([ExperienceBucketEnum, z.literal("")]).default(""),
   workMode: z.string().max(50).default(""),
   salaryMin: z.number().int().min(0).max(100_000_000).nullable().optional(),
 });
