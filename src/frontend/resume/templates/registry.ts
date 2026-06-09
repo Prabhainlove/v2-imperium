@@ -6,6 +6,9 @@ import { ProfessionalTemplate } from "./Professional";
 import { ModernTemplate } from "./Modern";
 import { MinimalTemplate } from "./Minimal";
 import { DeveloperTemplate } from "./Developer";
+import { ExecutiveTemplate } from "./Executive";
+import { CreativeTemplate } from "./Creative";
+import { StudentTemplate } from "./Student";
 
 export type TemplateCategory =
   | "ATS"
@@ -101,8 +104,51 @@ export const TEMPLATES: TemplateMeta[] = [
     bestFor: ["Software Engineer", "Backend", "DevOps", "Open Source"],
     component: DeveloperTemplate,
   },
+  {
+    id: "executive",
+    name: "Executive",
+    description: "Centered serif header, conservative palette. For senior leadership.",
+    category: "Executive",
+    atsCompatibility: 92,
+    visualAppeal: 90,
+    recruiterReadability: 95,
+    supportsPhoto: false,
+    supportsSidebar: false,
+    supportsMultiPage: true,
+    bestFor: ["Director", "VP", "Head of", "C-Suite"],
+    component: ExecutiveTemplate,
+  },
+  {
+    id: "creative",
+    name: "Creative",
+    description: "Colored header band with two-column body. Stand-out without losing parsing.",
+    category: "Creative",
+    atsCompatibility: 78,
+    visualAppeal: 97,
+    recruiterReadability: 88,
+    supportsPhoto: true,
+    supportsSidebar: true,
+    supportsMultiPage: true,
+    bestFor: ["Brand", "Marketing", "Content", "Design"],
+    component: CreativeTemplate,
+  },
+  {
+    id: "student",
+    name: "Student / Fresher",
+    description: "Education-first ordering; projects and coursework front and center.",
+    category: "Student",
+    atsCompatibility: 95,
+    visualAppeal: 84,
+    recruiterReadability: 92,
+    supportsPhoto: false,
+    supportsSidebar: false,
+    supportsMultiPage: false,
+    bestFor: ["New Grad", "Intern", "Fresher", "Junior"],
+    component: StudentTemplate,
+  },
 ];
 
 export function getTemplate(id: string): TemplateMeta {
   return TEMPLATES.find((t) => t.id === id) ?? TEMPLATES[0];
 }
+
