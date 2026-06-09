@@ -155,7 +155,7 @@ export function InsightsPane() {
           atsScore={ats.atsScore}
           matchScore={jdMatch.score}
           activeTemplateId={resume.meta.templateId}
-          activeTemplateLabel={activeTemplate?.label ?? resume.meta.templateId}
+          activeTemplateLabel={activeTemplate?.name ?? resume.meta.templateId}
         />
         {warnings.length > 0 && (
           <ul className="resume-insights-list resume-warnings">
