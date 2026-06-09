@@ -1,18 +1,20 @@
 /**
  * JobNormalizationService — converts a RawJob from any source into a single
- * NormalizedJob DTO the UI can render. Adds company branding (logo) and
- * ranking output. No persistence here.
+ * NormalizedJob DTO the UI can render. Adds company branding (logo), ranking
+ * and quality validation. No persistence here.
  *
- * Top-5 rules (Job Discovery Recovery):
+ * Top-5 rules (Data Quality Recovery):
+ *   - qualityStatus === "ok" && qualityScore >= 60
  *   - !titleMismatch
  *   - matchScore ≥ 0.5
  *   - freshnessDays ≤ 30
  *   - locationTier ∈ {same_city, same_state, remote, same_country}
- *   - never pad: if only N qualify, return N (up to 5).
+ *   - never pad
  */
 import type { RawJob } from "@backend/jobs/JobSources.server";
 import { rankJob, type CandidateContext, type IntelligenceLabel, type MatchBreakdown, type ExperienceBucket, type LocationTier } from "@backend/jobs/JobRankingService.server";
 import { getCompanyInfo } from "@backend/jobs/CompanyInfoService.server";
+import { validateJob, type QualityStatus, type DescriptionSource } from "@backend/jobs/JobValidationService.server";
 
 export interface NormalizedJob {
   id: string;
@@ -46,6 +48,13 @@ export interface NormalizedJob {
   isNewToday: boolean;
   titleMismatch: boolean;
   belowSalary: boolean;
+  // Quality
+  qualityStatus: QualityStatus;
+  qualityScore: number;
+  qualityReasons: string[];
+  descriptionSource: DescriptionSource;
+  sourceConfidence: number;
+  experienceIntegrity: "consistent" | "mismatch" | "unknown";
 }
 
 function formatSalary(min: number | null, max: number | null, currency: string): string {
@@ -60,7 +69,8 @@ function formatSalary(min: number | null, max: number | null, currency: string):
 
 export function normalizeJob(raw: RawJob, ctx: CandidateContext): NormalizedJob {
   const company = getCompanyInfo(raw.company);
-  const ranking = rankJob(raw, ctx);
+  const quality = validateJob(raw);
+  const ranking = rankJob(raw, ctx, { sourceConfidence: quality.sourceConfidence });
   return {
     id: `${raw.source}:${raw.external_id}`,
     externalId: raw.external_id,
@@ -83,6 +93,12 @@ export function normalizeJob(raw: RawJob, ctx: CandidateContext): NormalizedJob 
     postedAt: raw.posted_at,
     retrievedAt: new Date().toISOString(),
     ...ranking,
+    qualityStatus: quality.qualityStatus,
+    qualityScore: quality.qualityScore,
+    qualityReasons: quality.qualityReasons,
+    descriptionSource: quality.descriptionSource,
+    sourceConfidence: quality.sourceConfidence,
+    experienceIntegrity: quality.experienceIntegrity,
   };
 }
 
@@ -90,6 +106,7 @@ export function normalizeMany(raws: RawJob[], ctx: CandidateContext): Normalized
   return raws.map((r) => normalizeJob(r, ctx)).sort((a, b) => {
     if (b.matchScore !== a.matchScore) return b.matchScore - a.matchScore;
     if (a.freshnessDays !== b.freshnessDays) return a.freshnessDays - b.freshnessDays;
+    if (b.qualityScore !== a.qualityScore) return b.qualityScore - a.qualityScore;
     if (b.matchedSkills.length !== a.matchedSkills.length) return b.matchedSkills.length - a.matchedSkills.length;
     return (b.salaryMin ?? 0) - (a.salaryMin ?? 0);
   });
@@ -100,6 +117,8 @@ export function selectTop5(jobs: NormalizedJob[]): NormalizedJob[] {
   const allowedTiers: LocationTier[] = ["same_city", "same_state", "remote", "same_country"];
   return jobs
     .filter((j) =>
+      j.qualityStatus === "ok" &&
+      j.qualityScore >= 60 &&
       !j.titleMismatch &&
       j.matchScore >= 0.5 &&
       j.freshnessDays <= 30 &&

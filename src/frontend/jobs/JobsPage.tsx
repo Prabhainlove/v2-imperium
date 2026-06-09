@@ -16,7 +16,9 @@ export function JobsPage() {
 
   const all = data?.all ?? [];
   const top5 = data?.top5 ?? [];
-  const selectedJob = details.data ?? all.find((j) => j.id === selectedId) ?? null;
+  // Prefer the in-memory list (already has the canonical matchScore + breakdown
+  // from the original search context). The fetched details are a fallback.
+  const selectedJob = all.find((j) => j.id === selectedId) ?? details.data ?? null;
 
   const handleView = (id: string) => setSelectedId(id);
   const handleApply = (id: string) => select.mutate(id);
