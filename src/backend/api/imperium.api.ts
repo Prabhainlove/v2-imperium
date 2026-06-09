@@ -1353,3 +1353,165 @@ export const getSkillGap = createServerFn({ method: "GET" })
     };
   });
 
+
+/* ===========================================================================
+ * APPLICATION TRACKER V2 — Resume-Studio creation + free-form notes + global timeline.
+ * These power the frontend Application Tracker (Phase 6 migration off localStorage).
+ * ========================================================================= */
+
+const CreateAppFromResumeInput = z.object({
+  company: z.string().min(1).max(200),
+  role: z.string().min(1).max(200),
+  location: z.string().max(200).optional(),
+  salary: z.string().max(200).optional(),
+  source: z.string().max(40).optional(),
+  sourceUrl: z.string().max(2000).optional(),
+  description: z.string().max(40_000).optional(),
+  status: z.string().max(40).optional(),
+  atsScore: z.number().int().min(0).max(100).optional(),
+  matchScore: z.number().int().min(0).max(100).optional(),
+  resumeId: z.string().max(120).optional(),
+  resumeVersion: z.string().max(120).optional(),
+  templateUsed: z.string().max(120).optional(),
+  origin: z.enum(["resume_studio", "local_agent", "manual"]).optional(),
+  agentRunId: z.string().max(120).optional(),
+  appliedAt: z.string().max(64).optional(),
+  preserveId: z.string().uuid().optional(),
+});
+
+export const createApplicationFromResumeStudio = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) => CreateAppFromResumeInput.parse(i))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const now = new Date().toISOString();
+    const appliedAt = data.appliedAt ?? now;
+    const source = data.source ?? "other";
+
+    // 1) Create (or reuse) a job_listings row to satisfy FK.
+    const externalId = `rs_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+    const { data: listing, error: lErr } = await supabase
+      .from("job_listings")
+      .insert({
+        user_id: userId,
+        source,
+        external_id: externalId,
+        url: data.sourceUrl ?? "",
+        title: data.role,
+        company: data.company,
+        location: data.location ?? "",
+        description: data.description ?? "",
+        match_score: data.matchScore ?? 0,
+        status: "applied",
+        saved: false,
+      } as never)
+      .select("id")
+      .single();
+    if (lErr) throw new Error(lErr.message);
+
+    // 2) Notes JSON carries snapshot metadata that has no dedicated column.
+    const meta = {
+      ats_score: data.atsScore,
+      template_used: data.templateUsed,
+      applied_origin: data.origin ?? "resume_studio",
+      agent_run_id: data.agentRunId,
+      resume_id: data.resumeId,
+      salary: data.salary,
+      description: data.description?.slice(0, 4000),
+    };
+
+    const insertRow: Record<string, unknown> = {
+      listing_id: (listing as { id: string }).id,
+      user_id: userId,
+      company: data.company,
+      job_title: data.role,
+      status: data.status ?? "applied",
+      match_score: data.matchScore ?? 0,
+      source,
+      url: data.sourceUrl ?? "",
+      resume_version: data.resumeVersion ?? "",
+      cover_letter_version: "",
+      notes: JSON.stringify(meta),
+      applied_at: appliedAt,
+      created_at: appliedAt,
+      updated_at: appliedAt,
+    };
+    if (data.preserveId) insertRow.id = data.preserveId;
+
+    const { data: app, error: aErr } = await supabase
+      .from("applications")
+      .insert(insertRow as never)
+      .select("*")
+      .single();
+    if (aErr) throw new Error(aErr.message);
+
+    // 3) Timeline event.
+    await supabase.from("application_timeline").insert({
+      user_id: userId,
+      application_id: (app as { id: string }).id,
+      event_type: "application_submitted",
+      from_status: "",
+      to_status: data.status ?? "applied",
+      note: `Applied to ${data.role} at ${data.company}`,
+    } as never);
+
+    return mapApp(app as Record<string, unknown>);
+  });
+
+const UpdateNotesInput = z.object({
+  id: z.string().min(1),
+  note: z.string().max(20_000),
+});
+
+export const updateApplicationNotes = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) => UpdateNotesInput.parse(i))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: row, error: readErr } = await supabase
+      .from("applications")
+      .select("notes")
+      .eq("id", data.id)
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (readErr) throw new Error(readErr.message);
+    if (!row) throw new Error("Application not found");
+    let meta: Record<string, unknown> = {};
+    try {
+      const parsed = JSON.parse((row.notes as string) || "{}");
+      if (parsed && typeof parsed === "object") meta = parsed as Record<string, unknown>;
+    } catch { /* legacy plain text */ }
+    meta.user_note = data.note;
+    const { error: updErr } = await supabase
+      .from("applications")
+      .update({
+        notes: JSON.stringify(meta),
+        updated_at: new Date().toISOString(),
+      } as never)
+      .eq("id", data.id)
+      .eq("user_id", userId);
+    if (updErr) throw new Error(updErr.message);
+    return { ok: true };
+  });
+
+export const getAllApplicationTimeline = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase, userId } = context;
+    const { data: rows, error } = await supabase
+      .from("application_timeline")
+      .select("*")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(500);
+    if (error) throw new Error(error.message);
+    return (rows ?? []).map((r) => ({
+      id: r.id as string,
+      application_id: r.application_id as string,
+      event_type: r.event_type as string,
+      from_status: (r.from_status as string) ?? "",
+      to_status: (r.to_status as string) ?? "",
+      note: (r.note as string) ?? "",
+      created_at: r.created_at as string,
+    }));
+  });
