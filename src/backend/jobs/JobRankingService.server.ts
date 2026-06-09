@@ -284,7 +284,11 @@ function labelFor(score: number): IntelligenceLabel {
   return "long_shot";
 }
 
-export function rankJob(job: RawJob, ctx: CandidateContext): RankingResult {
+export function rankJob(
+  job: RawJob,
+  ctx: CandidateContext,
+  opts: { sourceConfidence?: number } = {},
+): RankingResult {
   const hay = normTxt(`${job.title} ${job.description} ${job.tech_stack.join(" ")}`);
 
   // title
@@ -311,13 +315,12 @@ export function rankJob(job: RawJob, ctx: CandidateContext): RankingResult {
   // freshness
   const days = job.posted_at
     ? Math.max(0, Math.floor((Date.now() - new Date(job.posted_at).getTime()) / 86_400_000))
-    : 14; // unknown posted date → assume two weeks old (not fresh, not ancient)
+    : 14;
   const fresh = freshnessFromDays(days);
 
   // salary
   const sal = salaryScore(job, ctx.desiredSalaryMin ?? null);
 
-  // Composite — location weight raised; freshness slightly down to compensate.
   const base =
     0.28 * title.score +
     0.22 * skills +
@@ -335,6 +338,10 @@ export function rankJob(job: RawJob, ctx: CandidateContext): RankingResult {
   if (parsed.country === "india" && loc.tier === "other" && !job.remote) {
     multiplier *= 0.25;
   }
+
+  // Source confidence: India-native sources edge out remote boards at equal relevance.
+  const conf = typeof opts.sourceConfidence === "number" ? opts.sourceConfidence : 0.8;
+  multiplier *= 0.85 + 0.15 * Math.max(0, Math.min(1, conf));
 
   const matchScore = Math.max(0, Math.min(1, base * multiplier));
 
