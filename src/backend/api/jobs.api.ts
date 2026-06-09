@@ -46,7 +46,8 @@ function buildCandidateContext(profile: any, filters: Partial<DiscoverFilters>):
   const role = filters.title || profile?.target_role || profile?.headline || "Software Engineer";
   const location = filters.location || profile?.location || "Remote";
   const desiredSalaryMin = filters.salaryMin ?? (profile?.salary_expectation?.min as number | undefined) ?? null;
-  return { role, skills: merged, experience: filters.experience ?? "", location, desiredSalaryMin };
+  const bucket: ExperienceBucket | null = filters.experience && filters.experience !== "" ? (filters.experience as ExperienceBucket) : null;
+  return { role, skills: merged, experience: "", experienceBucket: bucket, location, desiredSalaryMin };
 }
 
 export const discoverJobs = createServerFn({ method: "POST" })
