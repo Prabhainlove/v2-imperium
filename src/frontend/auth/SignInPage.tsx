@@ -1,10 +1,9 @@
-import { useState, useEffect, type FormEvent } from "react";
-import { useNavigate } from "@tanstack/react-router";
-import { ensureDemoUser } from "./mockAuth";
+import { useState, type FormEvent } from "react";
+import { useNavigate, Link } from "@tanstack/react-router";
+import { supabase } from "@backend/database/SupabaseClient";
 import { AuthShell } from "./components/AuthShell";
 import { PillInput } from "./components/PillInput";
 import { signInSchema } from "./validation";
-import { signIn } from "./mockAuth";
 
 export function SignInPage() {
   const navigate = useNavigate();
@@ -12,10 +11,6 @@ export function SignInPage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-
-  useEffect(() => {
-    void ensureDemoUser();
-  }, []);
 
   const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setValues((v) => ({ ...v, [k]: e.target.value }));
@@ -33,10 +28,15 @@ export function SignInPage() {
     setErrors({});
     setSubmitting(true);
     try {
-      await signIn(parsed.data);
+      const { error } = await supabase.auth.signInWithPassword({
+        email: parsed.data.email,
+        password: parsed.data.password,
+      });
+      if (error) throw error;
       navigate({ to: "/dashboard" });
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : "Sign in failed");
+      const msg = err instanceof Error ? err.message : "Sign in failed";
+      setFormError(msg.includes("Invalid login") ? "Incorrect email or password." : msg);
     } finally {
       setSubmitting(false);
     }
@@ -72,24 +72,12 @@ export function SignInPage() {
         />
         <div className="auth-meta">
           <span>SIGN IN / 01</span>
-          <a href="#" onClick={(e) => e.preventDefault()}>Forgot password?</a>
+          <Link to="/reset-password">Forgot password?</Link>
         </div>
         <button type="submit" className="auth-submit" disabled={submitting}>
           {submitting ? "Entering…" : "Enter Imperium →"}
         </button>
         {formError ? <div className="auth-form-error">{formError}</div> : null}
-        <div className="auth-hint">
-          Demo account · <strong>fresher.demo@imperium.app</strong> / <strong>Demo@12345</strong>
-          <button
-            type="button"
-            className="auth-hint-fill"
-            onClick={() =>
-              setValues({ email: "fresher.demo@imperium.app", password: "Demo@12345" })
-            }
-          >
-            Fill
-          </button>
-        </div>
       </form>
     </AuthShell>
   );
