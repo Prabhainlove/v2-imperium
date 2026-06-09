@@ -63,7 +63,7 @@ export function TopBar({ gems, coins }: Props) {
             <button onClick={() => { setOpen(false); navigate({ to: "/profile" }); }}>Profile Settings</button>
             <button onClick={() => { setOpen(false); navigate({ to: "/settings" }); }}>Account</button>
             <button onClick={() => setOpen(false)}>Theme</button>
-            <button onClick={() => { signOut(); navigate({ to: "/auth" }); }}>Logout</button>
+            <button onClick={() => { setOpen(false); handleLogout(); }}>Logout</button>
           </div>
         )}
       </div>

@@ -1,12 +1,15 @@
 /**
- * Profile page data layer. v1 still surfaces the InternalSeedProfile in dev
- * (so the UI is not blank during stabilization). Production builds receive
- * an empty profile until Phase 3 wires Supabase-backed `getMyProfile`.
+ * Profile page data layer (Phase 3 migrated).
+ *
+ * Source of truth: Supabase `profiles` table via `getProfile` server fn.
+ * No more `InternalSeedProfile` fallback on the frontend.
  */
 import { useMemo } from "react";
-import { useSession } from "@frontend/auth/mockAuth";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { useSession } from "@frontend/auth/session";
 import { type ImperiumProfile, EMPTY_PROFILE } from "@backend/profile/ProfileTypes";
-import { getInternalSeedProfile } from "@backend/profile/InternalSeedProfile";
+import { getProfile } from "@backend/api/imperium.api";
 
 export interface ExtractionFlag { label: string; ok: boolean; }
 export interface MissingItem { label: string; }
@@ -14,25 +17,13 @@ export interface OptimizationItem { label: string; }
 
 export interface ProfilePageData {
   profile: ImperiumProfile;
-  scores: {
-    strength: number;     // 0-100
-    atsReadiness: number; // 0-100
-    resumeQuality: number;// 0-100
-  };
+  scores: { strength: number; atsReadiness: number; resumeQuality: number };
   extraction: ExtractionFlag[];
   missing: MissingItem[];
   optimization: OptimizationItem[];
-  resume: {
-    fileName: string;
-    sizeLabel: string;
-    lastUpdated: string;
-    extracted: boolean;
-    active: boolean;
-  };
+  resume: { fileName: string; sizeLabel: string; lastUpdated: string; extracted: boolean; active: boolean };
+  loading: boolean;
 }
-
-const SEED = getInternalSeedProfile() ?? EMPTY_PROFILE;
-const PROFILE: ImperiumProfile = { id: "imp-2024-0912", ...SEED };
 
 function score(profile: ImperiumProfile) {
   const has = (v: unknown) => (typeof v === "string" ? v.trim().length > 0 : !!v) ? 1 : 0;
@@ -54,20 +45,25 @@ function score(profile: ImperiumProfile) {
 
 export function useProfilePageData(): ProfilePageData {
   const session = useSession();
+  const fetchProfile = useServerFn(getProfile);
+  const query = useQuery({
+    queryKey: ["profile", session?.userId ?? "anon"],
+    queryFn: () => fetchProfile(),
+    enabled: !!session,
+    staleTime: 30_000,
+  });
+
   return useMemo<ProfilePageData>(() => {
-    const isDemo = session?.email === "fresher.demo@imperium.app";
-    const profile: ImperiumProfile = isDemo
-      ? PROFILE
-      : {
-          ...PROFILE,
-          name: session?.fullName || PROFILE.name,
-          email: session?.email || PROFILE.email,
-        };
+    const profile: ImperiumProfile = (query.data?.profile as ImperiumProfile | undefined) ?? {
+      ...EMPTY_PROFILE,
+      name: session?.fullName ?? "",
+      email: session?.email ?? "",
+    };
     const scores = score(profile);
     const extraction: ExtractionFlag[] = [
-      { label: "Resume Uploaded", ok: true },
+      { label: "Resume Uploaded", ok: !!profile.summary || profile.experience.length > 0 },
       { label: "LinkedIn Connected", ok: !!profile.linkedin_url },
-      { label: "Profile Synced", ok: true },
+      { label: "Profile Synced", ok: !query.isLoading && !!query.data },
     ];
     const missing: MissingItem[] = [];
     if (profile.experience.length === 0) missing.push({ label: "Experience Missing" });
@@ -94,6 +90,7 @@ export function useProfilePageData(): ProfilePageData {
         extracted: !!profile.name,
         active: !!profile.name,
       },
+      loading: query.isLoading,
     };
-  }, [session]);
+  }, [session, query.data, query.isLoading]);
 }

@@ -5,7 +5,7 @@
  * PII has been stripped (Phase 0): no hardcoded personal email/name.
  */
 import { useMemo } from "react";
-import { useSession } from "@frontend/auth/mockAuth";
+import { useSession } from "@frontend/auth/session";
 
 export type Rarity = "common" | "rare" | "epic" | "legendary" | "mythic";
 
