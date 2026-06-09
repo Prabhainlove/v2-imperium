@@ -82,6 +82,11 @@ export function SignUpPage() {
           onChange={set("password")}
           error={errors.password}
         />
+        <ul className="auth-rules" aria-label="Password requirements">
+          <li className={values.password.length >= 8 ? "ok" : ""}>At least 8 characters</li>
+          <li className={/[A-Z]/.test(values.password) ? "ok" : ""}>One uppercase letter</li>
+          <li className={/[0-9]/.test(values.password) ? "ok" : ""}>One number</li>
+        </ul>
         <PillInput
           isPassword
           placeholder="confirm password"
