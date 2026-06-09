@@ -31,6 +31,7 @@ import { Route as AuthenticatedAtsRouteImport } from './routes/_authenticated/at
 import { Route as AuthenticatedAssistantRouteImport } from './routes/_authenticated/assistant'
 import { Route as AuthenticatedApplicationsRouteImport } from './routes/_authenticated/applications'
 import { Route as AuthenticatedActivityRouteImport } from './routes/_authenticated/activity'
+import { Route as ApiPublicDebugJobsTraceRouteImport } from './routes/api/public/debug.jobs-trace'
 
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
@@ -142,6 +143,11 @@ const AuthenticatedActivityRoute = AuthenticatedActivityRouteImport.update({
   path: '/activity',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const ApiPublicDebugJobsTraceRoute = ApiPublicDebugJobsTraceRouteImport.update({
+  id: '/api/public/debug/jobs-trace',
+  path: '/api/public/debug/jobs-trace',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -165,6 +171,7 @@ export interface FileRoutesByFullPath {
   '/search': typeof AuthenticatedSearchRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/skills': typeof AuthenticatedSkillsRoute
+  '/api/public/debug/jobs-trace': typeof ApiPublicDebugJobsTraceRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -188,6 +195,7 @@ export interface FileRoutesByTo {
   '/search': typeof AuthenticatedSearchRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/skills': typeof AuthenticatedSkillsRoute
+  '/api/public/debug/jobs-trace': typeof ApiPublicDebugJobsTraceRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -213,6 +221,7 @@ export interface FileRoutesById {
   '/_authenticated/search': typeof AuthenticatedSearchRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/skills': typeof AuthenticatedSkillsRoute
+  '/api/public/debug/jobs-trace': typeof ApiPublicDebugJobsTraceRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -238,6 +247,7 @@ export interface FileRouteTypes {
     | '/search'
     | '/settings'
     | '/skills'
+    | '/api/public/debug/jobs-trace'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -261,6 +271,7 @@ export interface FileRouteTypes {
     | '/search'
     | '/settings'
     | '/skills'
+    | '/api/public/debug/jobs-trace'
   id:
     | '__root__'
     | '/'
@@ -285,6 +296,7 @@ export interface FileRouteTypes {
     | '/_authenticated/search'
     | '/_authenticated/settings'
     | '/_authenticated/skills'
+    | '/api/public/debug/jobs-trace'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -293,6 +305,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SignupRoute: typeof SignupRoute
+  ApiPublicDebugJobsTraceRoute: typeof ApiPublicDebugJobsTraceRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -451,6 +464,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedActivityRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/api/public/debug/jobs-trace': {
+      id: '/api/public/debug/jobs-trace'
+      path: '/api/public/debug/jobs-trace'
+      fullPath: '/api/public/debug/jobs-trace'
+      preLoaderRoute: typeof ApiPublicDebugJobsTraceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -503,6 +523,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SignupRoute: SignupRoute,
+  ApiPublicDebugJobsTraceRoute: ApiPublicDebugJobsTraceRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

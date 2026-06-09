@@ -1,103 +1,71 @@
-# Job Discovery Engine — Ranking & Filter Fixes
+# Job Discovery Pipeline Diagnostics
 
-Scope: tighten ranking + filtering so Top 5 reflects real best matches. No DB migration changes. No Resume Studio work yet.
+## Goal
 
-## Files Touched
+Answer your debug request with hard numbers by instrumenting the existing pipeline (no logic changes yet), running your exact search (`Front End` / `Hyderabad` / `Fresher`), and producing a stage-by-stage funnel.
 
-1. `src/backend/jobs/JobRankingService.server.ts` — rewrite scoring (title relevance, experience buckets, freshness, location tiers, salary penalty).
-2. `src/backend/jobs/JobNormalizationService.server.ts` — expose `experienceBucket`, `freshnessDays`, `isNewToday`, `locationTier` on `NormalizedJob`.
-3. `src/backend/api/jobs.api.ts` — apply hard filters (experience bucket, salary min, work mode) before ranking; pass `workMode` + experience bucket into ranking context.
-4. `src/frontend/jobs/components/JobSearchBar.tsx` — replace experience options with `Fresher / 0–2 / 3–5 / 5+`.
-5. `src/frontend/jobs/jobs.logic.ts` — type the new experience bucket value; pass through.
-6. `src/frontend/jobs/components/JobCard.tsx` + `TopMatchesRow.tsx` — render 🔥 New Today badge, ensure logo fallback to company-initials avatar (never blank).
-7. `src/frontend/jobs/jobs.css` — styles for new badge + initials avatar.
+I cannot get those numbers without code — the current pipeline only returns the *final* `top5` + `all`, and silently drops jobs at four hidden stages (`matchesQuery` source-side, experience hard filter, salary hard filter, mode hard filter, then `selectTop5` threshold).
 
-No changes to: migrations, `selected_jobs`, `search_history`, RLS, `JobSources.server.ts`, Resume Studio.
+## What I'll Add (diagnostics only, no ranking changes)
 
-## Technical Detail
+### 1. `JobRetrievalService.server.ts`
+- Keep `RetrievalResult` as-is. Add an internal `rawCounts` map: for each source, count jobs **before** `matchesQuery` filtering, so we see "LinkedIn returned 25, kept 3 after role/location match".
+- Each source adapter currently filters with `matchesQuery` inline. Add a `prefilterCount` returned via a new `SourceTrace` shape:
+  ```ts
+  { id, label, status, fetched, kept, error? }
+  ```
 
-### 1. Experience Buckets
-Enum `ExperienceBucket = "fresher" | "0-2" | "3-5" | "5+"`.
-
-Classifier `classifyExperience(title, description)`:
-- Regex on title first (highest signal):
-  - `/intern|graduate|fresher|trainee|entry[- ]level|junior|jr\.?\b/i` → `fresher`
-  - `/associate|jr engineer/i` or yrs match `1|2` → `0-2`
-  - `/mid|mid[- ]level/i` or yrs `3|4|5` → `3-5`
-  - `/senior|sr\.?\b|lead|principal|staff|architect|manager|head of|director|vp\b/i` → `5+`
-- Then description: pull `(\d+)\+?\s*(?:years|yrs)` min value → bucket by range.
-- Default: `3-5` (neutral) when no signal.
-
-Hard filter: if user selects a bucket, drop jobs not in that bucket BEFORE ranking. "Any" keeps all.
-
-### 2. Title Relevance (heavier weight)
-- Build query tokens from `filters.title` (e.g. "front end" → `["front","end","frontend"]`, normalize "front end"/"front-end"/"frontend" → canonical `frontend`).
-- Maintain role-family synonym map:
-  - frontend: `frontend, front-end, react, angular, vue, ui engineer, web developer, javascript engineer`
-  - backend: `backend, back-end, api, node, golang, python engineer, java engineer`
-  - fullstack, mobile, ios, android, data, ml, devops, design, pm, marketing, sales…
-- `titleScore`:
-  - 1.0 if job title contains canonical family token or strong synonym
-  - 0.6 partial token overlap
-  - 0.0 if title belongs to a different identified family → also flagged as `titleMismatch=true` (used as penalty)
-- Apply penalty: if `titleMismatch`, multiply final score by 0.4 so unrelated roles can't reach Top 5.
-
-### 3. Freshness
-- `freshnessDays = floor((now - postedAt)/day)`; missing → treat as 7.
-- `freshnessScore`:
-  - 0 days: 1.0
-  - 1: 0.95
-  - 2–3: 0.85
-  - 4–7: 0.7
-  - 8–14: 0.5
-  - 15–30: 0.3
-  - >30: 0.1
-- `isNewToday = freshnessDays <= 1`.
-
-### 4. Location Tiers
-Inputs: user city/state/country (parse from `filters.location`, e.g. "Hyderabad"). Use small India city→state map + country guess (default IN for known IN cities), plus `Remote`.
-Tiers:
-- same_city → 1.0
-- same_state → 0.85
-- remote → 0.75
-- same_country → 0.55
-- other → 0.2
-If user typed `remote`/blank: remote=1.0, others 0.6.
-
-### 5. Salary
-- If `salaryMin` provided and `job.salary_min` known and `< userMin` → `salaryScore = 0.2` and mark `belowSalary=true`.
-- If unknown → 0.6 (neutral).
-- If meets/exceeds → 1.0.
-- Hard exclude only when user provides salaryMin AND job has explicit salary_max below userMin.
-
-### 6. Final Score
+### 2. `src/backend/api/jobs.api.ts` — `discoverJobs` handler
+Add a `trace` object to the response (only populated when `?debug=1` or always, small cost):
+```ts
+trace: {
+  perSource: SourceTrace[],          // fetched vs kept per source
+  afterRetrieval: number,            // unique raws
+  afterNormalize: number,
+  afterExperienceFilter: number,
+  afterSalaryFilter: number,
+  afterModeFilter: number,
+  afterTitleFamilyGate: number,      // jobs with titleMismatch=false
+  afterScoreThreshold: number,       // matchScore >= 0.45
+  top5Count: number,
+  sampleRaw: Array<{title, location, experienceBucket, source}>,    // first 20 after retrieval
+  sampleFiltered: Array<{title, score, reasons:{title,skills,exp,loc,fresh,sal}, survived:boolean}>, // first 20 after filtering
+}
 ```
-base = 0.30*title + 0.25*skills + 0.15*experienceFit + 0.12*location + 0.10*freshness + 0.08*salary
-score = base * (titleMismatch ? 0.4 : 1) * (experienceBucketMismatch ? 0.5 : 1)
+- Compute `experienceBucket` for `sampleRaw` by calling `classifyExperience(title, description)` (already exported from ranking service).
+- For `sampleFiltered`, capture the breakdown returned by `rankJob` and explain in one line why it survived (e.g., "title=1.0, exp match, loc=same_city").
+
+### 3. Frontend — no UI changes required for the report
+I'll call the server function directly via `stack_modern--invoke-server-function` with your search payload, log in, and read the `trace` field.
+
+### 4. New temporary route `/api/public/debug/jobs-trace` (optional)
+A POST endpoint that takes `{title, location, experience}` and runs the same pipeline using `supabaseAdmin` against a system profile (no auth), returning only the `trace`. Lets us reproduce the exact funnel without going through the UI.
+
+Guarded by `process.env.DEBUG_JOBS_TRACE === "1"` so it can't be left open.
+
+## Execution Steps After Implementation
+
+1. Run `Title: Front End` / `Location: Hyderabad` / `Experience: Fresher`.
+2. Report:
+   - **Per-source**: LinkedIn / Naukri / Foundit / Wellfound / RemoteOK / YC fetched vs kept (Foundit, Wellfound, YC are not currently wired — I'll list them as `skipped: not_implemented` so you see that gap explicitly).
+   - Funnel counts at every stage.
+   - First 20 raw jobs (title, location, experienceBucket, source).
+   - First 20 post-filter jobs (title, final score, one-line "why it survived").
+3. Identify the **exact stage** that drops Hyderabad frontend fresher jobs.
+
+## Files Touched (diagnostics only)
 ```
-`experienceFit`: 1.0 if classified bucket == requested bucket, 0.6 adjacent, 0.3 far.
-
-### 7. Top 5 Selection
-- Sort by score desc.
-- Tie-breaker chain: freshness desc → title exact match → skills matched count → salary known desc.
-- Enforce: Top 5 must each have score ≥ 0.45 AND no `titleMismatch`. If fewer than 5 qualify, show what qualifies (don't pad with junk).
-
-### 8. Company Logo Fallback
-- `JobCard`/`TopMatchesRow`: `<img onError>` swaps to initials avatar div (already have `companyInitials` helper). Render initials avatar by default when `companyLogo` empty.
-- Add deterministic background color from hash(company) for visual variety.
-
-### 9. New Today Badge
-- Show `🔥 New Today` pill on card when `isNewToday`.
-
-### 10. UI Filter Options
-JobSearchBar experience `<select>`:
+edit  src/backend/jobs/JobRetrievalService.server.ts   (+ SourceTrace shape, fetched/kept counters)
+edit  src/backend/jobs/JobSources.server.ts            (each adapter returns {fetched, kept} via a wrapper)
+edit  src/backend/api/jobs.api.ts                      (+ trace object on discoverJobs response)
+new   src/routes/api/public/debug.jobs-trace.ts        (gated public trace endpoint)
 ```
-Any Experience | Fresher | 0–2 Years | 3–5 Years | 5+ Years
-```
-Value sent to backend: `""|"fresher"|"0-2"|"3-5"|"5+"`.
 
-## Out of Scope
-- Migration edits, Resume Studio, new job sources, Ollama switch, screenshots (will follow after build).
+No ranking, no UI, no DB schema changes. After the funnel is reported and the stage is identified, I'll come back with a separate fix plan for whichever stage is broken (most likely `matchesQuery` in `fetchLinkedIn` requiring location substring AND title to both hit, or `classifyExperience` mislabeling "Front End Developer" without seniority cues as `3-5` instead of `fresher`).
 
-## After Implementation
-Will share screenshots of Top 5 + a short note explaining the score formula above, before moving to Resume Studio.
+## Out of Scope (this plan)
+- Fixing the bug itself.
+- Adding Foundit / Wellfound / YC Jobs adapters (will note as missing in the report).
+- Resume Studio.
+
+Approve and I'll implement, run the search, and post the funnel back here.
