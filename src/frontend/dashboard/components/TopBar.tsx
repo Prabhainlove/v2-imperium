@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { signOut } from "@frontend/auth/mockAuth";
+import { useQueryClient } from "@tanstack/react-query";
+import { signOut } from "@frontend/auth/session";
 import { IconGem, IconCoin, IconPlus, IconGear } from "./icons";
 
 interface Props { gems: number; coins: number; }
@@ -9,6 +10,13 @@ export function TopBar({ gems, coins }: Props) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const handleLogout = async () => {
+    await queryClient.cancelQueries();
+    queryClient.clear();
+    await signOut();
+    navigate({ to: "/auth", replace: true });
+  };
 
   useEffect(() => {
     function onDoc(e: MouseEvent) {

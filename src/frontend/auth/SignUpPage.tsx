@@ -1,9 +1,9 @@
 import { useState, type FormEvent } from "react";
 import { useNavigate } from "@tanstack/react-router";
+import { supabase } from "@backend/database/SupabaseClient";
 import { AuthShell } from "./components/AuthShell";
 import { PillInput } from "./components/PillInput";
 import { signUpSchema } from "./validation";
-import { signUp } from "./mockAuth";
 
 export function SignUpPage() {
   const navigate = useNavigate();
@@ -33,14 +33,32 @@ export function SignUpPage() {
     setErrors({});
     setSubmitting(true);
     try {
-      await signUp({
-        fullName: parsed.data.fullName,
+      const redirectTo =
+        typeof window !== "undefined" ? `${window.location.origin}/dashboard` : undefined;
+      const { error } = await supabase.auth.signUp({
         email: parsed.data.email,
         password: parsed.data.password,
+        options: {
+          emailRedirectTo: redirectTo,
+          data: { full_name: parsed.data.fullName },
+        },
       });
-      navigate({ to: "/dashboard" });
+      if (error) throw error;
+      // If email confirmation is OFF, the user is signed in; if ON, route to /auth to sign in after confirming.
+      const { data } = await supabase.auth.getSession();
+      if (data.session) {
+        // Seed profile name immediately (trigger creates the row; we update name).
+        await supabase
+          .from("profiles")
+          .update({ name: parsed.data.fullName, email: parsed.data.email })
+          .eq("id", data.session.user.id);
+        navigate({ to: "/dashboard" });
+      } else {
+        setFormError("Check your email to confirm your account, then sign in.");
+      }
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : "Sign up failed");
+      const msg = err instanceof Error ? err.message : "Sign up failed";
+      setFormError(msg);
     } finally {
       setSubmitting(false);
     }

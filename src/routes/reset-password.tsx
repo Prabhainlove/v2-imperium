@@ -1,6 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { AuthPage } from "@frontend/auth/AuthPage";
+import { ResetPasswordPage } from "@frontend/auth/ResetPasswordPage";
 
 export const Route = createFileRoute("/reset-password")({
-  component: AuthPage,
+  head: () => ({
+    meta: [
+      { title: "Reset Password — Imperium" },
+      { name: "description", content: "Reset your Imperium account password." },
+    ],
+  }),
+  component: ResetPasswordPage,
 });
