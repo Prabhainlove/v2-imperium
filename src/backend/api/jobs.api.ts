@@ -101,8 +101,8 @@ export const selectJobForResume = createServerFn({ method: "POST" })
 
 export const getProfileMetrics = createServerFn({ method: "GET" })
   .handler(async () => {
-    // Mock-auth build: no Supabase session on the server. Return demo metrics
-    // sourced from the Dinesh demo profile so the Jobs left-rail stays populated.
+    // Mock-auth build: no Supabase session on the server. Return placeholder
+    // metrics so the Jobs left-rail stays populated until Phase 3 wires real data.
     return {
       profileStrength: 86,
       atsReadiness: 78,
