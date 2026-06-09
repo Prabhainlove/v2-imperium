@@ -18,6 +18,46 @@ export interface RawJob {
   salary_max: number | null;
   salary_currency: string;
   posted_at: string | null;
+  /** Optional free-form experience hint from the source (e.g. "2-4 yrs"). */
+  experience_text?: string | null;
+}
+
+/* ───────── shared retry / UA helpers ───────── */
+
+const UA_POOL = [
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36",
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.6 Safari/605.1.15",
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:128.0) Gecko/20100101 Firefox/128.0",
+  "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+];
+
+export function pickUA(): string {
+  return UA_POOL[Math.floor(Math.random() * UA_POOL.length)]!;
+}
+
+export async function fetchWithRetry(
+  url: string,
+  init: RequestInit & { timeoutMs?: number } = {},
+  opts: { retries?: number; jitterMs?: number; retryOn?: number[] } = {},
+): Promise<Response> {
+  const { retries = 1, jitterMs = 250, retryOn = [401, 403, 408, 425, 429, 500, 502, 503, 504] } = opts;
+  const timeoutMs = init.timeoutMs ?? 10_000;
+  let lastErr: unknown;
+  for (let i = 0; i <= retries; i++) {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+    try {
+      const res = await fetch(url, { ...init, signal: ctrl.signal });
+      clearTimeout(timer);
+      if (res.ok || !retryOn.includes(res.status) || i === retries) return res;
+    } catch (err) {
+      clearTimeout(timer);
+      lastErr = err;
+      if (i === retries) throw err;
+    }
+    await new Promise((r) => setTimeout(r, jitterMs + Math.floor(Math.random() * jitterMs)));
+  }
+  throw lastErr ?? new Error("fetchWithRetry exhausted");
 }
 
 function stripHtml(s: string): string {
