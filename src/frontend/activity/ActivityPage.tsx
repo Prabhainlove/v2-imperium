@@ -1,7 +1,9 @@
 import "./activity.css";
 import { useApplicationsStore } from "@frontend/applications/state/useApplicationsStore";
+import { useApplicationsSync } from "@frontend/applications/data/useApplicationsData";
 
 export function ActivityPage() {
+  useApplicationsSync();
   const applications = useApplicationsStore((s) => s.applications);
   const events = [...applications]
     .sort(
