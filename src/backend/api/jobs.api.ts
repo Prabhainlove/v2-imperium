@@ -1,6 +1,7 @@
 /**
  * Job Discovery Engine — TanStack server functions.
- * Thin orchestration layer; every step lives in a focused service.
+ * Auth: every endpoint requires a Supabase session. Per-user profile is
+ * loaded from the `profiles` table and merged with the form filters.
  *
  * Flow:  discoverJobs → retrieve → normalize+rank → cache → log history
  *        getDiscoveredJob → read cached row
@@ -9,6 +10,7 @@
  */
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { requireSupabaseAuth } from "@backend/database/AuthMiddleware";
 import { retrieveJobs } from "@backend/jobs/JobRetrievalService.server";
 import { normalizeMany, selectTop5, type NormalizedJob } from "@backend/jobs/JobNormalizationService.server";
 import type { CandidateContext, ExperienceBucket } from "@backend/jobs/JobRankingService.server";
@@ -26,7 +28,6 @@ const DiscoverInput = z.object({
 
 type DiscoverFilters = z.infer<typeof DiscoverInput>;
 
-
 function buildCandidateContext(profile: any, filters: Partial<DiscoverFilters>): CandidateContext {
   const profileSkills = Array.isArray(profile?.skills) ? (profile.skills as string[]) : [];
   const formSkills = (filters.skills ?? "").split(",").map((s) => s.trim()).filter(Boolean);
@@ -38,14 +39,25 @@ function buildCandidateContext(profile: any, filters: Partial<DiscoverFilters>):
   return { role, skills: merged, experience: "", experienceBucket: bucket, location, desiredSalaryMin };
 }
 
-export const discoverJobs = createServerFn({ method: "POST" })
-  .inputValidator((i: unknown) => DiscoverInput.parse(i ?? {}))
-  .handler(async ({ data }) => {
-    const taskId = `disc_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
+async function loadProfile(supabase: any, userId: string) {
+  const { data } = await supabase
+    .from("profiles")
+    .select("name, target_role, headline, location, skills, salary_expectation")
+    .eq("id", userId)
+    .maybeSingle();
+  return data;
+}
 
-    // Mock-auth build: no Supabase session/profile available server-side.
-    // Build the candidate context from the form filters only.
-    const candidate = buildCandidateContext(null, data);
+// Per-user in-memory cache (Worker process lifetime). Resets between deploys.
+const userJobCache = new Map<string, { taskId: string; jobs: (NormalizedJob & { id: string })[]; cachedAt: string }>();
+
+export const discoverJobs = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) => DiscoverInput.parse(i ?? {}))
+  .handler(async ({ data, context }) => {
+    const taskId = `disc_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
+    const profile = await loadProfile(context.supabase, context.userId);
+    const candidate = buildCandidateContext(profile, data);
 
     const { jobs: raws, perSource } = await retrieveJobs(candidate.role, candidate.location);
     let normalized = normalizeMany(raws, candidate);
@@ -65,11 +77,8 @@ export const discoverJobs = createServerFn({ method: "POST" })
     if (mode === "remote") normalized = normalized.filter((j) => j.remote);
     else if (mode === "onsite") normalized = normalized.filter((j) => !j.remote);
 
-    // Synthesize ids for client-side selection (no DB cache in mock-auth mode).
-    const cached = normalized.map((j, idx) => ({
-      ...j,
-      id: `${taskId}_${idx}`,
-    }));
+    const cached = normalized.map((j, idx) => ({ ...j, id: `${taskId}_${idx}` }));
+    userJobCache.set(context.userId, { taskId, jobs: cached, cachedAt: new Date().toISOString() });
 
     return {
       taskId,
@@ -81,32 +90,34 @@ export const discoverJobs = createServerFn({ method: "POST" })
     };
   });
 
-
 const JobIdInput = z.object({ jobId: z.string().min(1) });
 
 export const getDiscoveredJob = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((i: unknown) => JobIdInput.parse(i))
-  .handler(async (): Promise<NormalizedJob | null> => {
-    // Mock-auth build: no server-side cache. The UI falls back to the
-    // in-memory job from the discovery results, so returning null is safe.
-    return null;
+  .handler(async ({ data, context }): Promise<NormalizedJob | null> => {
+    const entry = userJobCache.get(context.userId);
+    if (!entry) return null;
+    return entry.jobs.find((j) => j.id === data.jobId) ?? null;
   });
 
-
 export const selectJobForResume = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((i: unknown) => JobIdInput.parse(i))
   .handler(async ({ data }) => {
     return { ok: true, selectionId: undefined, jobId: data.jobId, redirect: `/resume?jobId=${data.jobId}` };
   });
 
 export const getProfileMetrics = createServerFn({ method: "GET" })
-  .handler(async () => {
-    // Mock-auth build: no Supabase session on the server. Return placeholder
-    // metrics so the Jobs left-rail stays populated until Phase 3 wires real data.
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const profile = await loadProfile(context.supabase, context.userId);
+    const skillCount = Array.isArray(profile?.skills) ? profile.skills.length : 0;
+    const strength = Math.min(100, 40 + skillCount * 4 + (profile?.target_role ? 10 : 0) + (profile?.location ? 5 : 0));
     return {
-      profileStrength: 86,
-      atsReadiness: 78,
-      resumeQuality: 82,
+      profileStrength: strength,
+      atsReadiness: Math.min(100, 30 + skillCount * 5),
+      resumeQuality: Math.min(100, 35 + skillCount * 4),
       applicationsSubmitted: 0,
       interviewSuccessRate: 0,
     };
