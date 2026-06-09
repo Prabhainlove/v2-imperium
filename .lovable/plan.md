@@ -1,153 +1,82 @@
-# Application Tracker V2 — Final Approved Plan
+# Application Tracker — Visual Re-skin (Frontend Only)
 
-Replaces the placeholder `ApplicationsPage`. Pure frontend, local-first, ready for Local Agent without redesign.
+Re-skin the existing `/applications` page to match the attached reference, using the selected pastel-cards + indigo-CTA direction. No store, repo, schema, or backend changes. All existing functionality (dnd-kit drag, virtualized table, Apply integration, intelligence engine, drawer logic) is preserved.
 
-## 1. Schema
+## Scope of change
 
-`src/frontend/applications/schema.ts`
+Edit only:
+- `src/frontend/applications/applications.css` — full rewrite of styles
+- `src/frontend/applications/ApplicationsPage.tsx` — JSX/markup adjustments only (no logic)
+- `src/frontend/applications/components/*.tsx` — class-name/markup updates only
 
-```ts
-JobSnapshot { title, company, location, salary?, source, descriptionHash }
+No files added or removed. No store, repo, schema, or route changes.
 
-ApplicationIntelligence { ageDays, stale, responseProbability, nextRecommendedAction }
+## Visual system (locked from selected direction + reference)
 
-Application {
-  id, company, role, location,
-  source: "linkedin"|"naukri"|"foundit"|"instahyre"|"hirist"|"wellfound"|"other",
-  applicationSource: "resume_studio"|"local_agent",
-  appliedAt,
-  status: "applied"|"viewed"|"under_review"|"assessment"|"interview"|"offer"|"rejected"|"withdrawn",
-  atsScore?, matchScore?,
-  resumeId, resumeVersion, templateUsed,
-  sourceUrl?, notes?,
-  agentRunId?, agentMetadata?: { portal, executionTime, resumeVersion },
-  jobSnapshot: JobSnapshot,
-  intelligence: ApplicationIntelligence,        // recomputed on read
-  createdAt, updatedAt
-}
+- **Surface**: `bg-slate-50` page, white cards with `border border-slate-100`, soft shadow (`shadow-sm`), `rounded-2xl`.
+- **Typography**: Inter (already available via Google Fonts link in root). Bold tracking-tight headings, uppercase tracking-widest micro-labels in slate-400.
+- **Accent**: Indigo-600 primary (Next Step CTA, active tab underline, pagination active).
+- **KPI tiles**: pastel-tinted icon squares — indigo, orange, violet, cyan, emerald, pink — with `+%` delta chip in emerald.
+- **Pipeline columns**: tinted header strip per status (indigo/amber/orange/cyan/blue/green/red) with count chip; white card body.
+- **Status pills**: per-status pastel bg + matching darker text.
+- **Score pills**: emerald-50 bg with emerald-700 text for ATS/Match.
+- **Drawer**: right side-sheet (desktop) / bottom sheet (mobile), Google-style header with logo tile, Overview/Timeline/Notes/Files tab strip with indigo underline, icon-prefixed fields, indigo "Next Step" CTA card.
 
-ApplicationEvent { id, applicationId, type, title, description?, timestamp }
-```
-
-## 2. Persistence (mirrors Resume Studio)
-
-- `state/repository.ts` — `ApplicationRepository` interface + `LocalApplicationRepository` (localStorage keys `imperium-applications`, `imperium-application-events`).
-- `state/useApplicationsStore.ts` — Zustand store with selectors:
-  - `createFromResumeStudio(payload)` — only public creator. Snapshots job, generates `application_submitted` event.
-  - `updateStatus(id, status)` — persists + appends timeline event
-  - `updateNotes`, `selectApplication`, `setFilter`, `setSearch`
-  - Selectors: `selectKpis`, `selectFunnel`, `selectPipelineBuckets`, `selectResumePerformance`, `selectSourcePerformance`, `selectActivityFeed`
-
-Future Supabase swap = new repository, zero UI change.
-
-## 3. Intelligence Engine
-
-`intelligence/ApplicationIntelligenceEngine.ts` — pure TS, computed at read time (memoized per app id + updatedAt):
-
-- `ageDays` from `appliedAt`
-- `stale` = age > 21 days AND status in {applied, viewed}
-- `responseProbability` = blend of source response rate (from user's own data), atsScore, matchScore, age decay
-- `nextRecommendedAction` rule table:
-  - applied <7d → "Wait for response"
-  - applied 7–14d → "Send polite follow-up"
-  - applied >14d → "Follow up or move on"
-  - interview → "Prepare interview brief"
-  - offer → "Active negotiation"
-  - rejected → "Closed — request feedback"
-
-## 4. Resume Studio Integration
-
-`src/frontend/resume/panes/InsightsPane.tsx` — existing Apply flow calls `useApplicationsStore.getState().createFromResumeStudio({ job, resume, atsScore, matchScore, templateId })`. Single line, no UI change to Resume Studio.
-
-## 5. UI Composition
+## Layout (desktop, matching reference)
 
 ```text
-src/frontend/applications/
-  ApplicationsPage.tsx
-  applications.css
-  components/
-    TrackerHeader.tsx          (title + search + actions)
-    KpiRow.tsx                 (8 cards, computed)
-    FunnelPanel.tsx            (Applied→Viewed→Review→Interview→Offer)
-    PipelineBoard.tsx          (dnd-kit, 7 columns)
-    ApplicationsTable.tsx      (virtualized via @tanstack/react-virtual)
-    FiltersBar.tsx
-    AnalyticsRow.tsx
-      ResumePerformancePanel.tsx
-      SourceAnalyticsPanel.tsx
-    ActivityFeed.tsx
-    UpcomingPanel.tsx          (compact: interviews + follow-ups + recent)
-    DetailsDrawer/
-      index.tsx                (tabs)
-      OverviewTab.tsx          (+ IntelligenceCard)
-      TimelineTab.tsx
-      NotesTab.tsx             (debounced autosave)
-      FilesTab.tsx             (PDF/DOCX via Resume Studio export, CL slot reserved)
-      IntelligenceCard.tsx
-    CompanyAvatar.tsx          (deterministic initials fallback)
-  intelligence/
-    ApplicationIntelligenceEngine.ts
-  state/
-    repository.ts
-    useApplicationsStore.ts
-  schema.ts
+┌ Header: title + subtitle ............ search (⌘K) ⋅ bell ⋅ theme ⋅ avatar ┐
+├ KPI Row (6 tiles)                                                          ┤
+├ Pipeline strip: [Customize] · 7 columns, 2 cards each + "+N more"          ┤
+├ All Applications: filters (Status/Sources/Resumes/Date) + search + table   ┤
+├ Bottom: Calendar (left, 3/5) · Upcoming Interviews list (right, 2/5)       ┤
+└ Right drawer overlays on selection                                         ┘
 ```
 
-## 6. KPI Row (all computed)
+Mobile (≤768px): KPIs horizontal scroll, pipeline horizontal scroll, table collapses to card list, drawer becomes bottom sheet.
 
-Applications Sent · Under Review · Interviews · Offers · Response Rate · Interview Rate · **Stale Applications** · **Active Applications**
+## Component-by-component changes
 
-## 7. Pipeline
+1. **TrackerHeader (inline in ApplicationsPage)** — add ⌘K hint inside search, bell button with badge dot, theme toggle (static icon for now), avatar placeholder using `CompanyAvatar` style.
+2. **KpiRow** — keep 8 metrics from store; render first 6 prominently matching reference (Sent, Under Review, Interviews, Offers, Response Rate, Interview Rate). Stale/Active become smaller secondary tiles below or move into a 2nd subtle row. Pastel icon tile + delta chip ("+12% vs last 30 days" computed as static label from existing data; if no prior period available, show neutral subtitle).
+3. **PipelineBoard** — column header gets pastel bg + count chip; cards become rounded-2xl white with company • role • date and "+N more" link when bucket > 2 visible cards (kept visible cards = 2 per column to match reference, others summarised).
+4. **ApplicationsTable** — restyle row to match reference grid; ATS/Match as green pills; status as colored pill; add 3-dot kebab cell; pagination footer "Showing 1 to N of M applications" with page chips.
+5. **FiltersBar** — replace plain selects with rounded-xl pill selects; add date range select (UI only) and view-mode icon buttons (UI only).
+6. **Calendar + Upcoming** — new compact month grid component built in `UpcomingPanel` area (purely visual; highlighted today + selected day). Pulls interview events from existing store.
+7. **DetailsDrawer** — restructure Overview tab to icon-prefixed two-column field list; add "Next Step" indigo CTA card at bottom using next interview event from timeline; "Edit Details" button (no-op for now since editing already happens via existing controls — wires to existing status select hidden behind a modal toggle).
 
-`@dnd-kit/core` + `@dnd-kit/sortable`. Drop → `updateStatus` → repo write → timeline event. Counts per column from selector.
+## Color tokens (added to applications.css)
 
-## 8. Table
+Local CSS variables scoped under `.tracker-root`, no global theme changes:
 
-`@tanstack/react-virtual` row virtualization (handles 500+). Columns per spec. Sort, search, pagination (50/page after virtualization). Filters: Status, Source, Resume Version, Date Range, Company, Location.
+```text
+--tr-bg: #f8fafc
+--tr-card: #ffffff
+--tr-border: #f1f5f9
+--tr-text: #0f172a
+--tr-muted: #64748b
+--tr-primary: #4f46e5   (indigo-600)
+--tr-applied / viewed / review / assessment / interview / offer / rejected
+  with matching -bg (50) and -fg (600/700)
+```
 
-## 9. Analytics
+## Animation
 
-- **ResumePerformancePanel**: groupBy `resumeVersion` → applications, avgATS, avgMatchScore, interviews, offers, interviewRate.
-- **SourceAnalyticsPanel**: groupBy `source` → applications, responses, interviews, offers, response rate.
-- **ActivityFeed**: latest 20 events globally.
-- **UpcomingPanel**: replaces large calendar — Upcoming Interviews / Follow-ups Needed / Recent Activity (compact list).
+- `animate-fade-in` on drawer open
+- `hover:scale-[1.02] transition` on KPI tiles and score pills
+- `transition-colors` on table rows, pipeline cards
 
-## 10. Drawer
+## Out of scope
 
-Tabs: Overview · Timeline · Notes · Files. Overview includes **IntelligenceCard** (age, response probability, status health pill, next action). Files lists PDF/DOCX generated from `resumeId` via existing Resume Studio export functions; cover letter slot reserved (disabled).
+- No new data fields, no schema changes, no new selectors
+- No real dark mode toggle wiring (icon-only)
+- No real ⌘K palette (visual hint only)
+- No drag-to-calendar interactions
+- No "Customize Pipeline" modal
 
-## 11. Error Handling
+## Acceptance
 
-`CompanyAvatar` deterministic initials when no logo. Missing dates → "—". Missing ATS/match → "Not Available". Missing `sourceUrl` → disabled link. All renderers defensive.
-
-## 12. Dependencies
-
-`bun add @dnd-kit/core @dnd-kit/sortable @tanstack/react-virtual` (only those not already installed; verified at build time).
-
-## 13. Out of Scope
-
-- Manual application creation UI (intentionally absent)
-- Cover letter generation (slot only)
-- Local Agent runtime (schema fields prepared)
-- Server persistence (interface ready)
-- Backend KPIs/analytics (all client-side from store)
-
-## 14. Acceptance
-
-- Resume Studio Apply auto-creates tracker entry with snapshot
-- Timeline events auto-generated on submit + status change
-- KPIs, funnel, analytics all from real data
-- Drag-drop persists + writes event
-- Stale detection via intelligence engine
-- Drawer fully functional with IntelligenceCard
-- 500+ rows scroll smooth via virtualization
-- Works in Lovable Preview, local dev, offline — no backend
-- Reference screenshot layout reproduced (KPI row, pipeline, table, drawer, bottom row)
-
-## Technical Notes
-
-- Pure frontend; no server functions, no migrations.
-- Intelligence recomputed via memoized selector keyed on `id + updatedAt + today()`.
-- Drawer = CSS slide-over in `applications.css`.
-- Dates via `Intl.DateTimeFormat` in try/catch.
-- Zustand subscriptions per panel via fine-grained selectors to avoid full-tree rerenders.
+- Page visually matches the attached reference at desktop width
+- Existing drag-drop, table virtualization, drawer tabs, notes autosave, status updates all still work
+- Resume Studio → Apply still creates a tracker entry and navigates to `/applications`
+- Mobile layout remains usable (horizontal scroll for KPI/pipeline, card-stack for table)
