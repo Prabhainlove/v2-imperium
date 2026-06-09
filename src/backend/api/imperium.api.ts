@@ -1067,11 +1067,12 @@ export const attachLocalAgentRun = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => AttachAgentRunInput.parse(input))
   .handler(async ({ data, context }) => {
-    const { supabase } = context;
+    const { supabase, userId } = context;
     const { data: row, error: readErr } = await supabase
       .from("applications")
       .select("notes")
       .eq("id", data.application_id)
+      .eq("user_id", userId)
       .maybeSingle();
     if (readErr) throw new Error(readErr.message);
     if (!row) throw new Error("Application not found");
