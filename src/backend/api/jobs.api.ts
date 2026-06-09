@@ -51,53 +51,37 @@ function buildCandidateContext(profile: any, filters: Partial<DiscoverFilters>):
 }
 
 export const discoverJobs = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
   .inputValidator((i: unknown) => DiscoverInput.parse(i ?? {}))
-  .handler(async ({ data, context }) => {
-    const { supabase, userId } = context;
+  .handler(async ({ data }) => {
     const taskId = `disc_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
 
-    const profile = await loadProfile(supabase, userId);
-    const candidate = buildCandidateContext(profile, data);
-
-    await sweepStaleCache(supabase, userId, 24);
-    await clearDiscoveredCache(supabase, userId);
+    // Mock-auth build: no Supabase session/profile available server-side.
+    // Build the candidate context from the form filters only.
+    const candidate = buildCandidateContext(null, data);
 
     const { jobs: raws, perSource } = await retrieveJobs(candidate.role, candidate.location);
     let normalized = normalizeMany(raws, candidate);
 
-    // Hard filter: experience bucket — ONLY when job bucket is known AND differs.
-    // Unknown bucket (null) is kept; the ranker has already applied a small penalty.
     if (candidate.experienceBucket) {
       normalized = normalized.filter(
         (j) => j.experienceBucket == null || j.experienceBucket === candidate.experienceBucket,
       );
     }
-    // Hard filter: salary (only when both sides explicit)
     if (candidate.desiredSalaryMin && candidate.desiredSalaryMin > 0) {
       normalized = normalized.filter((j) => {
         const cap = j.salaryMax ?? j.salaryMin;
         return cap == null || cap >= candidate.desiredSalaryMin!;
       });
     }
-    // Hard filter: work mode
     const mode = (data.workMode || "").toLowerCase();
     if (mode === "remote") normalized = normalized.filter((j) => j.remote);
     else if (mode === "onsite") normalized = normalized.filter((j) => !j.remote);
 
-    const filteredRaws = raws.filter((r) => normalized.some((n) => n.source === r.source && n.externalId === r.external_id));
-    const cached = await cacheDiscovered(supabase, userId, taskId, normalized, filteredRaws);
-
-    try {
-      await logSearch(supabase, userId, {
-        title: data.title,
-        skills: data.skills,
-        location: data.location,
-        experience: data.experience,
-        workMode: data.workMode,
-        salaryMin: data.salaryMin ?? null,
-      }, cached.length);
-    } catch { /* search_history table may not exist yet — non-fatal */ }
+    // Synthesize ids for client-side selection (no DB cache in mock-auth mode).
+    const cached = normalized.map((j, idx) => ({
+      ...j,
+      id: `${taskId}_${idx}`,
+    }));
 
     return {
       taskId,
