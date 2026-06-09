@@ -164,50 +164,14 @@ export const selectJobForResume = createServerFn({ method: "POST" })
   });
 
 export const getProfileMetrics = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
-    const { supabase, userId } = context;
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("name, headline, summary, skills, experience, education, projects, certifications, target_role, linkedin_url, github_url, portfolio_url")
-      .eq("id", userId)
-      .maybeSingle();
-
-    const fields = [
-      profile?.name, profile?.headline, profile?.summary, profile?.target_role,
-      profile?.linkedin_url, profile?.github_url,
-    ];
-    const filled = fields.filter((v) => typeof v === "string" && v.trim().length > 0).length;
-    const skillCount = Array.isArray(profile?.skills) ? profile!.skills.length : 0;
-    const expCount = Array.isArray(profile?.experience) ? profile!.experience.length : 0;
-    const projCount = Array.isArray(profile?.projects) ? profile!.projects.length : 0;
-    const eduCount = Array.isArray(profile?.education) ? profile!.education.length : 0;
-
-    const profileStrength = Math.min(100, Math.round((filled / fields.length) * 50 + Math.min(skillCount, 15) * 2 + Math.min(expCount, 5) * 4));
-    const atsReadiness = Math.min(100, Math.round(Math.min(skillCount, 20) * 3 + (profile?.summary ? 25 : 0) + Math.min(expCount, 4) * 5));
-    const resumeQuality = Math.min(100, Math.round(Math.min(expCount, 5) * 8 + Math.min(projCount, 5) * 6 + Math.min(eduCount, 3) * 5 + (profile?.summary ? 25 : 0)));
-
-    const { count: appsSubmitted } = await supabase
-      .from("applications")
-      .select("id", { count: "exact", head: true })
-      .eq("user_id", userId)
-      .in("status", ["Applied", "Interview", "Offer", "Rejected"]);
-
-    const { count: interviewCount } = await supabase
-      .from("applications")
-      .select("id", { count: "exact", head: true })
-      .eq("user_id", userId)
-      .in("status", ["Interview", "Offer"]);
-
-    const submitted = appsSubmitted ?? 0;
-    const interviews = interviewCount ?? 0;
-    const interviewRate = submitted > 0 ? Math.round((interviews / submitted) * 100) : 0;
-
+  .handler(async () => {
+    // Mock-auth build: no Supabase session on the server. Return demo metrics
+    // sourced from the Dinesh demo profile so the Jobs left-rail stays populated.
     return {
-      profileStrength,
-      atsReadiness,
-      resumeQuality,
-      applicationsSubmitted: submitted,
-      interviewSuccessRate: interviewRate,
+      profileStrength: 86,
+      atsReadiness: 78,
+      resumeQuality: 82,
+      applicationsSubmitted: 0,
+      interviewSuccessRate: 0,
     };
   });
