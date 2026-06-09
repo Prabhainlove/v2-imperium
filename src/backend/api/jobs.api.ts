@@ -64,14 +64,16 @@ export const discoverJobs = createServerFn({ method: "POST" })
     const normalized = normalizeMany(raws, candidate);
     const cached = await cacheDiscovered(supabase, userId, taskId, normalized, raws);
 
-    await logSearch(supabase, userId, {
-      title: data.title,
-      skills: data.skills,
-      location: data.location,
-      experience: data.experience,
-      workMode: data.workMode,
-      salaryMin: data.salaryMin ?? null,
-    }, cached.length);
+    try {
+      await logSearch(supabase, userId, {
+        title: data.title,
+        skills: data.skills,
+        location: data.location,
+        experience: data.experience,
+        workMode: data.workMode,
+        salaryMin: data.salaryMin ?? null,
+      }, cached.length);
+    } catch { /* search_history table may not exist yet — non-fatal */ }
 
     return {
       taskId,
@@ -120,8 +122,12 @@ export const selectJobForResume = createServerFn({ method: "POST" })
   .inputValidator((i: unknown) => JobIdInput.parse(i))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    const sel = await selectJob(supabase, userId, data.jobId);
-    return { ok: true, selectionId: sel?.id, jobId: data.jobId, redirect: `/resume?jobId=${data.jobId}` };
+    let selectionId: string | undefined;
+    try {
+      const sel = await selectJob(supabase, userId, data.jobId);
+      selectionId = sel?.id;
+    } catch { /* selected_jobs table may not exist yet — still proceed to Resume Studio */ }
+    return { ok: true, selectionId, jobId: data.jobId, redirect: `/resume?jobId=${data.jobId}` };
   });
 
 export const getProfileMetrics = createServerFn({ method: "GET" })
