@@ -181,10 +181,14 @@ const DINESH: DashboardData = {
   quote: "Automate applications. Optimize opportunities. Elevate your career.",
 };
 
+const DEMO_EMAIL = "fresher.demo@imperium.app";
+
 export function useDashboardData(): DashboardData {
   const session = useSession();
   return useMemo<DashboardData>(() => {
     if (!session) return DINESH;
+    // Demo credentials load the full pristine Dinesh profile
+    if (session.email === DEMO_EMAIL) return DINESH;
     return {
       ...DINESH,
       identity: {
