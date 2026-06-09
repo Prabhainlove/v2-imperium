@@ -4,7 +4,10 @@ import { useApplicationsStore } from "@frontend/applications/state/useApplicatio
 export function ActivityPage() {
   const applications = useApplicationsStore((s) => s.applications);
   const events = [...applications]
-    .sort((a, b) => (b.appliedAt ?? 0) - (a.appliedAt ?? 0))
+    .sort(
+      (a, b) =>
+        new Date(b.appliedAt).getTime() - new Date(a.appliedAt).getTime(),
+    )
     .slice(0, 30);
   return (
     <div className="activity-root min-h-screen p-8 max-w-3xl mx-auto">
@@ -22,14 +25,14 @@ export function ActivityPage() {
             >
               <div>
                 <div className="text-sm font-medium">
-                  {a.job?.title} <span className="text-muted-foreground">— {a.job?.company}</span>
+                  {a.role} <span className="text-muted-foreground">— {a.company}</span>
                 </div>
                 <div className="text-xs text-muted-foreground mt-1">
-                  Status: {a.status} · {new Date(a.appliedAt ?? Date.now()).toLocaleDateString()}
+                  Status: {a.status} · {new Date(a.appliedAt).toLocaleDateString()}
                 </div>
               </div>
               <span className="text-xs uppercase tracking-wider text-muted-foreground">
-                {a.job?.source ?? "—"}
+                {a.source}
               </span>
             </li>
           ))}
