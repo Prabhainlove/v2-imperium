@@ -26,6 +26,14 @@ export function InsightsPane() {
   const saveVersion = useResumeStore((s) => s.saveVersion);
   const restoreVersion = useResumeStore((s) => s.restoreVersion);
   const setTemplate = useResumeStore((s) => s.setTemplate);
+  const patch = useResumeStore((s) => s.patch);
+
+  const aiTasks = useAiQueue();
+  const { run: runAi } = useAiRunner();
+  const summaryFn = useServerFn(aiGenerateSummary);
+  const fillFn = useServerFn(aiFillMissing);
+  const analyzeJdFn = useServerFn(aiAnalyzeJd);
+  const [aiError, setAiError] = useState<string | null>(null);
 
   const jd = selectedJob?.description ?? "";
   const ats = useMemo(() => analyzeAts(resume, jd), [resume, jd]);
