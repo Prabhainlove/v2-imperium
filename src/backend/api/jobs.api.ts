@@ -66,9 +66,12 @@ export const discoverJobs = createServerFn({ method: "POST" })
     const { jobs: raws, perSource } = await retrieveJobs(candidate.role, candidate.location);
     let normalized = normalizeMany(raws, candidate);
 
-    // Hard filter: experience bucket
+    // Hard filter: experience bucket — ONLY when job bucket is known AND differs.
+    // Unknown bucket (null) is kept; the ranker has already applied a small penalty.
     if (candidate.experienceBucket) {
-      normalized = normalized.filter((j) => j.experienceBucket === candidate.experienceBucket);
+      normalized = normalized.filter(
+        (j) => j.experienceBucket == null || j.experienceBucket === candidate.experienceBucket,
+      );
     }
     // Hard filter: salary (only when both sides explicit)
     if (candidate.desiredSalaryMin && candidate.desiredSalaryMin > 0) {
