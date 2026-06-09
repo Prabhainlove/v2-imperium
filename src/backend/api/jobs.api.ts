@@ -139,8 +139,16 @@ export const getDiscoveredJob = createServerFn({ method: "POST" })
       posted_at: row.posted_at as string | null,
     };
     const job = normalizeJob(raw, candidate);
-    return { ...job, id: row.id as string };
+    // CONSISTENCY: the score shown to the user was computed once during
+    // discovery with their full search context. Re-ranking here would use
+    // an empty filter context (no skills/experience) and produce a different
+    // number — the source of the "card 65% vs panel 11%" bug. Overlay the
+    // stored value so every surface displays the same percentage.
+    const cachedScore = typeof row.match_score === "number" ? Number(row.match_score) : null;
+    const matchScore = cachedScore != null ? cachedScore : job.matchScore;
+    return { ...job, id: row.id as string, matchScore };
   });
+
 
 export const selectJobForResume = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
