@@ -1,11 +1,12 @@
 /**
- * Profile page data layer. Returns the Dinesh sample profile overlaid with the
- * current mockAuth session, plus derived strength/ATS/resume-quality scores
- * and extraction/missing/optimization signals used by the page cards.
+ * Profile page data layer. v1 still surfaces the InternalSeedProfile in dev
+ * (so the UI is not blank during stabilization). Production builds receive
+ * an empty profile until Phase 3 wires Supabase-backed `getMyProfile`.
  */
 import { useMemo } from "react";
 import { useSession } from "@frontend/auth/mockAuth";
-import { SAMPLE_PROFILE, type ImperiumProfile } from "@backend/profile/ProfileTypes";
+import { type ImperiumProfile, EMPTY_PROFILE } from "@backend/profile/ProfileTypes";
+import { getInternalSeedProfile } from "@backend/profile/InternalSeedProfile";
 
 export interface ExtractionFlag { label: string; ok: boolean; }
 export interface MissingItem { label: string; }
@@ -30,7 +31,8 @@ export interface ProfilePageData {
   };
 }
 
-const PROFILE: ImperiumProfile = { id: "imp-2024-0912", ...SAMPLE_PROFILE };
+const SEED = getInternalSeedProfile() ?? EMPTY_PROFILE;
+const PROFILE: ImperiumProfile = { id: "imp-2024-0912", ...SEED };
 
 function score(profile: ImperiumProfile) {
   const has = (v: unknown) => (typeof v === "string" ? v.trim().length > 0 : !!v) ? 1 : 0;
@@ -86,11 +88,11 @@ export function useProfilePageData(): ProfilePageData {
       missing,
       optimization,
       resume: {
-        fileName: "Dinesh_Kumar_Resume.pdf",
-        sizeLabel: "PDF · 1.2 MB",
-        lastUpdated: "27 May 2024, 10:30 AM",
-        extracted: true,
-        active: true,
+        fileName: profile.name ? `${profile.name.replace(/\s+/g, "_")}_Resume.pdf` : "resume.pdf",
+        sizeLabel: "PDF",
+        lastUpdated: "—",
+        extracted: !!profile.name,
+        active: !!profile.name,
       },
     };
   }, [session]);

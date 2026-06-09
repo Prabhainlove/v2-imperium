@@ -1,7 +1,8 @@
 /**
- * Dashboard data layer. v1 returns a hard-coded Dinesh profile, overlaid with
- * the current mockAuth session's name/email when present. Swap the body of
- * `useDashboardData` for a server function later — the type contract stays.
+ * Dashboard data layer. v1 returns a generic Imperium identity overlaid
+ * with the current mockAuth session's name/email when present. Swap the
+ * body of `useDashboardData` for a server function later — the contract stays.
+ * PII has been stripped (Phase 0): no hardcoded personal email/name.
  */
 import { useMemo } from "react";
 import { useSession } from "@frontend/auth/mockAuth";
@@ -103,19 +104,19 @@ export interface DashboardData {
   quote: string;
 }
 
-const DINESH: DashboardData = {
+const BASE: DashboardData = {
   identity: {
-    fullName: "Dinesh",
+    fullName: "Imperium Operator",
     title: "Career Architect",
-    email: "dinesh.imperium@gmail.com",
-    imperiumId: "IMP-2024-0912",
-    country: "India",
-    level: 23,
-    rank: 128,
-    rankLabel: "Career Legend",
-    xp: 8750,
-    xpMax: 10000,
-    stars: 7,
+    email: "",
+    imperiumId: "IMP-0000-0000",
+    country: "",
+    level: 1,
+    rank: 0,
+    rankLabel: "Initiate",
+    xp: 0,
+    xpMax: 1000,
+    stars: 0,
   },
   attributes: {
     atsScore: 85,
@@ -181,20 +182,16 @@ const DINESH: DashboardData = {
   quote: "Automate applications. Optimize opportunities. Elevate your career.",
 };
 
-const DEMO_EMAIL = "fresher.demo@imperium.app";
-
 export function useDashboardData(): DashboardData {
   const session = useSession();
   return useMemo<DashboardData>(() => {
-    if (!session) return DINESH;
-    // Demo credentials load the full pristine Dinesh profile
-    if (session.email === DEMO_EMAIL) return DINESH;
+    if (!session) return BASE;
     return {
-      ...DINESH,
+      ...BASE,
       identity: {
-        ...DINESH.identity,
-        fullName: session.fullName?.split(" ")[0] || DINESH.identity.fullName,
-        email: session.email || DINESH.identity.email,
+        ...BASE.identity,
+        fullName: session.fullName?.split(" ")[0] || BASE.identity.fullName,
+        email: session.email || BASE.identity.email,
       },
     };
   }, [session]);
