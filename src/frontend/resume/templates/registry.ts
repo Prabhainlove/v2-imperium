@@ -152,6 +152,3 @@ export function getTemplate(id: string): TemplateMeta {
   return TEMPLATES.find((t) => t.id === id) ?? TEMPLATES[0];
 }
 
-export function getTemplate(id: string): TemplateMeta {
-  return TEMPLATES.find((t) => t.id === id) ?? TEMPLATES[0];
-}
