@@ -360,7 +360,20 @@ function ApplyButton({
   return (
     <button
       className="resume-export-btn"
-      style={{ marginTop: 8, background: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))" }}
+      style={{
+        marginTop: 10,
+        width: "100%",
+        padding: "12px 16px",
+        background: "linear-gradient(135deg,#4f46e5,#7c3aed)",
+        color: "#fff",
+        fontWeight: 700,
+        fontSize: 14,
+        border: "none",
+        borderRadius: 10,
+        boxShadow: "0 6px 18px -6px rgba(79,70,229,.55)",
+        cursor: disabled ? "not-allowed" : "pointer",
+        opacity: disabled ? 0.55 : 1,
+      }}
       onClick={handle}
       disabled={disabled || done}
       title={disabled ? "Select a job first" : "Submit application to tracker"}
