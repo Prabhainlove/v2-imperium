@@ -1,2 +1,80 @@
-/* Interviews page styles. Prefix every selector with .interviews- to avoid bleed. */
-.interviews-root { /* layout container */ }
+.iv-root { min-height: 100vh; background: #f8fafc; color: #0f172a; padding: 28px 32px 60px; font-family: ui-sans-serif, system-ui, "Inter", sans-serif; }
+.iv-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 22px; gap: 16px; flex-wrap: wrap; }
+.iv-header h1 { font-size: 28px; font-weight: 700; margin: 0; letter-spacing: -.01em; }
+.iv-header p { color: #64748b; margin: 6px 0 0; font-size: 14px; }
+
+.iv-btn { border: none; padding: 10px 16px; border-radius: 10px; font-weight: 600; font-size: 13px; cursor: pointer; }
+.iv-btn-primary { background: linear-gradient(135deg, #4f46e5, #7c3aed); color: white; box-shadow: 0 8px 22px -10px rgba(79,70,229,.6); }
+.iv-btn-primary-sm { background: linear-gradient(135deg, #4f46e5, #7c3aed); color: white; padding: 7px 12px; border-radius: 8px; font-size: 12px; border: none; cursor: pointer; font-weight: 600; }
+.iv-btn-ghost { background: white; color: #334155; border: 1px solid #e2e8f0; padding: 7px 12px; border-radius: 8px; font-size: 12px; cursor: pointer; font-weight: 600; }
+.iv-link { background: none; border: none; color: #4f46e5; font-size: 12px; font-weight: 600; cursor: pointer; }
+.iv-muted { color: #94a3b8; font-size: 12px; }
+
+.iv-kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 18px; }
+@media (max-width: 900px) { .iv-kpis { grid-template-columns: repeat(2, 1fr); } }
+.iv-kpi { display: flex; gap: 12px; background: white; border: 1px solid #e2e8f0; border-radius: 14px; padding: 14px 16px; align-items: center; box-shadow: 0 1px 2px rgba(15,23,42,.04); }
+.iv-kpi-icon { width: 44px; height: 44px; border-radius: 10px; display: grid; place-items: center; font-size: 20px; }
+.iv-kpi-label { color: #64748b; font-size: 12px; }
+.iv-kpi-value { font-size: 22px; font-weight: 700; letter-spacing: -.01em; }
+.iv-kpi-sub { color: #94a3b8; font-size: 11px; margin-top: 2px; }
+
+.tone-indigo  { background: #eef2ff; color: #4f46e5; }
+.tone-emerald { background: #ecfdf5; color: #059669; }
+.tone-violet  { background: #f5f3ff; color: #7c3aed; }
+.tone-amber   { background: #fffbeb; color: #b45309; }
+.tone-cyan    { background: #ecfeff; color: #0891b2; }
+.tone-rose    { background: #fff1f2; color: #e11d48; }
+
+.iv-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 18px; margin-bottom: 18px; }
+@media (max-width: 1000px) { .iv-grid { grid-template-columns: 1fr; } }
+
+.iv-card { background: white; border: 1px solid #e2e8f0; border-radius: 16px; padding: 18px 20px; box-shadow: 0 1px 2px rgba(15,23,42,.04); margin-bottom: 18px; }
+.iv-card-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+.iv-card-head h2 { margin: 0; font-size: 16px; font-weight: 700; }
+
+.iv-upcoming { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px; }
+.iv-up-row { display: grid; grid-template-columns: 44px 1fr auto auto; gap: 14px; align-items: center; padding: 12px; border: 1px solid #e2e8f0; border-radius: 12px; }
+.iv-logo { width: 40px; height: 40px; border-radius: 10px; background: linear-gradient(135deg,#6366f1,#a855f7); color: white; display: grid; place-items: center; font-weight: 700; font-size: 13px; }
+.iv-up-title { font-weight: 600; font-size: 14px; }
+.iv-up-sub { color: #64748b; font-size: 12px; }
+.iv-tag { padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+.tag-technical    { background: #eef2ff; color: #4f46e5; }
+.tag-hr           { background: #fff1f2; color: #e11d48; }
+.tag-system-design{ background: #f5f3ff; color: #7c3aed; }
+.tag-behavioral   { background: #ecfdf5; color: #059669; }
+.iv-up-actions { display: flex; gap: 6px; }
+
+.iv-coach { background: linear-gradient(160deg, #4338ca 0%, #7c3aed 100%); color: white; border: none; }
+.iv-coach h3 { margin: 6px 0 8px; font-size: 18px; }
+.iv-coach p { color: rgba(255,255,255,.85); font-size: 13px; line-height: 1.55; }
+.iv-coach-badge { display: inline-block; background: rgba(255,255,255,.18); color: white; padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 600; letter-spacing: .04em; }
+.iv-coach-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,.15); font-size: 12px; }
+.iv-coach-row:last-of-type { border: none; margin-bottom: 8px; }
+.iv-coach .iv-btn-primary { background: white; color: #4f46e5; width: 100%; margin-top: 10px; }
+
+.iv-practice-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+@media (max-width: 900px) { .iv-practice-grid { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 600px) { .iv-practice-grid { grid-template-columns: 1fr; } }
+.iv-practice { border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px; background: white; display: flex; flex-direction: column; gap: 6px; }
+.iv-practice-emoji { width: 38px; height: 38px; border-radius: 10px; display: grid; place-items: center; font-size: 20px; background: #eef2ff; }
+.iv-practice.tone-emerald .iv-practice-emoji { background: #ecfdf5; }
+.iv-practice.tone-violet  .iv-practice-emoji { background: #f5f3ff; }
+.iv-practice.tone-amber   .iv-practice-emoji { background: #fffbeb; }
+.iv-practice.tone-cyan    .iv-practice-emoji { background: #ecfeff; }
+.iv-practice.tone-rose    .iv-practice-emoji { background: #fff1f2; }
+.iv-practice-title { font-weight: 700; font-size: 14px; }
+.iv-practice-desc { color: #64748b; font-size: 12px; flex: 1; }
+.iv-practice-foot { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; color: #94a3b8; font-size: 12px; }
+
+.iv-table { display: flex; flex-direction: column; }
+.iv-tr { display: grid; grid-template-columns: 1.2fr 1.5fr 0.7fr 0.7fr 0.7fr; padding: 10px 4px; border-bottom: 1px solid #f1f5f9; font-size: 13px; align-items: center; }
+.iv-th { color: #64748b; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }
+.iv-good { color: #059669; }
+.iv-okscore { color: #b45309; }
+.iv-bad { color: #dc2626; }
+
+.iv-modal { position: fixed; inset: 0; background: rgba(15,23,42,.55); backdrop-filter: blur(4px); display: grid; place-items: center; z-index: 80; }
+.iv-modal-card { background: white; padding: 28px; border-radius: 16px; max-width: 440px; width: calc(100% - 32px); box-shadow: 0 20px 60px rgba(0,0,0,.3); }
+.iv-modal-card h2 { margin: 0 0 8px; font-size: 20px; }
+.iv-modal-card p { color: #64748b; font-size: 14px; line-height: 1.5; }
+.iv-modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }

@@ -51,9 +51,9 @@ export function ApplicationsPage() {
           </button>
           <button className="icon-btn" aria-label="Theme"><MoonIcon /></button>
           <div className="user-chip">
-            <span className="avatar">AK</span>
+            <span className="avatar">IM</span>
             <div>
-              <div className="name">Arjun Kumar</div>
+              <div className="name">Imperium User</div>
               <div className="role">Premium</div>
             </div>
           </div>
