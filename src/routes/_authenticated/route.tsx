@@ -1,15 +1,13 @@
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { AppShell } from "@frontend/shell/AppShell";
-import { supabase } from "@backend/database/SupabaseClient";
+import { getSession } from "@frontend/auth/mockAuth";
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
-  beforeLoad: async () => {
-    const { data, error } = await supabase.auth.getUser();
-    if (error || !data.user) {
+  beforeLoad: () => {
+    if (!getSession()) {
       throw redirect({ to: "/auth" });
     }
-    return { user: data.user };
   },
   component: AuthenticatedLayout,
 });
