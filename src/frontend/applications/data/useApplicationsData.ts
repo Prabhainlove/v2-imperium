@@ -16,7 +16,7 @@ import {
   getAllApplicationTimeline,
   createApplicationFromResumeStudio,
 } from "@backend/api/imperium.api";
-import { useApplicationsStore } from "../state/useApplicationsStore";
+import { useApplicationsStore, APPLICATIONS_DATA_EVENT } from "../state/useApplicationsStore";
 import {
   backendToApplication,
   backendToEvent,
