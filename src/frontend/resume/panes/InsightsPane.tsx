@@ -60,6 +60,68 @@ export function InsightsPane() {
     }
   };
 
+  const buildResumeContext = () => ({
+    name: resume.personal.name,
+    title: resume.personal.title,
+    summary: resume.summary,
+    skills: resume.skills.flatMap((g) => g.items),
+    experienceSnippets: resume.experience.flatMap((e) => e.bullets).slice(0, 6),
+    projectSnippets: resume.projects.flatMap((p) => p.bullets).slice(0, 4),
+  });
+
+  const handleGenerateSummary = async () => {
+    setAiError(null);
+    try {
+      const ctx = buildResumeContext();
+      const res = await runAi({
+        feature: "summary",
+        label: "Generate summary",
+        cacheInput: ctx,
+        cacheJd: jd,
+        call: () => summaryFn({ data: { resume: ctx, jd } }),
+      });
+      if (res.summary) patch((r) => { r.summary = res.summary; });
+    } catch (e) { setAiError(e instanceof Error ? e.message : "AI call failed"); }
+  };
+
+  const handleFillMissing = async () => {
+    setAiError(null);
+    try {
+      const ctx = buildResumeContext();
+      const res = await runAi({
+        feature: "fillMissing",
+        label: "Find missing details",
+        cacheInput: ctx,
+        cacheJd: jd,
+        call: () => fillFn({ data: { resume: ctx, jd } }),
+      });
+      if (res.missingSkills.length) {
+        patch((r) => {
+          const existing = new Set(r.skills.flatMap((g) => g.items.map((i) => i.toLowerCase())));
+          const newSkills = res.missingSkills.filter((s) => !existing.has(s.toLowerCase()));
+          if (newSkills.length) {
+            if (r.skills.length === 0) r.skills.push({ category: "Skills", items: newSkills });
+            else r.skills[0].items.push(...newSkills);
+          }
+        });
+      }
+    } catch (e) { setAiError(e instanceof Error ? e.message : "AI call failed"); }
+  };
+
+  const handleAnalyzeJd = async () => {
+    setAiError(null);
+    if (!jd) return;
+    try {
+      await runAi({
+        feature: "jdAnalysis",
+        label: "Analyze JD",
+        cacheInput: "",
+        cacheJd: jd,
+        call: () => analyzeJdFn({ data: { jd } }),
+      });
+    } catch (e) { setAiError(e instanceof Error ? e.message : "AI call failed"); }
+  };
+
   return (
     <div className="resume-insights">
       <div className="resume-insights-card">
@@ -70,25 +132,46 @@ export function InsightsPane() {
           <ScoreBadge label="JD Match" value={jdMatch.score} disabled={!jd} />
         </div>
         <div className="resume-export-row">
-          <button
-            className="resume-export-btn"
-            onClick={handleExport}
-            disabled={exporting}
-          >{exporting ? "Exporting…" : "Export PDF"}</button>
-          <button
-            className="resume-editor-add"
-            onClick={() =>
-              saveVersion(undefined, {
-                atsScore: ats.atsScore,
-                resumeHealth: health.score,
-                jdMatch: jdMatch.score,
-              })
-            }
-          >Save version</button>
+          <button className="resume-export-btn" onClick={handleExport} disabled={exporting}>
+            {exporting ? "Exporting…" : "Export PDF"}
+          </button>
+          <button className="resume-export-btn resume-export-btn-secondary" onClick={() => void exportResumeToDocx(resume)}>
+            Export DOCX
+          </button>
         </div>
+        <button
+          className="resume-editor-add"
+          onClick={() =>
+            saveVersion(undefined, {
+              atsScore: ats.atsScore,
+              resumeHealth: health.score,
+              jdMatch: jdMatch.score,
+            })
+          }
+        >Save version</button>
         {warnings.length > 0 && (
           <ul className="resume-insights-list resume-warnings">
             {warnings.map((w, i) => <li key={i}>⚠ {w}</li>)}
+          </ul>
+        )}
+      </div>
+
+      <div className="resume-insights-card">
+        <div className="resume-insights-header">AI Assist</div>
+        <div className="resume-ai-buttons">
+          <button className="resume-editor-add" onClick={handleGenerateSummary}>✨ Generate Summary</button>
+          <button className="resume-editor-add" onClick={handleFillMissing}>＋ Fill Missing Skills</button>
+          <button className="resume-editor-add" onClick={handleAnalyzeJd} disabled={!jd}>🔍 Analyze JD</button>
+        </div>
+        {aiError && <div className="resume-warnings" style={{ fontSize: 11 }}>⚠ {aiError}</div>}
+        {aiTasks.length > 0 && (
+          <ul className="resume-ai-queue">
+            {aiTasks.slice(0, 4).map((t) => (
+              <li key={t.id} className={`resume-ai-task resume-ai-task-${t.status}`}>
+                <span>{t.label}</span>
+                <span className="resume-ai-task-status">{t.status}</span>
+              </li>
+            ))}
           </ul>
         )}
       </div>

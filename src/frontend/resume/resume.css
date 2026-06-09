@@ -242,3 +242,20 @@
   .resume-layout { grid-template-columns: 1fr; }
   .resume-col { border-right: none; border-bottom: 1px solid hsl(var(--border)); max-height: 60vh; }
 }
+
+.resume-export-btn-secondary {
+  background: hsl(var(--secondary, var(--muted)));
+  color: hsl(var(--secondary-foreground, var(--foreground)));
+}
+.resume-ai-buttons { display: flex; flex-direction: column; gap: 6px; }
+.resume-ai-queue { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.resume-ai-task {
+  display: flex; justify-content: space-between;
+  font-size: 11px; padding: 4px 8px; border-radius: 6px;
+  background: hsl(var(--muted));
+  color: hsl(var(--foreground));
+}
+.resume-ai-task-status { text-transform: uppercase; letter-spacing: 0.6px; font-size: 10px; opacity: 0.75; }
+.resume-ai-task-running { background: #fef3c7; color: #92400e; }
+.resume-ai-task-done    { background: #ecfdf5; color: #047857; }
+.resume-ai-task-error   { background: #fef2f2; color: #b91c1c; }
