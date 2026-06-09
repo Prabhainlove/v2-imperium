@@ -615,6 +615,324 @@ export async function fetchJooble(role: string, location: string): Promise<RawJo
   return out;
 }
 
+/* ───────── Foundit (foundit.in — formerly Monster India) ───────── */
+export async function fetchFoundit(role: string, location: string): Promise<RawJob[]> {
+  const url = `https://www.foundit.in/middleware/jobsearch?sort=1&limit=20&query=${encodeURIComponent(role)}&locations=${encodeURIComponent(location || "")}`;
+  let res: Response;
+  try {
+    res = await fetchWithRetry(
+      url,
+      {
+        headers: {
+          "User-Agent": pickUA(),
+          Accept: "application/json",
+          "Accept-Language": "en-IN,en;q=0.9",
+          Referer: "https://www.foundit.in/",
+        },
+        timeoutMs: 8000,
+      },
+      { retries: 1, jitterMs: 300 },
+    );
+  } catch (err) {
+    console.warn("[foundit] fetch failed:", (err as Error).message);
+    return [];
+  }
+  if (!res.ok) {
+    console.warn(`[foundit] HTTP ${res.status}`);
+    return [];
+  }
+  let data: { jobSearchResponse?: { data?: Record<string, unknown>[] } };
+  try {
+    data = (await res.json()) as typeof data;
+  } catch {
+    return [];
+  }
+  const out: RawJob[] = [];
+  for (const o of data.jobSearchResponse?.data ?? []) {
+    const title = String((o.title as string) ?? "");
+    const company = String((o.companyName as string) ?? "Unknown");
+    const locs = Array.isArray(o.locations) ? (o.locations as { label?: string }[]).map((l) => l.label).filter(Boolean).join(", ") : "";
+    const desc = stripHtml(String(o.descriptionOrg ?? o.description ?? ""));
+    const expText = String((o.experience as string) ?? "");
+    const text = `${title} ${company} ${locs} ${desc}`;
+    out.push({
+      source: "foundit",
+      external_id: String(o.jobId ?? o.id ?? `foundit-${Math.random()}`),
+      url: String((o.seoJdUrl as string) ?? (o.jobUrl as string) ?? ""),
+      title,
+      company,
+      location: locs || location,
+      remote: /remote|work from home|wfh/i.test(text),
+      description: desc.slice(0, 4000),
+      tech_stack: extractTechStack(text, (o.skillsList as string[]) ?? []),
+      salary_min: null,
+      salary_max: null,
+      salary_currency: "INR",
+      posted_at: typeof o.postedOn === "string" ? o.postedOn : null,
+      experience_text: expText || null,
+    });
+  }
+  return out;
+}
+
+/* ───────── Wellfound (formerly AngelList) ───────── */
+export async function fetchWellfound(role: string, location: string): Promise<RawJob[]> {
+  // Public listings page; Wellfound has no open API. We parse HTML cards.
+  const url = `https://wellfound.com/jobs?role=${encodeURIComponent(role)}&location=${encodeURIComponent(location || "")}`;
+  let res: Response;
+  try {
+    res = await fetchWithRetry(
+      url,
+      { headers: { "User-Agent": pickUA(), Accept: "text/html", "Accept-Language": "en-US,en;q=0.9" }, timeoutMs: 8000 },
+      { retries: 1 },
+    );
+  } catch (err) {
+    console.warn("[wellfound] fetch failed:", (err as Error).message);
+    return [];
+  }
+  if (!res.ok) {
+    console.warn(`[wellfound] HTTP ${res.status}`);
+    return [];
+  }
+  const html = await res.text();
+  const out: RawJob[] = [];
+  // Try Next.js __NEXT_DATA__ first
+  const nextData = html.match(/<script[^>]*id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/);
+  if (nextData) {
+    try {
+      const json = JSON.parse(nextData[1]);
+      const jobs: Record<string, unknown>[] = [];
+      const walk = (node: unknown): void => {
+        if (!node || typeof node !== "object") return;
+        if (Array.isArray(node)) { node.forEach(walk); return; }
+        const o = node as Record<string, unknown>;
+        if (o.title && o.id && (o.startup || o.company || o.companyName)) jobs.push(o);
+        for (const v of Object.values(o)) walk(v);
+      };
+      walk(json);
+      for (const o of jobs.slice(0, 20)) {
+        const startup = (o.startup ?? o.company) as Record<string, unknown> | undefined;
+        const company = String(startup?.name ?? o.companyName ?? "Unknown");
+        const title = String(o.title);
+        const loc = Array.isArray(o.locationNames) ? (o.locationNames as string[]).join(", ") : (location || "Remote");
+        const desc = stripHtml(String(o.description ?? ""));
+        const text = `${title} ${company} ${loc} ${desc}`;
+        out.push({
+          source: "wellfound",
+          external_id: String(o.id),
+          url: o.slug ? `https://wellfound.com/jobs/${o.id}-${o.slug}` : `https://wellfound.com/jobs/${o.id}`,
+          title,
+          company,
+          location: loc,
+          remote: /remote/i.test(text) || Boolean(o.remote),
+          description: desc.slice(0, 4000),
+          tech_stack: extractTechStack(text),
+          salary_min: typeof o.compensation === "object" ? null : null,
+          salary_max: null,
+          salary_currency: "USD",
+          posted_at: typeof o.createdAt === "string" ? o.createdAt : null,
+          experience_text: null,
+        });
+      }
+    } catch (err) {
+      console.warn("[wellfound] __NEXT_DATA__ parse failed:", (err as Error).message);
+    }
+  }
+  return out;
+}
+
+/* ───────── YC / Work at a Startup ───────── */
+export async function fetchYC(role: string, location: string): Promise<RawJob[]> {
+  // workatastartup.com exposes a JSON-LD list on its jobs page.
+  const url = `https://www.workatastartup.com/jobs?query=${encodeURIComponent(role)}`;
+  let res: Response;
+  try {
+    res = await fetchWithRetry(
+      url,
+      { headers: { "User-Agent": pickUA(), Accept: "text/html" }, timeoutMs: 8000 },
+      { retries: 1 },
+    );
+  } catch (err) {
+    console.warn("[yc] fetch failed:", (err as Error).message);
+    return [];
+  }
+  if (!res.ok) {
+    console.warn(`[yc] HTTP ${res.status}`);
+    return [];
+  }
+  const html = await res.text();
+  const out: RawJob[] = [];
+  // Pull every JSON-LD JobPosting block
+  const ldRegex = /<script[^>]*type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/g;
+  let m: RegExpExecArray | null;
+  while ((m = ldRegex.exec(html)) !== null) {
+    try {
+      const parsed = JSON.parse(m[1]);
+      const arr = Array.isArray(parsed) ? parsed : [parsed];
+      for (const o of arr) {
+        if (!o || o["@type"] !== "JobPosting") continue;
+        const title = String(o.title ?? "");
+        const company = String(o.hiringOrganization?.name ?? "Unknown");
+        const loc = String(o.jobLocation?.address?.addressLocality ?? location ?? "");
+        const desc = stripHtml(String(o.description ?? ""));
+        const text = `${title} ${company} ${loc} ${desc}`;
+        out.push({
+          source: "yc",
+          external_id: String(o.identifier?.value ?? o.url ?? `yc-${out.length}`),
+          url: String(o.url ?? ""),
+          title,
+          company,
+          location: loc,
+          remote: /remote/i.test(text) || o.jobLocationType === "TELECOMMUTE",
+          description: desc.slice(0, 4000),
+          tech_stack: extractTechStack(text),
+          salary_min: null,
+          salary_max: null,
+          salary_currency: "USD",
+          posted_at: typeof o.datePosted === "string" ? o.datePosted : null,
+          experience_text: typeof o.experienceRequirements === "string" ? o.experienceRequirements : null,
+        });
+      }
+    } catch {
+      /* swallow */
+    }
+  }
+  return out;
+}
+
+/* ───────── Instahyre (India) ───────── */
+export async function fetchInstahyre(role: string, location: string): Promise<RawJob[]> {
+  const params = new URLSearchParams({
+    job_type: "0",
+    company_size: "0",
+    sort_by: "relevance",
+    page: "1",
+    keyword: role,
+    location: location || "",
+  });
+  const url = `https://www.instahyre.com/api/v1/job_search?${params.toString()}`;
+  let res: Response;
+  try {
+    res = await fetchWithRetry(
+      url,
+      {
+        headers: {
+          "User-Agent": pickUA(),
+          Accept: "application/json",
+          "Accept-Language": "en-IN,en;q=0.9",
+          Referer: "https://www.instahyre.com/",
+        },
+        timeoutMs: 8000,
+      },
+      { retries: 1 },
+    );
+  } catch (err) {
+    console.warn("[instahyre] fetch failed:", (err as Error).message);
+    return [];
+  }
+  if (!res.ok) {
+    console.warn(`[instahyre] HTTP ${res.status}`);
+    return [];
+  }
+  let data: { objects?: Record<string, unknown>[] };
+  try { data = await res.json() as typeof data; } catch { return []; }
+  const out: RawJob[] = [];
+  for (const o of data.objects ?? []) {
+    const title = String((o.title as string) ?? "");
+    const employer = (o.employer ?? {}) as Record<string, unknown>;
+    const company = String(employer.company_name ?? "Unknown");
+    const loc = Array.isArray(o.locations) ? (o.locations as { city?: string }[]).map((l) => l.city).filter(Boolean).join(", ") : (location ?? "");
+    const desc = stripHtml(String(o.public_description ?? o.description ?? ""));
+    const text = `${title} ${company} ${loc} ${desc}`;
+    out.push({
+      source: "instahyre",
+      external_id: String(o.id ?? `instahyre-${out.length}`),
+      url: o.public_url ? String(o.public_url) : `https://www.instahyre.com/job/${o.id}`,
+      title,
+      company,
+      location: loc || location,
+      remote: /remote|work from home|wfh/i.test(text) || Boolean(o.remote),
+      description: desc.slice(0, 4000),
+      tech_stack: extractTechStack(text, (o.skills as string[]) ?? []),
+      salary_min: typeof o.min_ctc === "number" ? (o.min_ctc as number) * 100000 : null,
+      salary_max: typeof o.max_ctc === "number" ? (o.max_ctc as number) * 100000 : null,
+      salary_currency: "INR",
+      posted_at: typeof o.created_on === "string" ? o.created_on : null,
+      experience_text: typeof o.min_experience === "number" && typeof o.max_experience === "number"
+        ? `${o.min_experience}-${o.max_experience} years`
+        : null,
+    });
+  }
+  return out;
+}
+
+/* ───────── Hirist (India, tech-only) ───────── */
+export async function fetchHirist(role: string, location: string): Promise<RawJob[]> {
+  const slug = `${slugify(role)}-jobs${location ? `-in-${slugify(location)}` : ""}`;
+  const url = `https://www.hirist.com/${slug}`;
+  let res: Response;
+  try {
+    res = await fetchWithRetry(
+      url,
+      { headers: { "User-Agent": pickUA(), Accept: "text/html", "Accept-Language": "en-IN,en;q=0.9" }, timeoutMs: 8000 },
+      { retries: 1 },
+    );
+  } catch (err) {
+    console.warn("[hirist] fetch failed:", (err as Error).message);
+    return [];
+  }
+  if (!res.ok) {
+    console.warn(`[hirist] HTTP ${res.status}`);
+    return [];
+  }
+  const html = await res.text();
+  const out: RawJob[] = [];
+  // Hirist embeds search results as JSON in __NEXT_DATA__ or window.__INITIAL_STATE__
+  const nextData = html.match(/<script[^>]*id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/);
+  if (nextData) {
+    try {
+      const json = JSON.parse(nextData[1]);
+      const jobs: Record<string, unknown>[] = [];
+      const walk = (node: unknown): void => {
+        if (!node || typeof node !== "object") return;
+        if (Array.isArray(node)) { node.forEach(walk); return; }
+        const o = node as Record<string, unknown>;
+        if (o.jobTitle && o.companyName) jobs.push(o);
+        else if (o.title && o.recruiterName) jobs.push(o);
+        for (const v of Object.values(o)) walk(v);
+      };
+      walk(json);
+      for (const o of jobs.slice(0, 20)) {
+        const title = String(o.jobTitle ?? o.title ?? "");
+        const company = String(o.companyName ?? o.recruiterName ?? "Unknown");
+        const loc = String(o.location ?? o.jobLocation ?? location ?? "");
+        const desc = stripHtml(String(o.jobDescription ?? o.description ?? ""));
+        const expText = String(o.experience ?? o.workExperience ?? "");
+        const text = `${title} ${company} ${loc} ${desc}`;
+        out.push({
+          source: "hirist",
+          external_id: String(o.jobId ?? o.id ?? `hirist-${out.length}`),
+          url: o.jobUrl ? String(o.jobUrl) : `https://www.hirist.com/j/${o.jobId ?? ""}`,
+          title,
+          company,
+          location: loc,
+          remote: /remote|work from home|wfh/i.test(text),
+          description: desc.slice(0, 4000),
+          tech_stack: extractTechStack(text, Array.isArray(o.skills) ? (o.skills as string[]) : []),
+          salary_min: null,
+          salary_max: null,
+          salary_currency: "INR",
+          posted_at: typeof o.postedDate === "string" ? o.postedDate : null,
+          experience_text: expText || null,
+        });
+      }
+    } catch (err) {
+      console.warn("[hirist] __NEXT_DATA__ parse failed:", (err as Error).message);
+    }
+  }
+  return out;
+}
+
 export type SourceFetcher = (role: string, location: string) => Promise<RawJob[]>;
 
 export interface SourceDescriptor {
@@ -627,14 +945,20 @@ export interface SourceDescriptor {
 }
 
 export const SOURCES: SourceDescriptor[] = [
+  { id: "naukri",    label: "Naukri",    fetch: fetchNaukri,    requiresKey: false, isAvailable: () => true },
+  { id: "linkedin",  label: "LinkedIn",  fetch: fetchLinkedIn,  requiresKey: false, isAvailable: () => true },
+  { id: "foundit",   label: "Foundit",   fetch: fetchFoundit,   requiresKey: false, isAvailable: () => true },
+  { id: "instahyre", label: "Instahyre", fetch: fetchInstahyre, requiresKey: false, isAvailable: () => true },
+  { id: "hirist",    label: "Hirist",    fetch: fetchHirist,    requiresKey: false, isAvailable: () => true },
+  { id: "wellfound", label: "Wellfound", fetch: fetchWellfound, requiresKey: false, isAvailable: () => true },
+  { id: "yc",        label: "YC Jobs",   fetch: fetchYC,        requiresKey: false, isAvailable: () => true },
   { id: "remoteok",  label: "RemoteOK",  fetch: fetchRemoteOK,  requiresKey: false, isAvailable: () => true },
   { id: "remotive",  label: "Remotive",  fetch: fetchRemotive,  requiresKey: false, isAvailable: () => true },
   { id: "arbeitnow", label: "Arbeitnow", fetch: fetchArbeitnow, requiresKey: false, isAvailable: () => true },
-  { id: "linkedin",  label: "LinkedIn",  fetch: fetchLinkedIn,  requiresKey: false, isAvailable: () => true },
   { id: "indeed",    label: "Indeed (via Adzuna)", fetch: fetchAdzuna, requiresKey: true,
     isAvailable: () => !!process.env.ADZUNA_APP_ID && !!process.env.ADZUNA_APP_KEY },
   { id: "jooble",    label: "Jooble",    fetch: fetchJooble,    requiresKey: true,
     isAvailable: () => !!process.env.JOOBLE_API_KEY },
-  { id: "naukri",    label: "Naukri",    fetch: fetchNaukri,    requiresKey: false, isAvailable: () => true },
 ];
+
 
