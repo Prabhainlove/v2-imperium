@@ -962,17 +962,10 @@ export const runJobSearch = createServerFn({ method: "POST" })
 /* ---------- Application status updates + timeline ---------- */
 const UpdateStatusInput = z.object({
   id: z.string().min(1),
-  status: z.enum([
-    "Saved",
-    "Preparing",
-    "Applied",
-    "ManualApplyPending", // B9 — agent could not finish; needs human action
-    "Assessment",
-    "Interview",
-    "Offer",
-    "Rejected",
-    "Withdrawn",
-  ]),
+  // Accept both legacy capitalized pipeline values (Saved/Preparing/Applied/…)
+  // AND the canonical lowercase Application Tracker V2 values
+  // (applied/viewed/under_review/assessment/interview/offer/rejected/withdrawn).
+  status: z.string().min(1).max(64),
   note: z.string().max(2000).optional(),
 });
 
