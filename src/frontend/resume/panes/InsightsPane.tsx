@@ -17,8 +17,8 @@ export function InsightsPane() {
   const skillGap = useMemo(() => analyzeSkillGap(resume, jd), [resume, jd]);
 
   const atsScore = ats.atsScore;
-  const matched = jdMatch.matched.length;
-  const total = matched + jdMatch.missing.length || 1;
+  const matched = jdMatch.matchedSkills.length + jdMatch.matchedTech.length;
+  const total = matched + jdMatch.missingSkills.length + jdMatch.missingTech.length || 1;
   const matchedRatio = Math.min(1, matched / total);
   const missingKeywords = skillGap.missing.slice(0, 6);
 
