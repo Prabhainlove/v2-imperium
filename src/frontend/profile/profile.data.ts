@@ -55,6 +55,7 @@ export function useProfilePageData(): ProfilePageData {
 
   return useMemo<ProfilePageData>(() => {
     const profile: ImperiumProfile = (query.data?.profile as ImperiumProfile | undefined) ?? {
+      id: session?.userId ?? "anon",
       ...EMPTY_PROFILE,
       name: session?.fullName ?? "",
       email: session?.email ?? "",
