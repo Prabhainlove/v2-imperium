@@ -75,13 +75,8 @@ export function ApplicationsPage() {
         <PipelineBoard />
       </div>
 
-      <div className="tracker-section">
-        <div className="section-head">
-          <h2>All Applications</h2>
-          <FiltersBar />
-        </div>
-        <ApplicationsTable />
-      </div>
+      <FiltersBar />
+      <ApplicationsTable />
 
       <CalendarPanel />
 
