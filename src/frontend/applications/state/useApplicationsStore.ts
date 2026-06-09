@@ -1,7 +1,12 @@
 /**
- * Applications store — Zustand. Persists via ApplicationRepository.
- * Only public creator is createFromResumeStudio (and createFromLocalAgent
- * reserved for future use). Status updates always append timeline events.
+ * Applications store — UI state (search, filter, selectedId) plus a thin
+ * in-memory snapshot of applications and timeline events that
+ * `useApplicationsSync` hydrates from Supabase via TanStack Query.
+ *
+ * Mutations call the auth-protected server functions directly. After each
+ * successful write the store dispatches a window-level event that
+ * `useApplicationsSync` listens for to invalidate its queries — keeping
+ * Supabase as the source of truth.
  */
 import { create } from "zustand";
 import {
@@ -10,17 +15,15 @@ import {
   type ApplicationStatus,
   type ApplicationSourcePortal,
   type ApplicationOrigin,
-  type JobSnapshot,
   STATUS_LABEL,
-  newApplicationId,
-  newEventId,
-  hashString,
 } from "../schema";
 import {
-  defaultApplicationRepository,
-  type ApplicationRepository,
-} from "./repository";
-import { computeIntelligence, withIntelligence } from "../intelligence/ApplicationIntelligenceEngine";
+  createApplicationFromResumeStudio,
+  updateApplicationStatus as updateStatusFn,
+  updateApplicationNotes as updateNotesFn,
+} from "@backend/api/imperium.api";
+import { withIntelligence, computeIntelligence } from "../intelligence/ApplicationIntelligenceEngine";
+import { backendToApplication, type BackendAppDto } from "../data/applicationsAdapter";
 
 export interface CreateFromResumeStudioPayload {
   job: {
@@ -53,129 +56,115 @@ interface ApplicationsState {
     source?: ApplicationSourcePortal;
     resumeVersion?: string;
   };
-  // mutations
-  createFromResumeStudio: (p: CreateFromResumeStudioPayload) => Application;
-  updateStatus: (id: string, status: ApplicationStatus) => void;
-  updateNotes: (id: string, notes: string) => void;
+  createFromResumeStudio: (p: CreateFromResumeStudioPayload) => Promise<Application | null>;
+  updateStatus: (id: string, status: ApplicationStatus) => Promise<void>;
+  updateNotes: (id: string, notes: string) => Promise<void>;
   selectApplication: (id: string | null) => void;
   setSearch: (s: string) => void;
   setFilter: (f: Partial<ApplicationsState["filter"]>) => void;
   clearFilter: () => void;
-  // dev helper
+  /** No-op retained for backward compatibility; real data now comes from Supabase. */
   _seedDemo: () => void;
 }
 
-const repo: ApplicationRepository = defaultApplicationRepository;
-
-const initialApps = repo.loadApplications();
-const initialEvents = repo.loadEvents();
-
-function persist(apps: Application[], events: ApplicationEvent[]): void {
-  repo.saveApplications(apps);
-  repo.saveEvents(events);
-}
-
-function nowIso(): string {
-  return new Date().toISOString();
-}
-
-function buildSnapshot(job: CreateFromResumeStudioPayload["job"]): JobSnapshot {
-  return {
-    title: job.title,
-    company: job.company,
-    location: job.location ?? "",
-    salary: job.salary,
-    source: job.source ?? "other",
-    descriptionHash: hashString(job.description ?? ""),
-  };
+export const APPLICATIONS_DATA_EVENT = "imperium:applications:invalidate";
+function dispatchInvalidate(): void {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent(APPLICATIONS_DATA_EVENT));
+  }
 }
 
 export const useApplicationsStore = create<ApplicationsState>()((set, get) => ({
-  applications: initialApps,
-  events: initialEvents,
+  applications: [],
+  events: [],
   selectedId: null,
   search: "",
   filter: {},
 
-  createFromResumeStudio: (p) => {
-    const now = nowIso();
-    const id = newApplicationId();
-    const base: Application = {
-      id,
-      company: p.job.company,
-      role: p.job.title,
-      location: p.job.location ?? "",
-      source: p.job.source ?? "other",
-      applicationSource: p.origin ?? "resume_studio",
-      appliedAt: now,
-      status: "applied",
-      atsScore: p.atsScore,
-      matchScore: p.matchScore,
-      resumeId: p.resume.resumeId,
-      resumeVersion: p.resume.resumeVersion,
-      templateUsed: p.resume.templateUsed,
-      sourceUrl: p.job.sourceUrl,
-      agentRunId: p.agentRunId,
-      jobSnapshot: buildSnapshot(p.job),
-      intelligence: { ageDays: 0, stale: false, responseProbability: 0.5, nextRecommendedAction: "Wait for response" },
-      createdAt: now,
-      updatedAt: now,
-    };
-    const app = withIntelligence(base);
-    const evt: ApplicationEvent = {
-      id: newEventId(),
-      applicationId: id,
-      type: "application_submitted",
-      title: "Application submitted",
-      description: `Applied to ${p.job.title} at ${p.job.company}`,
-      timestamp: now,
-    };
-    const applications = [app, ...get().applications];
-    const events = [evt, ...get().events];
-    persist(applications, events);
-    set({ applications, events });
-    return app;
+  createFromResumeStudio: async (p) => {
+    try {
+      const dto = (await createApplicationFromResumeStudio({
+        data: {
+          company: p.job.company,
+          role: p.job.title,
+          location: p.job.location,
+          salary: p.job.salary,
+          source: p.job.source,
+          sourceUrl: p.job.sourceUrl,
+          description: p.job.description,
+          status: "applied",
+          atsScore: p.atsScore,
+          matchScore: p.matchScore,
+          resumeId: p.resume.resumeId,
+          resumeVersion: p.resume.resumeVersion,
+          templateUsed: p.resume.templateUsed,
+          origin: p.origin ?? "resume_studio",
+          agentRunId: p.agentRunId,
+        },
+      })) as BackendAppDto;
+      const app = backendToApplication(dto);
+      set({ applications: [app, ...get().applications] });
+      dispatchInvalidate();
+      return app;
+    } catch (err) {
+      console.error("[applications] createFromResumeStudio failed", err);
+      return null;
+    }
   },
 
-  updateStatus: (id, status) => {
-    const now = nowIso();
-    let changed: Application | null = null;
-    const applications = get().applications.map((a) => {
-      if (a.id !== id || a.status === status) return a;
-      const next: Application = { ...a, status, updatedAt: now };
-      const withIntel = withIntelligence(next);
-      changed = withIntel;
-      return withIntel;
+  updateStatus: async (id, status) => {
+    const prev = get().applications.find((a) => a.id === id);
+    if (!prev || prev.status === status) return;
+    const now = new Date().toISOString();
+    // Optimistic update.
+    set({
+      applications: get().applications.map((a) =>
+        a.id === id ? withIntelligence({ ...a, status, updatedAt: now }) : a,
+      ),
+      events: [
+        {
+          id: `optimistic_${Date.now().toString(36)}`,
+          applicationId: id,
+          type:
+            status === "interview" ? "interview_scheduled"
+              : status === "offer" ? "offer_received"
+              : status === "rejected" ? "rejected"
+              : status === "withdrawn" ? "withdrawn"
+              : "status_changed",
+          title: `Status → ${STATUS_LABEL[status]}`,
+          timestamp: now,
+        },
+        ...get().events,
+      ],
     });
-    if (!changed) return;
-    const evt: ApplicationEvent = {
-      id: newEventId(),
-      applicationId: id,
-      type:
-        status === "interview"
-          ? "interview_scheduled"
-          : status === "offer"
-          ? "offer_received"
-          : status === "rejected"
-          ? "rejected"
-          : status === "withdrawn"
-          ? "withdrawn"
-          : "status_changed",
-      title: `Status → ${STATUS_LABEL[status]}`,
-      timestamp: now,
-    };
-    const events = [evt, ...get().events];
-    persist(applications, events);
-    set({ applications, events });
+    try {
+      await updateStatusFn({ data: { id, status } });
+      dispatchInvalidate();
+    } catch (err) {
+      console.error("[applications] updateStatus failed", err);
+      // Rollback.
+      set({
+        applications: get().applications.map((a) =>
+          a.id === id ? withIntelligence({ ...a, status: prev.status, updatedAt: prev.updatedAt }) : a,
+        ),
+      });
+    }
   },
 
-  updateNotes: (id, notes) => {
-    const now = nowIso();
-    const applications = get().applications.map((a) =>
-      a.id === id ? { ...a, notes, updatedAt: now } : a,
-    );
-    persist(applications, get().events);
-    set({ applications });
+  updateNotes: async (id, notes) => {
+    const before = get().applications.find((a) => a.id === id);
+    if (!before) return;
+    set({
+      applications: get().applications.map((a) =>
+        a.id === id ? { ...a, notes, updatedAt: new Date().toISOString() } : a,
+      ),
+    });
+    try {
+      await updateNotesFn({ data: { id, note: notes } });
+      dispatchInvalidate();
+    } catch (err) {
+      console.error("[applications] updateNotes failed", err);
+    }
   },
 
   selectApplication: (id) => set({ selectedId: id }),
@@ -184,43 +173,13 @@ export const useApplicationsStore = create<ApplicationsState>()((set, get) => ({
   clearFilter: () => set({ filter: {} }),
 
   _seedDemo: () => {
-    // Demo seeding disabled (Phase 2 cleanup). Application Tracker now reads
-    // exclusively from real persisted applications. Demo data will be removed
-    // entirely in Phase 6 when this store is replaced by Supabase reads.
-    if (get().applications.length > 0) return;
-    const samples: CreateFromResumeStudioPayload[] = [
-      { job: { title: "Frontend Developer", company: "Imperium Labs", location: "Hyderabad", salary: "₹12-18L", source: "linkedin", sourceUrl: "https://linkedin.com", description: "React TypeScript Node.js" }, resume: { resumeId: "r1", resumeVersion: "V4", templateUsed: "professional" }, atsScore: 92, matchScore: 88 },
-      { job: { title: "Software Engineer", company: "Imperium Cloud", location: "Remote", salary: "₹15-22L", source: "wellfound", description: "React TypeScript design systems" }, resume: { resumeId: "r1", resumeVersion: "V4", templateUsed: "modern" }, atsScore: 88, matchScore: 81 },
-      { job: { title: "Product Engineer", company: "Imperium Studio", location: "Bangalore", source: "naukri", description: "Node.js React PostgreSQL" }, resume: { resumeId: "r1", resumeVersion: "V3", templateUsed: "professional" }, atsScore: 78, matchScore: 72 },
-      { job: { title: "Backend Engineer", company: "Imperium Systems", location: "Bangalore", source: "foundit", description: "Java Spring Microservices" }, resume: { resumeId: "r1", resumeVersion: "V2", templateUsed: "classic-ats" }, atsScore: 71, matchScore: 60 },
-      { job: { title: "Platform Engineer", company: "Imperium Core", location: "Bangalore", source: "instahyre", description: "Go Kubernetes AWS Terraform" }, resume: { resumeId: "r1", resumeVersion: "V4", templateUsed: "developer" }, atsScore: 90, matchScore: 84 },
-      { job: { title: "Full Stack Engineer", company: "Imperium AI", location: "Bangalore", source: "linkedin", description: "Java Distributed systems" }, resume: { resumeId: "r1", resumeVersion: "V3", templateUsed: "professional" }, atsScore: 82, matchScore: 75 },
-    ];
-    const created = samples.map((s) => get().createFromResumeStudio(s));
-    // Mutate ages and statuses for richer demo
-    const now = Date.now();
-    const tweaks: Array<[number, ApplicationStatus, number]> = [
-      [0, "interview", 12],
-      [1, "under_review", 5],
-      [2, "viewed", 9],
-      [3, "rejected", 25],
-      [4, "offer", 18],
-      [5, "applied", 23],
-    ];
-    const apps = get().applications.map((a) => {
-      const idx = created.findIndex((c) => c.id === a.id);
-      const t = tweaks[idx];
-      if (!t) return a;
-      const [, status, daysAgo] = t;
-      const appliedAt = new Date(now - daysAgo * 86400000).toISOString();
-      return withIntelligence({ ...a, status, appliedAt, updatedAt: appliedAt });
-    });
-    repo.saveApplications(apps);
-    set({ applications: apps });
+    // Demo seeding removed in Phase 6: Application Tracker is fully backed by
+    // Supabase. Real applications appear after they are created via Resume
+    // Studio or the Local Agent.
   },
 }));
 
-// Selectors (pure functions over state)
+/* ---------- Selectors (pure functions over state) ---------- */
 
 export interface Kpis {
   sent: number;
@@ -281,7 +240,6 @@ export interface FunnelData {
 
 export function selectFunnel(apps: Application[]): FunnelData {
   const at = (s: ApplicationStatus): number => apps.filter((a) => a.status === s).length;
-  // Cumulative: everyone who reached at least this stage
   const reachedReview = apps.filter((a) =>
     ["under_review", "assessment", "interview", "offer"].includes(a.status),
   ).length;

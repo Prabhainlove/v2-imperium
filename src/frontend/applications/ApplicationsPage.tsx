@@ -1,6 +1,6 @@
-import { useEffect } from "react";
 import "./applications.css";
 import { useApplicationsStore } from "./state/useApplicationsStore";
+import { useApplicationsSync } from "./data/useApplicationsData";
 import { KpiRow } from "./components/KpiRow";
 import { PipelineBoard } from "./components/PipelineBoard";
 import { ApplicationsTable } from "./components/ApplicationsTable";
@@ -21,12 +21,9 @@ function MoonIcon() {
 export function ApplicationsPage() {
   const search = useApplicationsStore((s) => s.search);
   const setSearch = useApplicationsStore((s) => s.setSearch);
-  const seed = useApplicationsStore((s) => s._seedDemo);
-  const total = useApplicationsStore((s) => s.applications.length);
+  // Hydrates the store from Supabase + runs one-time localStorage migration.
+  useApplicationsSync();
 
-  useEffect(() => {
-    if (total === 0) seed();
-  }, [total, seed]);
 
   return (
     <div className="tracker-root">
