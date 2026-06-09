@@ -4,7 +4,7 @@
  * ranking output. No persistence here.
  */
 import type { RawJob } from "@backend/jobs/JobSources.server";
-import { rankJob, type CandidateContext, type IntelligenceLabel, type MatchBreakdown } from "@backend/jobs/JobRankingService.server";
+import { rankJob, type CandidateContext, type IntelligenceLabel, type MatchBreakdown, type ExperienceBucket, type LocationTier } from "@backend/jobs/JobRankingService.server";
 import { getCompanyInfo } from "@backend/jobs/CompanyInfoService.server";
 
 export interface NormalizedJob {
