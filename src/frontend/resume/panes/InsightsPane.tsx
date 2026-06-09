@@ -18,6 +18,8 @@ import {
   aiAnalyzeJd,
 } from "@frontend/resume/ai/resume-ai.functions";
 import "@frontend/resume/export/print.css";
+import { useApplicationsStore } from "@frontend/applications/state/useApplicationsStore";
+import { useNavigate } from "@tanstack/react-router";
 
 export function InsightsPane() {
   const resume = useResumeStore((s) => s.resume);
@@ -149,6 +151,12 @@ export function InsightsPane() {
             })
           }
         >Save version</button>
+        <ApplyButton
+          atsScore={ats.atsScore}
+          matchScore={jdMatch.score}
+          activeTemplateId={resume.meta.templateId}
+          activeTemplateLabel={activeTemplate?.name ?? resume.meta.templateId}
+        />
         {warnings.length > 0 && (
           <ul className="resume-insights-list resume-warnings">
             {warnings.map((w, i) => <li key={i}>⚠ {w}</li>)}
@@ -308,5 +316,56 @@ function ScoreBadge({ label, value, disabled }: { label: string; value: number; 
       <div className="resume-score-value">{disabled ? "—" : value}</div>
       <div className="resume-score-label">{label}</div>
     </div>
+  );
+}
+
+function ApplyButton({
+  atsScore,
+  matchScore,
+  activeTemplateId,
+  activeTemplateLabel,
+}: {
+  atsScore: number;
+  matchScore: number;
+  activeTemplateId: string;
+  activeTemplateLabel: string;
+}) {
+  const resume = useResumeStore((s) => s.resume);
+  const selectedJob = useResumeStore((s) => s.selectedJob);
+  const versions = useResumeStore((s) => s.versions);
+  const create = useApplicationsStore((s) => s.createFromResumeStudio);
+  const navigate = useNavigate();
+  const [done, setDone] = useState(false);
+  const disabled = !selectedJob;
+  const handle = () => {
+    if (!selectedJob) return;
+    const versionLabel = versions[versions.length - 1]?.label ?? "V1";
+    create({
+      job: {
+        title: selectedJob.title,
+        company: selectedJob.company,
+        description: selectedJob.description,
+      },
+      resume: {
+        resumeId: "current",
+        resumeVersion: versionLabel,
+        templateUsed: activeTemplateLabel || activeTemplateId,
+      },
+      atsScore,
+      matchScore,
+    });
+    setDone(true);
+    setTimeout(() => navigate({ to: "/applications" }), 600);
+  };
+  return (
+    <button
+      className="resume-export-btn"
+      style={{ marginTop: 8, background: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))" }}
+      onClick={handle}
+      disabled={disabled || done}
+      title={disabled ? "Select a job first" : "Submit application to tracker"}
+    >
+      {done ? "✓ Added to Tracker" : "🚀 Apply (Add to Tracker)"}
+    </button>
   );
 }
