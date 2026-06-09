@@ -26,14 +26,6 @@ const DiscoverInput = z.object({
 
 type DiscoverFilters = z.infer<typeof DiscoverInput>;
 
-async function loadProfile(supabase: any, userId: string) {
-  const { data } = await supabase
-    .from("profiles")
-    .select("name, target_role, headline, skills, experience, education, location, salary_expectation")
-    .eq("id", userId)
-    .maybeSingle();
-  return data ?? null;
-}
 
 function buildCandidateContext(profile: any, filters: Partial<DiscoverFilters>): CandidateContext {
   const profileSkills = Array.isArray(profile?.skills) ? (profile.skills as string[]) : [];
