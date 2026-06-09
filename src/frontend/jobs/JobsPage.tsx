@@ -1,14 +1,59 @@
 import "./jobs.css";
-import { useJobsPage } from "./jobs.logic";
+import { useState } from "react";
+import { useDiscovery, useJobDetails, useSelectJob } from "./jobs.logic";
+import { ProfileMetricsRail } from "./components/ProfileMetricsRail";
+import { JobSearchBar } from "./components/JobSearchBar";
+import { TopMatchesRow } from "./components/TopMatchesRow";
+import { SelectedJobSummary } from "./components/SelectedJobSummary";
+import { JobIntelPanel } from "./components/JobIntelPanel";
+import { AllJobsGrid } from "./components/AllJobsGrid";
 
 export function JobsPage() {
-  const { title } = useJobsPage();
+  const { search, refresh, data, lastFilters } = useDiscovery();
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const details = useJobDetails(selectedId);
+  const select = useSelectJob();
+
+  const all = data?.all ?? [];
+  const top5 = data?.top5 ?? [];
+  const selectedJob = details.data ?? all.find((j) => j.id === selectedId) ?? null;
+
+  const handleView = (id: string) => setSelectedId(id);
+  const handleApply = (id: string) => select.mutate(id);
+
   return (
-    <div className="jobs-root min-h-screen flex flex-col items-center justify-center p-8 text-center">
-      <h1 className="jobs-title text-3xl font-semibold">{title}</h1>
-      <p className="jobs-subtitle mt-3 text-sm text-muted-foreground">
-        This page is part of the new architecture skeleton. UI coming soon.
-      </p>
+    <div className="jobs-root">
+      <header className="jobs-header">
+        <div>
+          <h1 className="jobs-title">JOB <span>DISCOVERY ENGINE</span></h1>
+          <div className="jobs-subtitle">✨ AI-Powered Job Matching</div>
+        </div>
+      </header>
+
+      <div className="jobs-layout">
+        <ProfileMetricsRail />
+
+        <div className="jobs-main">
+          <JobSearchBar
+            initial={lastFilters ?? undefined}
+            loading={search.isPending}
+            onSearch={(f) => { setSelectedId(null); search.mutate(f); }}
+            onRefresh={refresh}
+            canRefresh={!!lastFilters}
+          />
+
+          {search.isError && (
+            <div className="jobs-error">Search failed. Try again or adjust filters.</div>
+          )}
+
+          <TopMatchesRow jobs={top5} selectedId={selectedId} onSelect={handleView} />
+          <SelectedJobSummary job={selectedJob} />
+        </div>
+
+        <JobIntelPanel job={selectedJob} onApply={handleApply} applying={select.isPending} />
+      </div>
+
+      <AllJobsGrid jobs={all} selectedId={selectedId} onView={handleView} onApply={handleApply} />
     </div>
   );
 }
