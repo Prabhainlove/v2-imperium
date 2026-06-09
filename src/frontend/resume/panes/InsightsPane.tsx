@@ -1,5 +1,6 @@
-/** Resume Insights — ATS + Health + JD Match + Skill Gap + Template Analysis. */
+/** Resume Insights — ATS + Health + JD Match + Skill Gap + Templates + AI + Exports. */
 import { useMemo, useRef, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { useResumeStore } from "@frontend/resume/state/useResumeStore";
 import { analyzeAts } from "@frontend/resume/ats/AtsEngine";
 import { analyzeHealth } from "@frontend/resume/ats/HealthEngine";
@@ -9,6 +10,13 @@ import { getTemplate } from "@frontend/resume/templates/registry";
 import { recommendTemplate } from "@frontend/resume/templates/recommend";
 import { PrintRenderer, type PrintHandle } from "@frontend/resume/export/PrintRenderer";
 import { exportResumeToPdf, validatePrintLayout } from "@frontend/resume/export/pdf";
+import { exportResumeToDocx } from "@frontend/resume/export/docx";
+import { useAiQueue, useAiRunner } from "@frontend/resume/ai/useAi";
+import {
+  aiGenerateSummary,
+  aiFillMissing,
+  aiAnalyzeJd,
+} from "@frontend/resume/ai/resume-ai.functions";
 import "@frontend/resume/export/print.css";
 
 export function InsightsPane() {
