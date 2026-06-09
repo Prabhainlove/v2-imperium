@@ -64,8 +64,26 @@ export const discoverJobs = createServerFn({ method: "POST" })
     await clearDiscoveredCache(supabase, userId);
 
     const { jobs: raws, perSource } = await retrieveJobs(candidate.role, candidate.location);
-    const normalized = normalizeMany(raws, candidate);
-    const cached = await cacheDiscovered(supabase, userId, taskId, normalized, raws);
+    let normalized = normalizeMany(raws, candidate);
+
+    // Hard filter: experience bucket
+    if (candidate.experienceBucket) {
+      normalized = normalized.filter((j) => j.experienceBucket === candidate.experienceBucket);
+    }
+    // Hard filter: salary (only when both sides explicit)
+    if (candidate.desiredSalaryMin && candidate.desiredSalaryMin > 0) {
+      normalized = normalized.filter((j) => {
+        const cap = j.salaryMax ?? j.salaryMin;
+        return cap == null || cap >= candidate.desiredSalaryMin!;
+      });
+    }
+    // Hard filter: work mode
+    const mode = (data.workMode || "").toLowerCase();
+    if (mode === "remote") normalized = normalized.filter((j) => j.remote);
+    else if (mode === "onsite") normalized = normalized.filter((j) => !j.remote);
+
+    const filteredRaws = raws.filter((r) => normalized.some((n) => n.source === r.source && n.externalId === r.external_id));
+    const cached = await cacheDiscovered(supabase, userId, taskId, normalized, filteredRaws);
 
     try {
       await logSearch(supabase, userId, {
@@ -81,12 +99,13 @@ export const discoverJobs = createServerFn({ method: "POST" })
     return {
       taskId,
       cachedAt: new Date().toISOString(),
-      top5: cached.slice(0, 5),
+      top5: selectTop5(cached),
       all: cached,
       perSource,
       candidate: { role: candidate.role, location: candidate.location, skills: candidate.skills },
     };
   });
+
 
 const JobIdInput = z.object({ jobId: z.string().min(1) });
 
