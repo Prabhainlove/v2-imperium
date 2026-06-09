@@ -987,7 +987,7 @@ export const updateApplicationStatus = createServerFn({ method: "POST" })
       status: data.status,
       updated_at: new Date().toISOString(),
     };
-    if (data.status === "Applied") patch.applied_at = new Date().toISOString();
+    if (data.status === "Applied" || data.status === "applied") patch.applied_at = new Date().toISOString();
     const { error: updErr } = await supabase
       .from("applications")
       .update(patch as never)
