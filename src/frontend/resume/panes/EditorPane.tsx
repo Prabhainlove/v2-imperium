@@ -1,60 +1,86 @@
-/** Structured editor — every keystroke updates the store, the preview reflects instantly. */
+/** Markdown view of the resume + collapsible structured form for editing. */
+import { useMemo, useState } from "react";
 import { useResumeStore } from "@frontend/resume/state/useResumeStore";
 import { uid } from "@frontend/resume/schema";
-import { TEMPLATES } from "@frontend/resume/templates/registry";
-import { THEMES } from "@frontend/resume/templates/themes";
+import { resumeToMarkdown } from "@frontend/resume/utils/resumeMarkdown";
 
 export function EditorPane() {
   const resume = useResumeStore((s) => s.resume);
-  const patch = useResumeStore((s) => s.patch);
-  const setTemplate = useResumeStore((s) => s.setTemplate);
-  const setTheme = useResumeStore((s) => s.setTheme);
+  const [structured, setStructured] = useState(false);
+
+  const md = useMemo(() => resumeToMarkdown(resume), [resume]);
+  const lines = md.split("\n");
+  const words = md.trim().split(/\s+/).filter(Boolean).length;
 
   return (
-    <div className="resume-editor">
-      <div className="resume-editor-section">
-        <div className="resume-editor-section-title">Template</div>
-        <div className="resume-template-gallery">
-          {TEMPLATES.map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              className={`resume-template-card${resume.meta.templateId === t.id ? " is-active" : ""}`}
-              onClick={() => setTemplate(t.id)}
-            >
-              <div className="resume-template-card-name">{t.name}</div>
-              <div className="resume-template-card-meta">
-                <span>ATS {t.atsCompatibility}</span>
-                <span>·</span>
-                <span>Visual {t.visualAppeal}</span>
-              </div>
-              <div className="resume-template-card-best">{t.bestFor.slice(0, 2).join(" · ")}</div>
-            </button>
-          ))}
+    <div className="rs-editor">
+      <div className="rs-editor-tabs">
+        <div className="rs-editor-tab is-active">
+          <span aria-hidden>📄</span> resume.md
+          <span className="rs-editor-tab-caret" aria-hidden>▾</span>
+        </div>
+        <div className="rs-editor-tools">
+          <button className="rs-editor-tool" aria-label="Undo">↶</button>
+          <button className="rs-editor-tool" aria-label="Redo">↷</button>
+          <span className="rs-editor-saved">
+            Auto-saved 2s ago <span className="rs-editor-saved-dot" />
+          </span>
         </div>
       </div>
 
-      <div className="resume-editor-section">
-        <div className="resume-editor-section-title">Theme</div>
-        <div className="resume-theme-row">
-          {THEMES.map((th) => (
-            <button
-              key={th.id}
-              type="button"
-              title={th.name}
-              aria-label={th.name}
-              className={`resume-theme-swatch${resume.meta.themeId === th.id ? " is-active" : ""}`}
-              style={{ background: th.accent }}
-              onClick={() => setTheme(th.id)}
-            />
-          ))}
+      {!structured ? (
+        <div className="rs-editor-code">
+          <pre className="rs-editor-gutter" aria-hidden>
+            {lines.map((_, i) => (
+              <span key={i}>{String(i + 1).padStart(2, " ")}</span>
+            ))}
+          </pre>
+          <pre className="rs-editor-source">
+            {lines.map((l, i) => (
+              <span key={i} className={lineClass(l)}>{l || " "}{"\n"}</span>
+            ))}
+          </pre>
+        </div>
+      ) : (
+        <StructuredEditor />
+      )}
+
+      <div className="rs-editor-footer">
+        <button
+          className="rs-editor-footer-toggle"
+          onClick={() => setStructured((s) => !s)}
+        >
+          {structured ? "View markdown" : "Edit fields"}
+        </button>
+        <div className="rs-editor-footer-meta">
+          <span>Lines 1–{lines.length}</span>
+          <span>· Markdown ⓘ</span>
+          <span>· {words} words</span>
         </div>
       </div>
+    </div>
+  );
+}
 
+function lineClass(l: string): string {
+  if (l.startsWith("# ")) return "rs-md-h1";
+  if (l.startsWith("## ")) return "rs-md-h2";
+  if (l.startsWith("### ")) return "rs-md-h3";
+  if (l.startsWith("- ")) return "rs-md-li";
+  return "";
+}
+
+/* --------------- Structured edit form (collapsible) --------------- */
+function StructuredEditor() {
+  const resume = useResumeStore((s) => s.resume);
+  const patch = useResumeStore((s) => s.patch);
+
+  return (
+    <div className="rs-editor-fields">
       <Section title="Personal">
         <Field label="Name" value={resume.personal.name} onChange={(v) => patch((r) => { r.personal.name = v; })} />
         <Field label="Title" value={resume.personal.title} onChange={(v) => patch((r) => { r.personal.title = v; })} />
-        <div className="resume-editor-row">
+        <div className="rs-field-row">
           <Field label="Email" value={resume.personal.email} onChange={(v) => patch((r) => { r.personal.email = v; })} />
           <Field label="Phone" value={resume.personal.phone} onChange={(v) => patch((r) => { r.personal.phone = v; })} />
         </div>
@@ -63,7 +89,7 @@ export function EditorPane() {
 
       <Section title="Summary">
         <textarea
-          className="resume-editor-input resume-editor-textarea"
+          className="rs-field-input rs-field-textarea"
           rows={4}
           value={resume.summary}
           onChange={(e) => patch((r) => { r.summary = e.target.value; })}
@@ -72,81 +98,67 @@ export function EditorPane() {
 
       <Section title="Skills">
         {resume.skills.map((g, gi) => (
-          <div key={gi} className="resume-editor-row">
+          <div key={gi} className="rs-field-row">
             <input
-              className="resume-editor-input"
+              className="rs-field-input"
               value={g.category}
-              placeholder="Category"
               onChange={(e) => patch((r) => { r.skills[gi].category = e.target.value; })}
             />
             <input
-              className="resume-editor-input"
+              className="rs-field-input"
               value={g.items.join(", ")}
-              placeholder="comma, separated, items"
               onChange={(e) => patch((r) => { r.skills[gi].items = e.target.value.split(",").map((s) => s.trim()).filter(Boolean); })}
             />
-            <button className="resume-editor-icon" onClick={() => patch((r) => { r.skills.splice(gi, 1); })}>×</button>
+            <button className="rs-field-x" onClick={() => patch((r) => { r.skills.splice(gi, 1); })}>×</button>
           </div>
         ))}
-        <button className="resume-editor-add" onClick={() => patch((r) => { r.skills.push({ category: "Skills", items: [] }); })}>+ Add skill group</button>
+        <button className="rs-field-add" onClick={() => patch((r) => { r.skills.push({ category: "Skills", items: [] }); })}>+ Add skill group</button>
       </Section>
 
       <Section title="Experience">
         {resume.experience.map((e, ei) => (
-          <div key={e.id} className="resume-editor-card">
-            <div className="resume-editor-row">
+          <div key={e.id} className="rs-field-card">
+            <div className="rs-field-row">
               <Field label="Title" value={e.title} onChange={(v) => patch((r) => { r.experience[ei].title = v; })} />
               <Field label="Company" value={e.company} onChange={(v) => patch((r) => { r.experience[ei].company = v; })} />
             </div>
-            <div className="resume-editor-row">
+            <div className="rs-field-row">
               <Field label="Start" value={e.start} onChange={(v) => patch((r) => { r.experience[ei].start = v; })} />
-              <Field label="End" value={e.end} onChange={(v) => patch((r) => { r.experience[ei].end = v; })} placeholder="Present" />
-              <Field label="Location" value={e.location} onChange={(v) => patch((r) => { r.experience[ei].location = v; })} />
+              <Field label="End" value={e.end} onChange={(v) => patch((r) => { r.experience[ei].end = v; })} />
             </div>
-            <Bullets
-              value={e.bullets}
-              onChange={(b) => patch((r) => { r.experience[ei].bullets = b; })}
-            />
-            <button className="resume-editor-remove" onClick={() => patch((r) => { r.experience.splice(ei, 1); })}>Remove</button>
+            {e.bullets.map((b, bi) => (
+              <div key={bi} className="rs-field-row">
+                <textarea
+                  className="rs-field-input rs-field-textarea"
+                  rows={2}
+                  value={b}
+                  onChange={(ev) => patch((r) => { r.experience[ei].bullets[bi] = ev.target.value; })}
+                />
+                <button className="rs-field-x" onClick={() => patch((r) => { r.experience[ei].bullets.splice(bi, 1); })}>×</button>
+              </div>
+            ))}
+            <button className="rs-field-add rs-field-add-sm" onClick={() => patch((r) => { r.experience[ei].bullets.push(""); })}>+ Bullet</button>
+            <button className="rs-field-remove" onClick={() => patch((r) => { r.experience.splice(ei, 1); })}>Remove</button>
           </div>
         ))}
-        <button className="resume-editor-add" onClick={() => patch((r) => { r.experience.push({ id: uid("exp"), company: "", title: "", location: "", start: "", end: "", bullets: [""] }); })}>+ Add experience</button>
-      </Section>
-
-      <Section title="Projects">
-        {resume.projects.map((p, pi) => (
-          <div key={p.id} className="resume-editor-card">
-            <div className="resume-editor-row">
-              <Field label="Name" value={p.name} onChange={(v) => patch((r) => { r.projects[pi].name = v; })} />
-              <Field label="URL" value={p.url} onChange={(v) => patch((r) => { r.projects[pi].url = v; })} />
-            </div>
-            <Field label="Stack (comma separated)" value={p.stack.join(", ")} onChange={(v) => patch((r) => { r.projects[pi].stack = v.split(",").map((s) => s.trim()).filter(Boolean); })} />
-            <Bullets value={p.bullets} onChange={(b) => patch((r) => { r.projects[pi].bullets = b; })} />
-            <button className="resume-editor-remove" onClick={() => patch((r) => { r.projects.splice(pi, 1); })}>Remove</button>
-          </div>
-        ))}
-        <button className="resume-editor-add" onClick={() => patch((r) => { r.projects.push({ id: uid("prj"), name: "", stack: [], url: "", bullets: [""] }); })}>+ Add project</button>
+        <button className="rs-field-add" onClick={() => patch((r) => { r.experience.push({ id: uid("exp"), company: "", title: "", location: "", start: "", end: "", bullets: [""] }); })}>+ Add experience</button>
       </Section>
 
       <Section title="Education">
         {resume.education.map((ed, idx) => (
-          <div key={ed.id} className="resume-editor-card">
-            <div className="resume-editor-row">
+          <div key={ed.id} className="rs-field-card">
+            <div className="rs-field-row">
               <Field label="School" value={ed.school} onChange={(v) => patch((r) => { r.education[idx].school = v; })} />
               <Field label="Degree" value={ed.degree} onChange={(v) => patch((r) => { r.education[idx].degree = v; })} />
             </div>
-            <div className="resume-editor-row">
+            <div className="rs-field-row">
               <Field label="Field" value={ed.field} onChange={(v) => patch((r) => { r.education[idx].field = v; })} />
-              <Field label="GPA" value={ed.gpa} onChange={(v) => patch((r) => { r.education[idx].gpa = v; })} />
-            </div>
-            <div className="resume-editor-row">
-              <Field label="Start" value={ed.start} onChange={(v) => patch((r) => { r.education[idx].start = v; })} />
               <Field label="End" value={ed.end} onChange={(v) => patch((r) => { r.education[idx].end = v; })} />
             </div>
-            <button className="resume-editor-remove" onClick={() => patch((r) => { r.education.splice(idx, 1); })}>Remove</button>
+            <button className="rs-field-remove" onClick={() => patch((r) => { r.education.splice(idx, 1); })}>Remove</button>
           </div>
         ))}
-        <button className="resume-editor-add" onClick={() => patch((r) => { r.education.push({ id: uid("edu"), school: "", degree: "", field: "", start: "", end: "", gpa: "" }); })}>+ Add education</button>
+        <button className="rs-field-add" onClick={() => patch((r) => { r.education.push({ id: uid("edu"), school: "", degree: "", field: "", start: "", end: "", gpa: "" }); })}>+ Add education</button>
       </Section>
     </div>
   );
@@ -154,42 +166,18 @@ export function EditorPane() {
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="resume-editor-section">
-      <h3 className="resume-editor-section-title">{title}</h3>
+    <div className="rs-field-section">
+      <h3 className="rs-field-section-title">{title}</h3>
       {children}
     </div>
   );
 }
 
-function Field({ label, value, onChange, placeholder }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string }) {
+function Field({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
   return (
-    <div className="resume-editor-field">
-      <label className="resume-editor-label">{label}</label>
-      <input className="resume-editor-input" value={value} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} />
-    </div>
-  );
-}
-
-function Bullets({ value, onChange }: { value: string[]; onChange: (v: string[]) => void }) {
-  return (
-    <div className="resume-editor-bullets">
-      {value.map((b, i) => (
-        <div key={i} className="resume-editor-bullet-row">
-          <textarea
-            className="resume-editor-input resume-editor-textarea"
-            rows={2}
-            value={b}
-            placeholder="Action verb + what + outcome / metric"
-            onChange={(e) => {
-              const next = value.slice();
-              next[i] = e.target.value;
-              onChange(next);
-            }}
-          />
-          <button className="resume-editor-icon" onClick={() => onChange(value.filter((_, idx) => idx !== i))}>×</button>
-        </div>
-      ))}
-      <button className="resume-editor-add resume-editor-add-sm" onClick={() => onChange([...value, ""])}>+ Add bullet</button>
+    <div className="rs-field">
+      <label className="rs-field-label">{label}</label>
+      <input className="rs-field-input" value={value} onChange={(e) => onChange(e.target.value)} />
     </div>
   );
 }
