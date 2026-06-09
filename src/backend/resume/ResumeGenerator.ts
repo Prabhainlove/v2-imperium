@@ -9,7 +9,7 @@ import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import { buildAgentContext } from "@backend/profile/AgentContextBuilder";
 import { buildResumeFromProfile } from "@backend/profile/ProfileTextGenerators";
-import { getSeedOrEmpty } from "@backend/profile/InternalSeedProfile";
+import { EMPTY_PROFILE } from "@backend/profile/ProfileTypes";
 
 export type ResumeTemplate = "jake-ats" | "classic" | "modern" | "compact";
 
@@ -401,7 +401,7 @@ export function quickAts(resumeMd: string, jobDescription: string): QuickAts {
 
 /* ───────── Demo profile: dev-only seed; empty stub in production ───────── */
 
-export const DEMO_PROFILE: ProfileLike = getSeedOrEmpty();
+export const DEMO_PROFILE: ProfileLike = EMPTY_PROFILE as unknown as ProfileLike;
 
 /* ───────── Cover letter rendering ───────── */
 

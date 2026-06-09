@@ -347,6 +347,7 @@ export const getApplication = createServerFn({ method: "GET" })
       .from("applications")
       .select("*")
       .eq("id", data.id)
+      .eq("user_id", userId)
       .maybeSingle();
     if (error) throw new Error(error.message);
     if (!row) throw new Error("Application not found");
@@ -413,10 +414,12 @@ export const getActivity = createServerFn({ method: "GET" })
     }));
   });
 
-/* ---------- Notifications (no-op) ---------- */
-export const getNotifications = createServerFn({ method: "GET" }).handler(
-  async () => [] as { notification_id: string; title: string; message: string; created_at: string }[],
-);
+/* ---------- Notifications (per-user, empty stub until implemented) ---------- */
+export const getNotifications = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(
+    async () => [] as { notification_id: string; title: string; message: string; created_at: string }[],
+  );
 
 /* ---------- Dashboard ---------- */
 export const getDashboard = createServerFn({ method: "GET" })
@@ -530,6 +533,7 @@ export const getArtifact = createServerFn({ method: "GET" })
       .from("applications")
       .select("*")
       .eq("id", appId)
+      .eq("user_id", userId)
       .maybeSingle();
     if (error) throw new Error(error.message);
     if (!row) throw new Error("Application not found");
@@ -565,7 +569,7 @@ export const renderApplicationResume = createServerFn({ method: "POST" })
     const { buildAgentContext } = await import("@backend/profile/AgentContextBuilder");
     const { buildResumeFromProfile } = await import("@backend/profile/ProfileTextGenerators");
     const [{ data: app }, { data: profile }] = await Promise.all([
-      supabase.from("applications").select("*").eq("id", data.application_id).maybeSingle(),
+      supabase.from("applications").select("*").eq("id", data.application_id).eq("user_id", userId).maybeSingle(),
       supabase.from("profiles").select(PROFILE_V2_COLUMNS).eq("id", userId).maybeSingle(),
     ]);
     if (!app) throw new Error("Application not found");
@@ -981,6 +985,7 @@ export const updateApplicationStatus = createServerFn({ method: "POST" })
       .from("applications")
       .select("status")
       .eq("id", data.id)
+      .eq("user_id", userId)
       .maybeSingle();
     if (readErr) throw new Error(readErr.message);
     if (!app) throw new Error("Application not found");
@@ -993,7 +998,8 @@ export const updateApplicationStatus = createServerFn({ method: "POST" })
     const { error: updErr } = await supabase
       .from("applications")
       .update(patch as never)
-      .eq("id", data.id);
+      .eq("id", data.id)
+      .eq("user_id", userId);
     if (updErr) throw new Error(updErr.message);
     await supabase.from("application_timeline").insert({
       user_id: userId,
@@ -1020,7 +1026,7 @@ export const updateApplicationFields = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => UpdateAppFieldsInput.parse(input))
   .handler(async ({ data, context }) => {
-    const { supabase } = context;
+    const { supabase, userId } = context;
     const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
     for (const k of [
       "interview_notes",
@@ -1033,7 +1039,11 @@ export const updateApplicationFields = createServerFn({ method: "POST" })
       const v = (data as Record<string, unknown>)[k];
       if (v !== undefined) patch[k] = v;
     }
-    const { error } = await supabase.from("applications").update(patch as never).eq("id", data.id);
+    const { error } = await supabase
+      .from("applications")
+      .update(patch as never)
+      .eq("id", data.id)
+      .eq("user_id", userId);
     if (error) throw new Error(error.message);
     return { ok: true };
 
@@ -1057,11 +1067,12 @@ export const attachLocalAgentRun = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => AttachAgentRunInput.parse(input))
   .handler(async ({ data, context }) => {
-    const { supabase } = context;
+    const { supabase, userId } = context;
     const { data: row, error: readErr } = await supabase
       .from("applications")
       .select("notes")
       .eq("id", data.application_id)
+      .eq("user_id", userId)
       .maybeSingle();
     if (readErr) throw new Error(readErr.message);
     if (!row) throw new Error("Application not found");
@@ -1078,7 +1089,8 @@ export const attachLocalAgentRun = createServerFn({ method: "POST" })
         notes: JSON.stringify(meta),
         updated_at: new Date().toISOString(),
       } as never)
-      .eq("id", data.application_id);
+      .eq("id", data.application_id)
+      .eq("user_id", userId);
     if (updErr) throw new Error(updErr.message);
     return { ok: true };
   });
@@ -1088,11 +1100,12 @@ export const getApplicationTimeline = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => IdInput.parse(input))
   .handler(async ({ data, context }) => {
-    const { supabase } = context;
+    const { supabase, userId } = context;
     const { data: rows, error } = await supabase
       .from("application_timeline")
       .select("*")
       .eq("application_id", data.id)
+      .eq("user_id", userId)
       .order("created_at", { ascending: true });
     if (error) throw new Error(error.message);
     return (rows ?? []).map((r) => ({

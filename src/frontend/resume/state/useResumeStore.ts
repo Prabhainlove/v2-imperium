@@ -12,7 +12,6 @@ import {
   uid,
 } from "@frontend/resume/schema";
 import { EMPTY_PROFILE } from "@backend/profile/ProfileTypes";
-import { getInternalSeedProfile } from "@backend/profile/InternalSeedProfile";
 import type { ImperiumProfile } from "@backend/profile/ProfileTypes";
 
 function seedFromProfile(p: Pick<
@@ -100,18 +99,13 @@ interface ResumeStore {
   reset: () => void;
 }
 
-const INITIAL = seedFromProfile(getInternalSeedProfile() ?? EMPTY_PROFILE);
+const INITIAL = seedFromProfile(EMPTY_PROFILE);
 
 export const useResumeStore = create<ResumeStore>()(
   persist(
     (set, get) => ({
       resume: INITIAL,
-      selectedJob: import.meta.env?.PROD ? null : {
-        company: "Imperium Labs",
-        title: "Senior Frontend Engineer",
-        description:
-          "Imperium is hiring a Senior Frontend Engineer to build the Career OS — React, TypeScript, Node.js, PostgreSQL, distributed systems. Bonus: Kubernetes, Terraform, CI/CD, AWS, Docker. You will design scalable interfaces, mentor engineers, and lead delivery of high-impact features.",
-      },
+      selectedJob: null,
       versions: [
         {
           id: uid("v"),
