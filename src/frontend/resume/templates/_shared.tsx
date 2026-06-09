@@ -1,5 +1,6 @@
 /** Shared template primitives (pure presentational). */
 import type { CSSProperties } from "react";
+import type { ResumeTheme } from "./themes";
 
 export function fmtRange(start: string, end: string): string {
   const e = end || "Present";
@@ -18,8 +19,13 @@ export function pageStyle(paper: "A4" | "Letter"): CSSProperties {
     width: `${w}px`,
     minHeight: `${h}px`,
     background: "#fff",
-    color: "#0f172a",
+    color: "var(--rt-text, #0f172a)",
     boxShadow: "0 8px 30px rgba(0,0,0,0.08)",
     margin: "0 auto",
   };
+}
+
+export interface TemplateProps {
+  resume: import("@frontend/resume/schema").ResumeJSON;
+  theme: ResumeTheme;
 }

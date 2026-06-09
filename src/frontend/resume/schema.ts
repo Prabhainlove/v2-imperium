@@ -62,7 +62,8 @@ export interface ResumeCertification {
 
 export interface ResumeMeta {
   templateId: string;
-  accentColor: string;
+  themeId: string;
+  accentColor: string; // legacy — kept for back-compat; themeId now drives color
   font: string;
   paper: PaperSize;
 }
@@ -83,6 +84,12 @@ export interface ResumeVersion {
   label: string;
   createdAt: number;
   json: ResumeJSON;
+  /** Metadata snapshot — drives the future Application Tracker. */
+  templateId?: string;
+  themeId?: string;
+  atsScore?: number;
+  resumeHealth?: number;
+  jdMatch?: number;
 }
 
 export const EMPTY_RESUME: ResumeJSON = {
@@ -93,7 +100,13 @@ export const EMPTY_RESUME: ResumeJSON = {
   projects: [],
   education: [],
   certifications: [],
-  meta: { templateId: "classic-ats", accentColor: "#1f2937", font: "Inter", paper: "A4" },
+  meta: {
+    templateId: "classic-ats",
+    themeId: "corporate-blue",
+    accentColor: "#1d4ed8",
+    font: "Inter",
+    paper: "A4",
+  },
 };
 
 export function uid(prefix = "id"): string {

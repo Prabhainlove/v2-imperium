@@ -79,6 +79,12 @@ interface SelectedJob {
   description: string;
 }
 
+export interface VersionScores {
+  atsScore?: number;
+  resumeHealth?: number;
+  jdMatch?: number;
+}
+
 interface ResumeStore {
   resume: ResumeJSON;
   selectedJob: SelectedJob | null;
@@ -86,8 +92,9 @@ interface ResumeStore {
   setResume: (r: ResumeJSON) => void;
   patch: (fn: (r: ResumeJSON) => void) => void;
   setTemplate: (id: string) => void;
+  setTheme: (id: string) => void;
   setSelectedJob: (j: SelectedJob | null) => void;
-  saveVersion: (label?: string) => void;
+  saveVersion: (label?: string, scores?: VersionScores) => void;
   restoreVersion: (id: string) => void;
   reset: () => void;
 }
@@ -105,7 +112,14 @@ export const useResumeStore = create<ResumeStore>()(
           "We're seeking a Senior Software Engineer experienced in TypeScript, React, Node.js, and distributed systems. Familiarity with Kubernetes, Terraform, CI/CD, PostgreSQL, AWS, and Docker is a plus. You'll design scalable microservices, mentor engineers, and lead delivery of high-impact features.",
       },
       versions: [
-        { id: uid("v"), label: "V1", createdAt: Date.now(), json: INITIAL },
+        {
+          id: uid("v"),
+          label: "V1",
+          createdAt: Date.now(),
+          json: INITIAL,
+          templateId: INITIAL.meta.templateId,
+          themeId: INITIAL.meta.themeId,
+        },
       ],
       setResume: (r) => set({ resume: r }),
       patch: (fn) =>
@@ -116,8 +130,10 @@ export const useResumeStore = create<ResumeStore>()(
         }),
       setTemplate: (id) =>
         set((s) => ({ resume: { ...s.resume, meta: { ...s.resume.meta, templateId: id } } })),
+      setTheme: (id) =>
+        set((s) => ({ resume: { ...s.resume, meta: { ...s.resume.meta, themeId: id } } })),
       setSelectedJob: (j) => set({ selectedJob: j }),
-      saveVersion: (label) =>
+      saveVersion: (label, scores) =>
         set((s) => ({
           versions: [
             ...s.versions,
@@ -126,6 +142,11 @@ export const useResumeStore = create<ResumeStore>()(
               label: label ?? `V${s.versions.length + 1}`,
               createdAt: Date.now(),
               json: structuredClone(s.resume),
+              templateId: s.resume.meta.templateId,
+              themeId: s.resume.meta.themeId,
+              atsScore: scores?.atsScore,
+              resumeHealth: scores?.resumeHealth,
+              jdMatch: scores?.jdMatch,
             },
           ],
         })),

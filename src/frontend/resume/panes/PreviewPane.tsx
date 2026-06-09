@@ -1,12 +1,14 @@
-/** Live, scaled resume preview. Renders the active template from store state. */
+/** Live, scaled resume preview. Renders the active template + theme from store state. */
 import { useEffect, useRef, useState } from "react";
 import { useResumeStore } from "@frontend/resume/state/useResumeStore";
 import { getTemplate } from "@frontend/resume/templates/registry";
+import { getTheme } from "@frontend/resume/templates/themes";
 import { PAPER_PX } from "@frontend/resume/templates/_shared";
 
 export function PreviewPane() {
   const resume = useResumeStore((s) => s.resume);
   const Template = getTemplate(resume.meta.templateId).component;
+  const theme = getTheme(resume.meta.themeId);
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const [scale, setScale] = useState(1);
 
@@ -42,7 +44,7 @@ export function PreviewPane() {
             width: paper.w,
           }}
         >
-          <Template resume={resume} />
+          <Template resume={resume} theme={theme} />
         </div>
       </div>
       <div className="resume-preview-meta">

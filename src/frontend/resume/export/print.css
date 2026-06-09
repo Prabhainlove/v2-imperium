@@ -1,0 +1,41 @@
+/* Print-safe rules. Loaded with the Print Renderer to prevent clipped or
+   broken page breaks during PDF export. Targets html2pdf's CSS pagebreak mode. */
+
+.resume-print-root,
+.resume-print-root * {
+  -webkit-print-color-adjust: exact !important;
+  print-color-adjust: exact !important;
+}
+
+.resume-print-root .resume-page {
+  box-shadow: none !important;
+  margin: 0 !important;
+}
+
+.resume-print-root .r-block,
+.resume-print-root section,
+.resume-print-root li {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.resume-print-root h1,
+.resume-print-root h2,
+.resume-print-root h3 {
+  break-after: avoid;
+  page-break-after: avoid;
+}
+
+@media print {
+  body { background: #fff; }
+  .resume-print-root .resume-page {
+    box-shadow: none !important;
+    margin: 0 !important;
+  }
+  .resume-print-root .r-block,
+  .resume-print-root section,
+  .resume-print-root li {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}

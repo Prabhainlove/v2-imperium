@@ -2,25 +2,53 @@
 import { useResumeStore } from "@frontend/resume/state/useResumeStore";
 import { uid } from "@frontend/resume/schema";
 import { TEMPLATES } from "@frontend/resume/templates/registry";
+import { THEMES } from "@frontend/resume/templates/themes";
 
 export function EditorPane() {
   const resume = useResumeStore((s) => s.resume);
   const patch = useResumeStore((s) => s.patch);
   const setTemplate = useResumeStore((s) => s.setTemplate);
+  const setTheme = useResumeStore((s) => s.setTheme);
 
   return (
     <div className="resume-editor">
-      <div className="resume-editor-group">
-        <label className="resume-editor-label">Template</label>
-        <select
-          className="resume-editor-input"
-          value={resume.meta.templateId}
-          onChange={(e) => setTemplate(e.target.value)}
-        >
+      <div className="resume-editor-section">
+        <div className="resume-editor-section-title">Template</div>
+        <div className="resume-template-gallery">
           {TEMPLATES.map((t) => (
-            <option key={t.id} value={t.id}>{t.label}</option>
+            <button
+              key={t.id}
+              type="button"
+              className={`resume-template-card${resume.meta.templateId === t.id ? " is-active" : ""}`}
+              onClick={() => setTemplate(t.id)}
+            >
+              <div className="resume-template-card-name">{t.name}</div>
+              <div className="resume-template-card-meta">
+                <span>ATS {t.atsCompatibility}</span>
+                <span>·</span>
+                <span>Visual {t.visualAppeal}</span>
+              </div>
+              <div className="resume-template-card-best">{t.bestFor.slice(0, 2).join(" · ")}</div>
+            </button>
           ))}
-        </select>
+        </div>
+      </div>
+
+      <div className="resume-editor-section">
+        <div className="resume-editor-section-title">Theme</div>
+        <div className="resume-theme-row">
+          {THEMES.map((th) => (
+            <button
+              key={th.id}
+              type="button"
+              title={th.name}
+              aria-label={th.name}
+              className={`resume-theme-swatch${resume.meta.themeId === th.id ? " is-active" : ""}`}
+              style={{ background: th.accent }}
+              onClick={() => setTheme(th.id)}
+            />
+          ))}
+        </div>
       </div>
 
       <Section title="Personal">
