@@ -1089,7 +1089,8 @@ export const attachLocalAgentRun = createServerFn({ method: "POST" })
         notes: JSON.stringify(meta),
         updated_at: new Date().toISOString(),
       } as never)
-      .eq("id", data.application_id);
+      .eq("id", data.application_id)
+      .eq("user_id", userId);
     if (updErr) throw new Error(updErr.message);
     return { ok: true };
   });
