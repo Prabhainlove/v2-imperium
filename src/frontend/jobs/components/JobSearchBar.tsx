@@ -35,10 +35,10 @@ export function JobSearchBar({ initial, loading, onSearch, onRefresh, canRefresh
         <label>Experience</label>
         <select value={f.experience} onChange={(e) => set("experience", e.target.value)}>
           <option value="">Any Experience</option>
-          <option value="0">Entry</option>
-          <option value="2">2+ years</option>
-          <option value="5">5+ years</option>
-          <option value="8">8+ years</option>
+          <option value="fresher">Fresher</option>
+          <option value="0-2">0–2 Years</option>
+          <option value="3-5">3–5 Years</option>
+          <option value="5+">5+ Years</option>
         </select>
       </div>
       <div className="jobs-field">

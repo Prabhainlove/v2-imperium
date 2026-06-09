@@ -34,10 +34,11 @@ export function SelectedJobSummary({ job }: { job: NormalizedJob | null }) {
 
       <div className="jobs-breakdown">
         <h4>MATCH BREAKDOWN</h4>
+        <Bar label="Title Match" value={job.breakdown.title} />
         <Bar label="Skills Match" value={job.breakdown.skills} />
         <Bar label="Experience Match" value={job.breakdown.experience} />
-        <Bar label="Role Match" value={job.breakdown.role} />
         <Bar label="Location Match" value={job.breakdown.location} />
+        <Bar label="Freshness" value={job.breakdown.freshness} />
         <Bar label="Salary Match" value={job.breakdown.salary} />
       </div>
 

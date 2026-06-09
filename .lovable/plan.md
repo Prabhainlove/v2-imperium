@@ -1,78 +1,103 @@
-# Job Discovery Engine — Final Implementation Plan (Approved)
+# Job Discovery Engine — Ranking & Filter Fixes
 
-All adjustments incorporated. Ready to build the moment you switch to build mode.
+Scope: tighten ranking + filtering so Top 5 reflects real best matches. No DB migration changes. No Resume Studio work yet.
 
-## Architecture summary
+## Files Touched
 
-- **Flow** — Profile → Discovery → Rank → Top 5 → Select → Resume Studio. No bulk resume gen, no auto-apply.
-- **AI** — Stays routed through `ModelRouter`; deterministic ranking heuristic works without any cloud key, so Ollama+Qwen3 is a config swap later.
-- **Existing files preserved** — `JobSources.server.ts`, `JobDescriptionAnalyzer.server.ts`, `ProfileAnalyzer.server.ts`, `ModelRouter.server.ts`, `JobPipeline.server.ts` are untouched. New services wrap them.
+1. `src/backend/jobs/JobRankingService.server.ts` — rewrite scoring (title relevance, experience buckets, freshness, location tiers, salary penalty).
+2. `src/backend/jobs/JobNormalizationService.server.ts` — expose `experienceBucket`, `freshnessDays`, `isNewToday`, `locationTier` on `NormalizedJob`.
+3. `src/backend/api/jobs.api.ts` — apply hard filters (experience bucket, salary min, work mode) before ranking; pass `workMode` + experience bucket into ranking context.
+4. `src/frontend/jobs/components/JobSearchBar.tsx` — replace experience options with `Fresher / 0–2 / 3–5 / 5+`.
+5. `src/frontend/jobs/jobs.logic.ts` — type the new experience bucket value; pass through.
+6. `src/frontend/jobs/components/JobCard.tsx` + `TopMatchesRow.tsx` — render 🔥 New Today badge, ensure logo fallback to company-initials avatar (never blank).
+7. `src/frontend/jobs/jobs.css` — styles for new badge + initials avatar.
 
-## Database (1 migration)
+No changes to: migrations, `selected_jobs`, `search_history`, RLS, `JobSources.server.ts`, Resume Studio.
 
-`supabase/migrations/…_selected_jobs_and_search_history.sql`
-- `selected_jobs(id, user_id, job_id → job_listings, selected_at)` — Resume Studio handoff
-- `search_history(id, user_id, query, filters jsonb, result_count, created_at)` — metadata only
-- Both: RLS enabled, owner-only policies, `authenticated` + `service_role` grants
+## Technical Detail
 
-Existing `job_listings.status='discovered'` continues to serve as the 24h job cache (cleared per user on each new search + 24h sweep).
+### 1. Experience Buckets
+Enum `ExperienceBucket = "fresher" | "0-2" | "3-5" | "5+"`.
 
-## Backend services (7 new files, single responsibility each)
+Classifier `classifyExperience(title, description)`:
+- Regex on title first (highest signal):
+  - `/intern|graduate|fresher|trainee|entry[- ]level|junior|jr\.?\b/i` → `fresher`
+  - `/associate|jr engineer/i` or yrs match `1|2` → `0-2`
+  - `/mid|mid[- ]level/i` or yrs `3|4|5` → `3-5`
+  - `/senior|sr\.?\b|lead|principal|staff|architect|manager|head of|director|vp\b/i` → `5+`
+- Then description: pull `(\d+)\+?\s*(?:years|yrs)` min value → bucket by range.
+- Default: `3-5` (neutral) when no signal.
 
+Hard filter: if user selects a bucket, drop jobs not in that bucket BEFORE ranking. "Any" keeps all.
+
+### 2. Title Relevance (heavier weight)
+- Build query tokens from `filters.title` (e.g. "front end" → `["front","end","frontend"]`, normalize "front end"/"front-end"/"frontend" → canonical `frontend`).
+- Maintain role-family synonym map:
+  - frontend: `frontend, front-end, react, angular, vue, ui engineer, web developer, javascript engineer`
+  - backend: `backend, back-end, api, node, golang, python engineer, java engineer`
+  - fullstack, mobile, ios, android, data, ml, devops, design, pm, marketing, sales…
+- `titleScore`:
+  - 1.0 if job title contains canonical family token or strong synonym
+  - 0.6 partial token overlap
+  - 0.0 if title belongs to a different identified family → also flagged as `titleMismatch=true` (used as penalty)
+- Apply penalty: if `titleMismatch`, multiply final score by 0.4 so unrelated roles can't reach Top 5.
+
+### 3. Freshness
+- `freshnessDays = floor((now - postedAt)/day)`; missing → treat as 7.
+- `freshnessScore`:
+  - 0 days: 1.0
+  - 1: 0.95
+  - 2–3: 0.85
+  - 4–7: 0.7
+  - 8–14: 0.5
+  - 15–30: 0.3
+  - >30: 0.1
+- `isNewToday = freshnessDays <= 1`.
+
+### 4. Location Tiers
+Inputs: user city/state/country (parse from `filters.location`, e.g. "Hyderabad"). Use small India city→state map + country guess (default IN for known IN cities), plus `Remote`.
+Tiers:
+- same_city → 1.0
+- same_state → 0.85
+- remote → 0.75
+- same_country → 0.55
+- other → 0.2
+If user typed `remote`/blank: remote=1.0, others 0.6.
+
+### 5. Salary
+- If `salaryMin` provided and `job.salary_min` known and `< userMin` → `salaryScore = 0.2` and mark `belowSalary=true`.
+- If unknown → 0.6 (neutral).
+- If meets/exceeds → 1.0.
+- Hard exclude only when user provides salaryMin AND job has explicit salary_max below userMin.
+
+### 6. Final Score
 ```
-src/backend/jobs/
-├── JobRetrievalService.server.ts      // fans out to SOURCES; returns RawJob[] + per-source status
-├── JobNormalizationService.server.ts  // RawJob → NormalizedJob DTO
-├── JobRankingService.server.ts        // match score + 5-axis breakdown + Intelligence label
-├── CompanyInfoService.server.ts       // logo via Clearbit, graceful fallback (no banner dependency)
-├── JobCacheService.server.ts          // job_listings cache: write/read/clear/24h sweep
-├── JobSelectionService.server.ts      // selected_jobs writes
-└── SearchHistoryService.server.ts     // search_history append (query + filters + count only)
+base = 0.30*title + 0.25*skills + 0.15*experienceFit + 0.12*location + 0.10*freshness + 0.08*salary
+score = base * (titleMismatch ? 0.4 : 1) * (experienceBucketMismatch ? 0.5 : 1)
 ```
+`experienceFit`: 1.0 if classified bucket == requested bucket, 0.6 adjacent, 0.3 far.
 
-**Job Intelligence label** (replaces Resume Readiness on this page):
-`>=0.80 High Opportunity · >=0.60 Strong Match · >=0.40 Competitive · else Long Shot`
+### 7. Top 5 Selection
+- Sort by score desc.
+- Tie-breaker chain: freshness desc → title exact match → skills matched count → salary known desc.
+- Enforce: Top 5 must each have score ≥ 0.45 AND no `titleMismatch`. If fewer than 5 qualify, show what qualifies (don't pad with junk).
 
-## API (1 new file)
+### 8. Company Logo Fallback
+- `JobCard`/`TopMatchesRow`: `<img onError>` swaps to initials avatar div (already have `companyInitials` helper). Render initials avatar by default when `companyLogo` empty.
+- Add deterministic background color from hash(company) for visual variety.
 
-`src/backend/api/jobs.api.ts` — 4 TanStack server functions, all auth-protected:
-- `discoverJobs(filters)` → `{ top5, all, perSource, cachedAt }`
-- `getDiscoveredJob(jobId)` → full `NormalizedJob`
-- `selectJobForResume(jobId)` → `{ redirect: '/resume?jobId=…' }`
-- `getProfileMetrics()` → `{ profileStrength, atsReadiness, resumeQuality, applicationsSubmitted, interviewSuccessRate }`
+### 9. New Today Badge
+- Show `🔥 New Today` pill on card when `isNewToday`.
 
-Existing `runJobSearch` / `getJobs` left intact for other pages.
-
-## Frontend (10 files)
-
+### 10. UI Filter Options
+JobSearchBar experience `<select>`:
 ```
-src/frontend/jobs/
-├── JobsPage.tsx                       // composes layout
-├── jobs.logic.ts                      // useDiscovery, useJobDetails, useSelectJob, useProfileMetrics
-├── jobs.css                           // scoped .jobs- styles matching reference
-└── components/
-    ├── ProfileMetricsRail.tsx         // 5 live metrics
-    ├── JobSearchBar.tsx               // 6 fields + Search/Refresh
-    ├── TopMatchesRow.tsx              // Top 5 cards
-    ├── SelectedJobSummary.tsx         // title + meta + 5-bar breakdown + key skills
-    ├── JobIntelPanel.tsx              // right rail: logo, CTAs, JD overview, source
-    ├── AllJobsGrid.tsx                // bottom grid + sort
-    └── JobCard.tsx                    // shared card (view/apply)
+Any Experience | Fresher | 0–2 Years | 3–5 Years | 5+ Years
 ```
+Value sent to backend: `""|"fresher"|"0-2"|"3-5"|"5+"`.
 
-## Documentation (1 file)
+## Out of Scope
+- Migration edits, Resume Studio, new job sources, Ollama switch, screenshots (will follow after build).
 
-`docs/database.md` — table-by-table reference (Purpose / Created By / Used By / Retention) for `profiles`, `job_listings`, `selected_jobs`, `search_history`, `applications`, `application_timeline`, `activity_log`, plus the service↔table map and discovery→studio lifecycle.
-
-## What does NOT happen on /jobs
-
-- ❌ Resume generation
-- ❌ Application records
-- ❌ Cover letter generation
-- ❌ Auto-submit
-
-Apply / Generate Resume only writes `selected_jobs` and navigates to `/resume?jobId=…`.
-
-## Acceptance (all covered)
-
-✓ Search · ✓ Rank · ✓ Top 5 · ✓ Match Scores · ✓ Job Intelligence · ✓ Full Details · ✓ All Jobs Grid · ✓ Cache + 24h TTL · ✓ Cache replaced on new search · ✓ Job selection · ✓ Resume Studio navigation · ✓ No resume gen on Jobs · ✓ No application creation on Jobs
+## After Implementation
+Will share screenshots of Top 5 + a short note explaining the score formula above, before moving to Resume Studio.

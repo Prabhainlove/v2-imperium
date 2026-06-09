@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { NormalizedJob } from "@backend/jobs/JobNormalizationService.server";
 import { INTELLIGENCE_LABEL, companyInitials, postedAgo } from "../jobs.logic";
 
@@ -26,7 +27,10 @@ export function JobCard({ job, selected, variant = "grid", onView, onApply }: Pr
           <div className="jobs-card-role">{job.title}</div>
         </div>
       </div>
-      <div className="jobs-card-match">{Math.round(job.matchScore * 100)}% Match</div>
+      <div className="jobs-card-badges">
+        {job.isNewToday && <span className="jobs-badge-new">🔥 New Today</span>}
+        <div className="jobs-card-match">{Math.round(job.matchScore * 100)}% Match</div>
+      </div>
       <div className="jobs-card-meta">
         <span>💰 {job.salary}</span>
         <span>📍 {job.location || "—"}</span>
@@ -45,7 +49,32 @@ export function JobCard({ job, selected, variant = "grid", onView, onApply }: Pr
   );
 }
 
+function hashHue(name: string): number {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+  return h % 360;
+}
+
 export function CompanyLogo({ logo, name }: { logo: string; name: string }) {
-  if (logo) return <img className="jobs-logo" src={logo} alt={name} loading="lazy" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />;
-  return <div className="jobs-logo jobs-logo-fallback">{companyInitials(name)}</div>;
+  const [failed, setFailed] = useState(false);
+  if (!logo || failed) {
+    const hue = hashHue(name || "?");
+    return (
+      <div
+        className="jobs-logo jobs-logo-fallback"
+        style={{ background: `linear-gradient(135deg, hsl(${hue} 70% 55%), hsl(${(hue + 40) % 360} 70% 45%))` }}
+      >
+        {companyInitials(name)}
+      </div>
+    );
+  }
+  return (
+    <img
+      className="jobs-logo"
+      src={logo}
+      alt={name}
+      loading="lazy"
+      onError={() => setFailed(true)}
+    />
+  );
 }

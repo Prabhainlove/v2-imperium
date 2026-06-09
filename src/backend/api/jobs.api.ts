@@ -11,17 +11,19 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@backend/database/AuthMiddleware";
 import { retrieveJobs } from "@backend/jobs/JobRetrievalService.server";
-import { normalizeMany, normalizeJob, type NormalizedJob } from "@backend/jobs/JobNormalizationService.server";
+import { normalizeMany, normalizeJob, selectTop5, type NormalizedJob } from "@backend/jobs/JobNormalizationService.server";
 import { cacheDiscovered, clearDiscoveredCache, readCachedJob, sweepStaleCache } from "@backend/jobs/JobCacheService.server";
 import { selectJob } from "@backend/jobs/JobSelectionService.server";
 import { logSearch } from "@backend/jobs/SearchHistoryService.server";
-import type { CandidateContext } from "@backend/jobs/JobRankingService.server";
+import type { CandidateContext, ExperienceBucket } from "@backend/jobs/JobRankingService.server";
+
+const ExperienceBucketEnum = z.enum(["fresher", "0-2", "3-5", "5+"]);
 
 const DiscoverInput = z.object({
   title: z.string().max(200).default(""),
   skills: z.string().max(500).default(""),
   location: z.string().max(200).default(""),
-  experience: z.string().max(50).default(""),
+  experience: z.union([ExperienceBucketEnum, z.literal("")]).default(""),
   workMode: z.string().max(50).default(""),
   salaryMin: z.number().int().min(0).max(100_000_000).nullable().optional(),
 });
@@ -44,7 +46,8 @@ function buildCandidateContext(profile: any, filters: Partial<DiscoverFilters>):
   const role = filters.title || profile?.target_role || profile?.headline || "Software Engineer";
   const location = filters.location || profile?.location || "Remote";
   const desiredSalaryMin = filters.salaryMin ?? (profile?.salary_expectation?.min as number | undefined) ?? null;
-  return { role, skills: merged, experience: filters.experience ?? "", location, desiredSalaryMin };
+  const bucket: ExperienceBucket | null = filters.experience ? (filters.experience as ExperienceBucket) : null;
+  return { role, skills: merged, experience: "", experienceBucket: bucket, location, desiredSalaryMin };
 }
 
 export const discoverJobs = createServerFn({ method: "POST" })
@@ -61,8 +64,26 @@ export const discoverJobs = createServerFn({ method: "POST" })
     await clearDiscoveredCache(supabase, userId);
 
     const { jobs: raws, perSource } = await retrieveJobs(candidate.role, candidate.location);
-    const normalized = normalizeMany(raws, candidate);
-    const cached = await cacheDiscovered(supabase, userId, taskId, normalized, raws);
+    let normalized = normalizeMany(raws, candidate);
+
+    // Hard filter: experience bucket
+    if (candidate.experienceBucket) {
+      normalized = normalized.filter((j) => j.experienceBucket === candidate.experienceBucket);
+    }
+    // Hard filter: salary (only when both sides explicit)
+    if (candidate.desiredSalaryMin && candidate.desiredSalaryMin > 0) {
+      normalized = normalized.filter((j) => {
+        const cap = j.salaryMax ?? j.salaryMin;
+        return cap == null || cap >= candidate.desiredSalaryMin!;
+      });
+    }
+    // Hard filter: work mode
+    const mode = (data.workMode || "").toLowerCase();
+    if (mode === "remote") normalized = normalized.filter((j) => j.remote);
+    else if (mode === "onsite") normalized = normalized.filter((j) => !j.remote);
+
+    const filteredRaws = raws.filter((r) => normalized.some((n) => n.source === r.source && n.externalId === r.external_id));
+    const cached = await cacheDiscovered(supabase, userId, taskId, normalized, filteredRaws);
 
     try {
       await logSearch(supabase, userId, {
@@ -78,12 +99,13 @@ export const discoverJobs = createServerFn({ method: "POST" })
     return {
       taskId,
       cachedAt: new Date().toISOString(),
-      top5: cached.slice(0, 5),
+      top5: selectTop5(cached),
       all: cached,
       perSource,
       candidate: { role: candidate.role, location: candidate.location, skills: candidate.skills },
     };
   });
+
 
 const JobIdInput = z.object({ jobId: z.string().min(1) });
 
