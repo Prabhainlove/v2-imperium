@@ -1,5 +1,6 @@
-import { useState, type FormEvent } from "react";
+import { useState, useEffect, type FormEvent } from "react";
 import { useNavigate } from "@tanstack/react-router";
+import { ensureDemoUser } from "./mockAuth";
 import { AuthShell } from "./components/AuthShell";
 import { PillInput } from "./components/PillInput";
 import { signInSchema } from "./validation";
