@@ -247,60 +247,87 @@ async function fetchLinkedInJd(id: string): Promise<{ description: string; html:
 }
 
 export async function fetchLinkedIn(role: string, location: string): Promise<RawJob[]> {
-  const params = new URLSearchParams({
-    keywords: role,
-    location: location || "Worldwide",
-    start: "0",
-  });
-  const url = `https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?${params.toString()}`;
-  const res = await fetch(url, {
-    headers: {
-      "User-Agent": UA,
-      Accept: "text/html,application/xhtml+xml",
-    },
-  });
-  if (!res.ok) throw new Error(`LinkedIn ${res.status}`);
-  const html = await res.text();
   const out: RawJob[] = [];
+  const seen = new Set<string>();
 
-  // Each card: <li> ... base-card__full-link href="...currentJobId=NNN" ...
-  const cardRegex = /<li[^>]*>([\s\S]*?)<\/li>/g;
-  let m: RegExpExecArray | null;
-  while ((m = cardRegex.exec(html)) !== null) {
-    const card = m[1];
-    const hrefMatch = card.match(/href="(https:\/\/[^"]+)"/);
-    const titleMatch = card.match(/base-search-card__title[^>]*>\s*([\s\S]*?)\s*</);
-    const subtitleMatch = card.match(/base-search-card__subtitle[^>]*>([\s\S]*?)<\/h4>/);
-    const locMatch = card.match(/job-search-card__location[^>]*>([\s\S]*?)<\/span>/);
-    const dateMatch = card.match(/datetime="([^"]+)"/);
-    const idMatch =
-      card.match(/data-entity-urn="urn:li:jobPosting:(\d+)"/) ||
-      hrefMatch?.[1]?.match(/(\d{6,})/);
-    if (!titleMatch || !idMatch) continue;
-    const title = stripHtml(titleMatch[1]);
-    const company = stripHtml(subtitleMatch?.[1] ?? "");
-    const loc = stripHtml(locMatch?.[1] ?? location);
-    const text = `${title} ${company} ${loc}`;
-    if (!matchesQuery(text, role, location)) continue;
-    const id = (idMatch as RegExpMatchArray)[1];
-    out.push({
-      source: "linkedin",
-      external_id: String(id),
-      url: hrefMatch?.[1] ?? `https://www.linkedin.com/jobs/view/${id}`,
-      title,
-      company: company || "Unknown",
-      location: loc,
-      remote: /remote/i.test(loc + " " + title),
-      description: LINKEDIN_PLACEHOLDER_DESCRIPTION,
-      tech_stack: extractTechStack(text),
-      salary_min: null,
-      salary_max: null,
-      salary_currency: "USD",
-      posted_at: dateMatch?.[1] ?? null,
+  for (const start of [0, 25, 50, 75]) {
+    const params = new URLSearchParams({
+      keywords: role,
+      location: location || "Worldwide",
+      start: String(start),
     });
+    const url = `https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?${params.toString()}`;
+    let res: Response;
+    try {
+      res = await fetchWithRetry(
+        url,
+        {
+          headers: {
+            "User-Agent": pickUA(),
+            Accept: "text/html,application/xhtml+xml",
+            "Accept-Language": "en-IN,en;q=0.9",
+          },
+          timeoutMs: 8000,
+        },
+        { retries: 1, jitterMs: 300 },
+      );
+    } catch (err) {
+      console.warn(`[linkedin:page=${start}] fetch failed:`, (err as Error).message);
+      break;
+    }
+    if (!res.ok) {
+      console.warn(`[linkedin:page=${start}] HTTP ${res.status} — stopping pagination`);
+      break;
+    }
+    const html = await res.text();
+    let added = 0;
+    const cardRegex = /<li[^>]*>([\s\S]*?)<\/li>/g;
+    let m: RegExpExecArray | null;
+    while ((m = cardRegex.exec(html)) !== null) {
+      const card = m[1];
+      const hrefMatch = card.match(/href="(https:\/\/[^"]+)"/);
+      const titleMatch = card.match(/base-search-card__title[^>]*>\s*([\s\S]*?)\s*</);
+      const subtitleMatch = card.match(/base-search-card__subtitle[^>]*>([\s\S]*?)<\/h4>/);
+      const locMatch = card.match(/job-search-card__location[^>]*>([\s\S]*?)<\/span>/);
+      const dateMatch = card.match(/datetime="([^"]+)"/);
+      const seniorityMatch = card.match(/job-search-card__benefits[^>]*>([\s\S]*?)<\/span>/);
+      const idMatch =
+        card.match(/data-entity-urn="urn:li:jobPosting:(\d+)"/) ||
+        hrefMatch?.[1]?.match(/(\d{6,})/);
+      if (!titleMatch || !idMatch) continue;
+      const id = (idMatch as RegExpMatchArray)[1];
+      if (seen.has(id)) continue;
+      seen.add(id);
+      const title = stripHtml(titleMatch[1]);
+      const company = stripHtml(subtitleMatch?.[1] ?? "");
+      const loc = stripHtml(locMatch?.[1] ?? location);
+      const seniority = stripHtml(seniorityMatch?.[1] ?? "");
+      const text = `${title} ${company} ${loc}`;
+      out.push({
+        source: "linkedin",
+        external_id: String(id),
+        url: hrefMatch?.[1] ?? `https://www.linkedin.com/jobs/view/${id}`,
+        title,
+        company: company || "Unknown",
+        location: loc,
+        remote: /remote/i.test(loc + " " + title),
+        description: LINKEDIN_PLACEHOLDER_DESCRIPTION,
+        tech_stack: extractTechStack(text),
+        salary_min: null,
+        salary_max: null,
+        salary_currency: "USD",
+        posted_at: dateMatch?.[1] ?? null,
+        experience_text: seniority || null,
+      });
+      added++;
+    }
+    if (added === 0) break; // no more results
+    await new Promise((r) => setTimeout(r, 250));
   }
+
   if (out.length === 0) {
-    throw new Error("LinkedIn returned 0 parseable cards (blocked or empty)");
+    console.warn("[linkedin] 0 parseable cards across all pages");
+    return out;
   }
 
   // ── JD enrichment (best-effort, never fails the pipeline) ──
