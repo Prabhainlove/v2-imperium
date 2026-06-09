@@ -158,6 +158,86 @@
 .resume-version-btn:hover { background: hsl(var(--muted)); }
 .resume-version-date { color: hsl(var(--muted-foreground)); }
 
+/* Template gallery */
+.resume-template-gallery {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+.resume-template-card {
+  text-align: left;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid hsl(var(--border));
+  background: hsl(var(--background));
+  cursor: pointer;
+  color: hsl(var(--foreground));
+  transition: border-color .15s, background .15s;
+}
+.resume-template-card:hover { background: hsl(var(--muted)); }
+.resume-template-card.is-active {
+  border-color: hsl(var(--primary));
+  background: hsl(var(--primary) / 0.08);
+}
+.resume-template-card-name { font-weight: 600; font-size: 12.5px; }
+.resume-template-card-meta { display: flex; gap: 6px; font-size: 10.5px; color: hsl(var(--muted-foreground)); margin-top: 2px; }
+.resume-template-card-best { font-size: 10.5px; color: hsl(var(--muted-foreground)); margin-top: 4px; }
+
+/* Theme swatches */
+.resume-theme-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.resume-theme-swatch {
+  width: 28px; height: 28px; border-radius: 999px;
+  border: 2px solid transparent; cursor: pointer; padding: 0;
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.15);
+}
+.resume-theme-swatch.is-active { border-color: hsl(var(--foreground)); }
+
+/* Score grid */
+.resume-score-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.resume-score-badge {
+  border: 1px solid hsl(var(--border));
+  border-radius: 10px; padding: 10px 6px; text-align: center;
+  background: hsl(var(--background));
+}
+.resume-score-value { font-size: 22px; font-weight: 700; line-height: 1; }
+.resume-score-label { font-size: 10.5px; color: hsl(var(--muted-foreground)); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.4px; }
+.resume-score-good .resume-score-value { color: #16a34a; }
+.resume-score-ok   .resume-score-value { color: #ca8a04; }
+.resume-score-warn .resume-score-value { color: #dc2626; }
+.resume-score-muted .resume-score-value { color: hsl(var(--muted-foreground)); }
+
+.resume-export-row { display: flex; gap: 8px; margin-top: 4px; }
+.resume-export-btn {
+  flex: 1;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  border: none;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.resume-export-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.resume-warnings { color: #b45309; }
+
+.resume-skillgap-summary { display: flex; justify-content: space-between; font-size: 12px; padding: 4px 0; }
+.resume-keyword-rec { background: #eff6ff; color: #1d4ed8; }
+
+.resume-template-active { font-weight: 600; font-size: 13px; }
+.resume-template-bestfor { font-size: 12px; color: hsl(var(--muted-foreground)); }
+
+.resume-recommendation { border-color: hsl(var(--primary)); background: hsl(var(--primary) / 0.05); }
+
+/* Legacy ATS score block kept for any external reference */
+.resume-ats-score { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 8px 0; }
+.resume-ats-number { font-size: 32px; font-weight: 700; }
+.resume-ats-label { font-size: 12px; color: hsl(var(--muted-foreground)); }
+.resume-ats-good .resume-ats-number { color: #16a34a; }
+.resume-ats-ok .resume-ats-number { color: #ca8a04; }
+.resume-ats-warn .resume-ats-number { color: #dc2626; }
+
 @media (max-width: 1100px) {
   .resume-layout { grid-template-columns: 1fr; }
   .resume-col { border-right: none; border-bottom: 1px solid hsl(var(--border)); max-height: 60vh; }
