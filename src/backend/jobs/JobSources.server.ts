@@ -419,6 +419,72 @@ function parseNaukriLocation(o: Record<string, unknown>): string {
   return cityLike?.label?.trim() ?? "";
 }
 
+function naukriHeaders(): Record<string, string> {
+  return { ...NAUKRI_HEADERS, "User-Agent": pickUA() };
+}
+
+function slugify(s: string): string {
+  return s.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+}
+
+/** HTML fallback: scrape the public listing page when JSON is blocked. */
+async function fetchNaukriHtmlFallback(role: string, location: string): Promise<RawJob[]> {
+  const slug = `${slugify(role)}-jobs${location ? `-in-${slugify(location)}` : ""}`;
+  const url = `https://www.naukri.com/${slug}`;
+  try {
+    const res = await fetchWithRetry(
+      url,
+      { headers: { "User-Agent": pickUA(), Accept: "text/html", "Accept-Language": "en-IN,en;q=0.9" }, timeoutMs: 8000 },
+      { retries: 1 },
+    );
+    if (!res.ok) {
+      console.warn(`[naukri:html] HTTP ${res.status} — giving up`);
+      return [];
+    }
+    const html = await res.text();
+    const out: RawJob[] = [];
+    // Naukri renders cards as <article class="jobTuple ...">
+    const cardRegex = /<article[^>]*class="[^"]*(?:jobTuple|srp-jobtuple-wrapper)[^"]*"[^>]*>([\s\S]*?)<\/article>/g;
+    let m: RegExpExecArray | null;
+    let idx = 0;
+    while ((m = cardRegex.exec(html)) !== null && out.length < 20) {
+      const card = m[1];
+      const hrefMatch = card.match(/<a[^>]*class="[^"]*title[^"]*"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/);
+      const companyMatch = card.match(/<a[^>]*class="[^"]*comp-name[^"]*"[^>]*>([\s\S]*?)<\/a>/) || card.match(/<a[^>]*subTitle[^>]*>([\s\S]*?)<\/a>/);
+      const expMatch = card.match(/class="[^"]*exp-wrap[^"]*"[\s\S]*?<span[^>]*>([\s\S]*?)<\/span>/) || card.match(/class="[^"]*expwdth[^"]*"[^>]*>([\s\S]*?)</);
+      const locMatch = card.match(/class="[^"]*loc-wrap[^"]*"[\s\S]*?<span[^>]*>([\s\S]*?)<\/span>/) || card.match(/class="[^"]*locWdth[^"]*"[^>]*>([\s\S]*?)</);
+      const descMatch = card.match(/class="[^"]*job-desc[^"]*"[^>]*>([\s\S]*?)</);
+      if (!hrefMatch) continue;
+      const title = stripHtml(hrefMatch[2]);
+      if (!title) continue;
+      const expText = stripHtml(expMatch?.[1] ?? "");
+      const locText = stripHtml(locMatch?.[1] ?? location);
+      const desc = stripHtml(descMatch?.[1] ?? "");
+      const text = `${title} ${desc} ${locText}`;
+      out.push({
+        source: "naukri",
+        external_id: `naukri-html-${slugify(hrefMatch[1])}-${idx++}`,
+        url: hrefMatch[1].startsWith("http") ? hrefMatch[1] : `https://www.naukri.com${hrefMatch[1]}`,
+        title,
+        company: stripHtml(companyMatch?.[1] ?? "Unknown"),
+        location: locText,
+        remote: /remote|work from home|wfh/i.test(`${text} ${locText}`),
+        description: desc.slice(0, 4000),
+        tech_stack: extractTechStack(text),
+        salary_min: null,
+        salary_max: null,
+        salary_currency: "INR",
+        posted_at: null,
+        experience_text: expText || null,
+      });
+    }
+    return out;
+  } catch (err) {
+    console.warn("[naukri:html] fallback failed:", (err as Error).message);
+    return [];
+  }
+}
+
 export async function fetchNaukri(role: string, location: string): Promise<RawJob[]> {
   const params = new URLSearchParams({
     noOfResults: "20",
@@ -433,26 +499,26 @@ export async function fetchNaukri(role: string, location: string): Promise<RawJo
     latLong: "",
   });
   const url = `https://www.naukri.com/jobapi/v3/search?${params.toString()}`;
-  let res: Response;
+  let res: Response | null = null;
   try {
-    res = await fetch(url, { headers: NAUKRI_HEADERS });
+    res = await fetchWithRetry(
+      url,
+      { headers: naukriHeaders(), timeoutMs: 8000 },
+      { retries: 2, jitterMs: 350 },
+    );
   } catch (err) {
-    // Network error / DNS / TLS — keep pipeline alive.
-    console.warn("[naukri] fetch failed:", (err as Error).message);
-    return [];
+    console.warn("[naukri:json] network failed:", (err as Error).message);
   }
-  if (!res.ok) {
-    // Anti-bot or rate limit — return empty rather than throwing so the
-    // pipeline never dies because Naukri is grumpy.
-    console.warn(`[naukri] HTTP ${res.status} — skipping this run`);
-    return [];
+  if (!res || !res.ok) {
+    if (res) console.warn(`[naukri:json] HTTP ${res.status} — falling back to HTML scrape`);
+    return fetchNaukriHtmlFallback(role, location);
   }
   let data: { jobDetails?: Record<string, unknown>[] };
   try {
     data = (await res.json()) as { jobDetails?: Record<string, unknown>[] };
   } catch (err) {
-    console.warn("[naukri] JSON parse failed:", (err as Error).message);
-    return [];
+    console.warn("[naukri:json] parse failed:", (err as Error).message);
+    return fetchNaukriHtmlFallback(role, location);
   }
 
   const out: RawJob[] = [];
@@ -460,6 +526,8 @@ export async function fetchNaukri(role: string, location: string): Promise<RawJo
     const text = `${o.title ?? ""} ${o.companyName ?? ""} ${o.jobDescription ?? ""}`;
     const salary = parseNaukriSalary(o);
     const loc = parseNaukriLocation(o) || (typeof location === "string" ? location : "");
+    const placeholders = (o.placeholders as NaukriPlaceholder[] | undefined) ?? [];
+    const expText = placeholders.find((p) => p.type === "experience")?.label ?? null;
     out.push({
       source: "naukri",
       external_id: String(o.jobId ?? `naukri-${Date.now()}-${out.length}`),
@@ -473,8 +541,13 @@ export async function fetchNaukri(role: string, location: string): Promise<RawJo
       salary_min: salary.min,
       salary_max: salary.max,
       salary_currency: salary.currency,
-      posted_at: typeof o.footerPlaceholderLabel === "string" ? null : null,
+      posted_at: typeof o.createdDate === "string" ? o.createdDate : null,
+      experience_text: expText,
     });
+  }
+  if (out.length === 0) {
+    console.warn("[naukri:json] empty result — trying HTML fallback");
+    return fetchNaukriHtmlFallback(role, location);
   }
   return out;
 }
