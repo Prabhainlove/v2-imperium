@@ -47,6 +47,23 @@ function writeUsers(users: StoredUser[]) {
   localStorage.setItem(USERS_KEY, JSON.stringify(users));
 }
 
+const DEMO_EMAIL = "fresher.demo@imperium.app";
+const DEMO_PASSWORD = "Demo@12345";
+
+export async function ensureDemoUser(): Promise<void> {
+  if (!isBrowser()) return;
+  const users = readUsers();
+  if (users.some((u) => u.email === DEMO_EMAIL)) return;
+  users.push({
+    id: "demo-fresher-user",
+    fullName: "Demo Fresher",
+    email: DEMO_EMAIL,
+    passwordHash: await sha256(DEMO_PASSWORD),
+    createdAt: new Date().toISOString(),
+  });
+  writeUsers(users);
+}
+
 export function getSession(): Session | null {
   if (!isBrowser()) return null;
   try {
